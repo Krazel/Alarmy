@@ -32,7 +32,7 @@ function Get-LatestRun {
   $runsUrl = "https://api.github.com/repos/$Repo/actions/runs?per_page=20"
   $runs = Invoke-RestMethod -Uri $runsUrl -Headers $headers
   return $runs.workflow_runs |
-    Where-Object { $_.name -eq $WorkflowName -and $_.head_sha -eq $Commit } |
+    Where-Object { $_.name -eq $WorkflowName -and ($_.head_sha -eq $Commit -or $_.head_sha.StartsWith($Commit)) } |
     Sort-Object created_at -Descending |
     Select-Object -First 1
 }
