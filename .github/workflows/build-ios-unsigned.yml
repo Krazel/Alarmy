@@ -55,7 +55,7 @@ jobs:
             exit 1
           fi
           mkdir -p unsigned-ipa/Payload
-          cp -R "$APP_PATH" unsigned-ipa/Payload/Alarma.app
+          cp -R "$APP_PATH" "unsigned-ipa/Payload/$(basename "$APP_PATH")"
           (cd unsigned-ipa && zip -qry ../Alarma-unsigned.ipa Payload)
           ls -lh Alarma-unsigned.ipa
 
