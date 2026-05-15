@@ -339,6 +339,12 @@ struct ContentView: View {
         store.alarms.filter(\.enabled).sorted { $0.timeText < $1.timeText }.first
     }
 
+    private var appVersionText: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "dev"
+        return "v\(version) · build \(build)"
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(colors: [Color(red: 1, green: 0.98, blue: 0.92), Color(red: 0.98, green: 0.82, blue: 0.66)], startPoint: .top, endPoint: .bottom)
@@ -388,6 +394,9 @@ struct ContentView: View {
                 Text("Alarma")
                     .font(.system(size: 54, weight: .bold, design: .serif))
                     .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
+                Text(appVersionText)
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(.secondary)
             }
             Spacer()
             Button { creating = true } label: {
