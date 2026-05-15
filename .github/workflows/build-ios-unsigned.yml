@@ -18,34 +18,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Install XcodeGen
+        run: brew install xcodegen
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Prepare web bundle
-        run: npm run build
-
-      - name: Create iOS project
-        run: npx cap add ios
-
-      - name: Sync iOS project
-        run: npx cap sync ios
-
-      - name: Configure AlarmKit usage description
-        run: |
-          /usr/libexec/PlistBuddy -c "Add :NSAlarmKitUsageDescription string We'll schedule alarm alerts you create in Alarma." ios/App/App/Info.plist || \
-          /usr/libexec/PlistBuddy -c "Set :NSAlarmKitUsageDescription We'll schedule alarm alerts you create in Alarma." ios/App/App/Info.plist
+      - name: Generate native Xcode project
+        working-directory: native-ios
+        run: xcodegen generate
 
       - name: Build unsigned iOS app
         run: |
           set -euo pipefail
           xcodebuild \
-            -workspace ios/App/App.xcworkspace \
-            -scheme App \
+            -project native-ios/Alarma.xcodeproj \
+            -scheme Alarma \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build/ios \
