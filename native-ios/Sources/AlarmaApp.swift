@@ -359,7 +359,11 @@ struct ContentView: View {
             EditAlarmView(alarm: alarm) { updated in store.upsert(updated) } onDelete: { store.delete(alarm) }
         }
         .sheet(isPresented: $creating) {
-            EditAlarmView(alarm: Alarm()) { updated in store.upsert(updated) } onDelete: nil
+            EditAlarmView(
+                alarm: Alarm(),
+                onSave: { updated in store.upsert(updated) },
+                onDelete: nil
+            )
         }
         .fullScreenCover(isPresented: Binding(get: { session.isActive }, set: { if !$0 { session.stop() } })) {
             if let alarm = session.activeAlarm {
