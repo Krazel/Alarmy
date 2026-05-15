@@ -17,7 +17,7 @@ targets:
       - Resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.krazel.alarma
+        PRODUCT_BUNDLE_IDENTIFIER: com.dmkr.alarma
         PRODUCT_NAME: Alarma
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
