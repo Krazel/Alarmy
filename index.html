@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#fff7e8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Alarma" />
+    <title>Alarma</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icons/icon-192.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <h1>Alarmas</h1>
+        <button class="icon-button" id="addAlarmButton" type="button" aria-label="Crear alarma">
+          <span aria-hidden="true">+</span>
+        </button>
+      </header>
+
+      <section class="next-panel" aria-live="polite">
+        <span class="next-label">Próxima</span>
+        <strong id="nextAlarmText">Sin alarmas activas</strong>
+        <small id="nextAlarmDetail">Crea una alarma para empezar.</small>
+      </section>
+
+      <section class="notice">
+        <div>
+          <strong>Importante en iPhone</strong>
+          <span>Deja esta app abierta o instalada en pantalla de inicio.</span>
+        </div>
+        <button id="prepareButton" type="button">Preparar sonido</button>
+      </section>
+
+      <section class="alarm-list" id="alarmList" aria-label="Lista de alarmas"></section>
+
+      <nav class="bottom-nav" aria-label="Navegación principal">
+        <button class="active" type="button">
+          <span aria-hidden="true">⏰</span>
+          Alarmas
+        </button>
+        <button type="button">
+          <span aria-hidden="true">▥</span>
+          Estadísticas
+        </button>
+        <button type="button">
+          <span aria-hidden="true">⚙</span>
+          Ajustes
+        </button>
+      </nav>
+    </main>
+
+    <dialog class="sheet" id="alarmDialog">
+      <form class="sheet-body" id="alarmForm" method="dialog">
+        <div class="sheet-header">
+          <h2 id="dialogTitle">Nueva alarma</h2>
+          <button class="icon-button ghost" id="closeDialogButton" type="button" aria-label="Cerrar">
+            <span aria-hidden="true">‹</span>
+          </button>
+        </div>
+
+        <label class="field">
+          <span>Nombre</span>
+          <input id="alarmLabel" maxlength="28" placeholder="Mañana" autocomplete="off" />
+        </label>
+
+        <label class="time-field">
+          <span>Hora</span>
+          <input id="alarmTime" type="time" required />
+        </label>
+
+        <div class="field">
+          <span>Días</span>
+          <div class="day-grid" id="dayGrid"></div>
+        </div>
+
+        <div class="field">
+          <span>Músicas posibles</span>
+          <div class="sound-grid" id="soundGrid"></div>
+        </div>
+
+        <label class="toggle-row">
+          <span>
+            <strong>Música aleatoria</strong>
+            <small>Elige una de las seleccionadas al sonar.</small>
+          </span>
+          <input id="randomSound" type="checkbox" checked />
+        </label>
+
+        <label class="toggle-row">
+          <span>
+            <strong>Volumen progresivo</strong>
+            <small>Empieza flojo y sube poco a poco.</small>
+          </span>
+          <input id="fadeInEnabled" type="checkbox" checked />
+        </label>
+
+        <label class="toggle-row priority-option">
+          <span>
+            <strong>Sonar aunque esté silenciado</strong>
+            <small>En web depende de iOS; en app nativa se activaría como alarma prioritaria.</small>
+          </span>
+          <input id="silentOverride" type="checkbox" checked />
+        </label>
+
+        <label class="range-row">
+          <span>
+            <strong>Subida</strong>
+            <small><output id="fadeDurationOutput">3 min</output></small>
+          </span>
+          <input id="fadeDuration" type="range" min="30" max="300" step="30" value="180" />
+        </label>
+
+        <label class="toggle-row">
+          <span>
+            <strong>Mover para posponer</strong>
+            <small>Sacude o mueve el móvil para posponer la alarma.</small>
+          </span>
+          <input id="motionSnooze" type="checkbox" checked />
+        </label>
+
+        <label class="field inline">
+          <span>Posponer</span>
+          <select id="snoozeMinutes">
+            <option value="5">5 minutos</option>
+            <option value="10">10 minutos</option>
+            <option value="15">15 minutos</option>
+          </select>
+        </label>
+
+        <div class="sheet-actions">
+          <button class="danger ghost-text" id="deleteAlarmButton" type="button">Eliminar</button>
+          <button class="primary" type="submit">Guardar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <section class="ring-screen" id="ringScreen" hidden>
+      <div class="ring-content">
+        <p id="ringLabel">Alarma</p>
+        <h2 id="ringTime">07:00</h2>
+        <span id="ringSound">Sonando</span>
+      </div>
+      <div class="sunrise-scene" aria-hidden="true">
+        <span class="cloud cloud-left"></span>
+        <span class="cloud cloud-right"></span>
+        <span class="sun"></span>
+        <span class="mountain mountain-back"></span>
+        <span class="mountain mountain-front"></span>
+      </div>
+      <div class="waveform" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+      <div class="motion-meter" aria-hidden="true">
+        <i id="motionFill"></i>
+      </div>
+      <p class="motion-help" id="motionHelp">Mueve el móvil para posponer</p>
+      <div class="ring-actions">
+        <button class="snooze" id="snoozeButton" type="button">Posponer</button>
+        <button class="stop" id="stopButton" type="button">Apagar</button>
+      </div>
+    </section>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

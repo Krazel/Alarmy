@@ -1,0 +1,9 @@
+{
+  "appId": "com.dmkr.alarma",
+  "appName": "Alarma",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "ios": {
+    "scheme": "Alarma"
+  }
+}

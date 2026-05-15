@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "dev": "node dev-server.cjs",
+    "build": "node scripts/prepare-capacitor-web.cjs",
+    "cap:add:ios": "npx cap add ios",
+    "cap:sync:ios": "npm run build && npx cap sync ios"
+  },
+  "type": "module",
+  "dependencies": {
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/ios": "^7.4.3"
+  }
+}
