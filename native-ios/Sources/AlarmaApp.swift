@@ -517,8 +517,8 @@ struct AlarmRow: View {
     let onToggle: (Bool) -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            HStack {
+        HStack {
+            Button(action: onTap) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(alarm.timeText)
                         .font(.system(size: 44, weight: .bold, design: .serif))
@@ -529,15 +529,17 @@ struct AlarmRow: View {
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.secondary)
                 }
-                Spacer()
-                Toggle("", isOn: Binding(get: { alarm.enabled }, set: onToggle))
-                    .labelsHidden()
             }
-            .padding(18)
-            .background(Color.white.opacity(0.62))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Toggle("", isOn: Binding(get: { alarm.enabled }, set: onToggle))
+                .labelsHidden()
         }
-        .buttonStyle(.plain)
+        .padding(18)
+        .background(Color.white.opacity(0.62))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
