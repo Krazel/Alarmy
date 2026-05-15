@@ -83,11 +83,16 @@ final class AlarmStore: ObservableObject {
     @Published var alarms: [Alarm] = [] {
         didSet { save() }
     }
+    @Published var sleepAlarm = Alarm(label: "Noche", hour: 7, minute: 30, weekdays: [], soundIds: ["sunrise", "piano", "rain"], randomSound: true, enabled: true) {
+        didSet { saveSleepAlarm() }
+    }
 
     private let key = "alarma.native.alarms.v1"
+    private let sleepKey = "alarma.native.sleepAlarm.v1"
 
     init() {
         load()
+        loadSleepAlarm()
         if alarms.isEmpty {
             alarms = [
                 Alarm(),
@@ -116,6 +121,10 @@ final class AlarmStore: ObservableObject {
         Task { await NotificationScheduler.shared.reschedule(alarms: alarms) }
     }
 
+    func updateSleepAlarm(_ alarm: Alarm) {
+        sleepAlarm = alarm
+    }
+
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: key),
               let decoded = try? JSONDecoder().decode([Alarm].self, from: data) else {
@@ -124,9 +133,22 @@ final class AlarmStore: ObservableObject {
         alarms = decoded
     }
 
+    private func loadSleepAlarm() {
+        guard let data = UserDefaults.standard.data(forKey: sleepKey),
+              let decoded = try? JSONDecoder().decode(Alarm.self, from: data) else {
+            return
+        }
+        sleepAlarm = decoded
+    }
+
     private func save() {
         guard let data = try? JSONEncoder().encode(alarms) else { return }
         UserDefaults.standard.set(data, forKey: key)
+    }
+
+    private func saveSleepAlarm() {
+        guard let data = try? JSONEncoder().encode(sleepAlarm) else { return }
+        UserDefaults.standard.set(data, forKey: sleepKey)
     }
 }
 
@@ -333,6 +355,7 @@ struct ContentView: View {
     @EnvironmentObject private var store: AlarmStore
     @EnvironmentObject private var session: NightSession
     @State private var editingAlarm: Alarm?
+    @State private var editingSleepAlarm = false
     @State private var creating = false
 
     var nextAlarm: Alarm? {
@@ -342,7 +365,7 @@ struct ContentView: View {
     private var appVersionText: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "dev"
-        return "v\(version) · build \(build)"
+        return "v\(version) - build \(build)"
     }
 
     var body: some View {
@@ -368,6 +391,15 @@ struct ContentView: View {
             EditAlarmView(
                 alarm: Alarm(),
                 onSave: { updated in store.upsert(updated) },
+                onDelete: nil
+            )
+        }
+        .sheet(isPresented: $editingSleepAlarm) {
+            EditAlarmView(
+                alarm: store.sleepAlarm,
+                title: "Alarma de noche",
+                allowRepeatDays: false,
+                onSave: { updated in store.updateSleepAlarm(updated) },
                 onDelete: nil
             )
         }
@@ -412,31 +444,29 @@ struct ContentView: View {
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Proximo despertar")
+            Text("Alarma de noche")
                 .font(.headline)
                 .foregroundStyle(.orange)
-            Text(nextAlarm?.timeText ?? "--:--")
+            Text(store.sleepAlarm.timeText)
                 .font(.system(size: 88, weight: .bold, design: .serif))
                 .minimumScaleFactor(0.7)
-            Text(nextAlarm.map { "\($0.repeatText) · subida \(Int($0.fadeDuration / 60)) min" } ?? "Activa una alarma para empezar.")
+            Text("Sesion de sueno independiente - subida \(Int(store.sleepAlarm.fadeDuration / 60)) min")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.secondary)
             HStack {
                 Button {
-                    if let nextAlarm { session.start(alarm: nextAlarm) }
+                    session.start(alarm: store.sleepAlarm)
                 } label: {
                     Text("Empezar noche")
                         .font(.headline.weight(.black))
                         .frame(maxWidth: .infinity)
                         .frame(height: 58)
-                        .background(nextAlarm == nil ? Color.gray.opacity(0.35) : Color.orange)
+                        .background(Color.orange)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .disabled(nextAlarm == nil)
-
                 Button("Ajustar") {
-                    if let nextAlarm { editingAlarm = nextAlarm }
+                    editingSleepAlarm = true
                 }
                 .font(.headline.weight(.black))
                 .frame(width: 96, height: 58)
@@ -496,7 +526,7 @@ struct AlarmRow: View {
                     Text(alarm.label)
                         .font(.headline.weight(.bold))
                         .foregroundStyle(.orange)
-                    Text("\(alarm.repeatText) · \(alarm.randomSound ? "aleatoria" : "fija") · mover pospone")
+                    Text("\(alarm.repeatText) - \(alarm.randomSound ? "aleatoria" : "fija") - mover pospone")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.secondary)
                 }
@@ -515,6 +545,8 @@ struct AlarmRow: View {
 struct EditAlarmView: View {
     @Environment(\.dismiss) private var dismiss
     @State var alarm: Alarm
+    var title = "Editar alarma"
+    var allowRepeatDays = true
     let onSave: (Alarm) -> Void
     let onDelete: (() -> Void)?
 
@@ -527,7 +559,8 @@ struct EditAlarmView: View {
                         .datePickerStyle(.wheel)
                 }
 
-                Section("Dias") {
+                if allowRepeatDays {
+                    Section("Dias") {
                     HStack {
                         ForEach(Weekday.all) { day in
                             Button(day.short) {
@@ -542,6 +575,7 @@ struct EditAlarmView: View {
                             .background(alarm.weekdays.contains(day.calendarValue) ? Color.orange.opacity(0.25) : Color.gray.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
+                    }
                     }
                 }
 
@@ -583,7 +617,7 @@ struct EditAlarmView: View {
                     }
                 }
             }
-            .navigationTitle("Editar alarma")
+            .navigationTitle(title)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cerrar") { dismiss() }
@@ -695,3 +729,4 @@ struct RingView: View {
         }
     }
 }
+
