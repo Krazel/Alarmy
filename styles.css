@@ -57,7 +57,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 h1,
@@ -68,9 +68,19 @@ p {
 
 h1 {
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(3.1rem, 15vw, 4.7rem);
+  font-size: clamp(3rem, 14vw, 4.55rem);
   font-weight: 700;
   line-height: 0.94;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent-deep);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .icon-button {
@@ -102,6 +112,114 @@ h1 {
 
 .next-panel {
   display: none;
+}
+
+.sleep-card {
+  position: relative;
+  display: grid;
+  gap: 22px;
+  min-height: 286px;
+  overflow: hidden;
+  border: 1px solid rgba(229, 128, 72, 0.3);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 241, 209, 0.92), rgba(251, 218, 174, 0.86)),
+    #ffe7bf;
+  box-shadow: var(--shadow);
+  padding: 22px 18px 18px;
+  margin-bottom: 14px;
+}
+
+.sleep-card__top {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+}
+
+.sleep-card__top span {
+  color: var(--accent-deep);
+  font-weight: 900;
+}
+
+.sleep-card__top strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(5.2rem, 27vw, 7.1rem);
+  line-height: 0.86;
+}
+
+.sleep-card__top small {
+  max-width: 270px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.sleep-card__scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sleep-sun {
+  position: absolute;
+  right: 34px;
+  top: 76px;
+  width: 106px;
+  height: 106px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff7bf 0%, #f4bb62 58%, rgba(244, 187, 98, 0) 70%);
+}
+
+.sleep-hill {
+  position: absolute;
+  left: -8%;
+  bottom: 0;
+  width: 116%;
+  height: 42%;
+  background: linear-gradient(180deg, rgba(213, 111, 62, 0.42), rgba(102, 48, 29, 0.55));
+  clip-path: polygon(0 78%, 18% 54%, 36% 72%, 54% 38%, 74% 68%, 91% 45%, 100% 64%, 100% 100%, 0 100%);
+}
+
+.sleep-hill-front {
+  height: 31%;
+  background: linear-gradient(180deg, rgba(134, 69, 42, 0.45), rgba(84, 41, 22, 0.82));
+  clip-path: polygon(0 70%, 14% 55%, 32% 66%, 50% 40%, 70% 68%, 88% 50%, 100% 72%, 100% 100%, 0 100%);
+}
+
+.sleep-actions {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-self: end;
+}
+
+.sleep-start,
+.sleep-edit {
+  min-height: 58px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sleep-start {
+  background: linear-gradient(180deg, #f0825b 0%, var(--accent) 100%);
+  color: white;
+  font-size: 1.2rem;
+  box-shadow: 0 12px 26px rgba(221, 88, 55, 0.24);
+}
+
+.sleep-start:disabled {
+  opacity: 0.55;
+}
+
+.sleep-edit {
+  min-width: 92px;
+  border: 1px solid rgba(121, 70, 42, 0.16);
+  background: rgba(255, 243, 218, 0.82);
+  color: var(--text);
 }
 
 .notice,
@@ -540,6 +658,106 @@ select {
   color: var(--danger);
 }
 
+.night-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 22px;
+  overflow: hidden;
+  padding: max(72px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 28%, rgba(240, 136, 91, 0.24), transparent 15rem),
+    linear-gradient(180deg, #241b28 0%, #4d2a25 52%, #211317 100%);
+  color: #fff3da;
+}
+
+.night-screen[hidden] {
+  display: none;
+}
+
+.night-sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.night-sky span {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 243, 218, 0.82);
+}
+
+.night-sky span:nth-child(1) { left: 18%; top: 18%; }
+.night-sky span:nth-child(2) { left: 72%; top: 14%; }
+.night-sky span:nth-child(3) { left: 84%; top: 38%; }
+.night-sky span:nth-child(4) { left: 28%; top: 48%; }
+
+.night-content {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.night-content .eyebrow {
+  color: #f3b86d;
+}
+
+.night-content h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(5.4rem, 24vw, 7.4rem);
+  line-height: 0.9;
+}
+
+.night-content p {
+  color: #ffe0b2;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.night-content small {
+  color: rgba(255, 243, 218, 0.7);
+  font-weight: 800;
+}
+
+.night-panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 16px;
+  border: 1px solid rgba(255, 232, 199, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 243, 218, 0.08);
+  padding: 16px;
+  backdrop-filter: blur(18px);
+}
+
+.night-panel div {
+  display: grid;
+  gap: 4px;
+}
+
+.night-panel span {
+  color: rgba(255, 243, 218, 0.72);
+}
+
+.night-panel button {
+  min-height: 58px;
+  border: 0;
+  border-radius: 8px;
+  background: #fff0ca;
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .ring-screen {
   position: fixed;
   inset: 0;
@@ -766,6 +984,10 @@ select {
 @media (max-width: 390px) {
   .app-shell {
     padding-inline: 14px;
+  }
+
+  .sleep-actions {
+    grid-template-columns: 1fr;
   }
 
   .notice {

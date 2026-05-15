@@ -1,6 +1,6 @@
 # iOS-ready architecture
 
-The current app is still a PWA, but the alarm model is now separated from the web runtime so it can be moved to a real iOS app later.
+The product target is now closer to Sleep Cycle/Alarmy on iOS 16: the app must not be force-closed, but it should be able to run a prepared night/alarm session while the phone is locked.
 
 ## Reusable layer
 
@@ -13,24 +13,26 @@ The current app is still a PWA, but the alarm model is now separated from the we
 
 This file has no DOM, browser audio, localStorage, or PWA-specific behavior. It is the part to reuse from Capacitor/Swift later.
 
-## Web adapter
+## Platform adapter
 
 - `src/platform-web.js`
   - Stores alarms in `localStorage`.
   - Tracks last random sound.
   - Exposes capability flags for web limitations.
+  - Provides `startNightSession(alarm)` / `endNightSession()` hooks.
   - Provides placeholder scheduling methods.
 
-The future iOS adapter should expose the same shape, but call native code:
+The future iOS 16 adapter should expose the same shape, but call native code:
 
 ```js
 export const platform = {
   name: "ios-native",
   capabilities: {
-    canRunWhenClosed: true,
-    canOverrideSilentMode: true,
+    canRunWhenClosed: false,
+    canRunLockedDuringSession: true,
+    canOverrideSilentMode: "best-effort",
     canUseMotionOnHttp: true,
-    futureNativeTarget: "capacitor-ios-alarmkit",
+    futureNativeTarget: "capacitor-ios-background-audio-notifications",
   },
   createId() {},
   loadAlarms() {},
@@ -39,34 +41,23 @@ export const platform = {
   setLastSoundId(soundId) {},
   scheduleAlarm(alarm) {},
   cancelAlarm(alarmId) {},
+  startNightSession(alarm) {},
+  endNightSession() {},
 };
 ```
 
-## Native iOS target
+## iOS 16 native direction
 
-The project now includes a first local Capacitor plugin draft in `packages/capacitor-alarmkit`.
+For this user's phone, AlarmKit is not the main path because AlarmKit requires iOS 26+. The realistic iOS 16 path is:
 
-When running inside Capacitor, `src/platform-web.js` checks for `window.Capacitor.Plugins.AlarmKitNative` and delegates alarm scheduling/cancellation to native Swift. In a normal browser/PWA it keeps the foreground-only fallback.
+- keep the app alive as a prepared night session;
+- use native background audio so iOS allows the app to keep an audio session alive;
+- use local notifications as a backup reminder;
+- keep motion detection inside the active session;
+- clearly tell the user not to force-close the app.
 
-The native layer owns or should own:
+The app UI is therefore built around repeated alarms plus an "Empezar noche" session. Normal repeated alarms remain available, but the highest-reliability path before sleeping is starting the night session.
 
-- scheduling alarms while the app is closed;
-- critical/priority alarm behavior where Apple permits it;
-- alarm sound playback integration;
-- motion detection permissions and events;
-- persistence bridge if localStorage is replaced by native storage.
+## Existing AlarmKit draft
 
-The web layer should remain a prototype/runtime fallback, not the source of OS-level alarm reliability.
-
-## Current native status
-
-Implemented draft:
-
-- `AlarmKitNative.isAvailable()`
-- `AlarmKitNative.requestAuthorization()`
-- `AlarmKitNative.scheduleAlarm(alarm)`
-- `AlarmKitNative.cancelAlarm({ id })`
-
-The GitHub Actions workflow adds `NSAlarmKitUsageDescription` to the generated iOS `Info.plist`.
-
-This still needs validation on a real iPhone running iOS 26+ because AlarmKit behavior, signing, and Sideloadly installation cannot be fully verified from Windows.
+The project still contains `packages/capacitor-alarmkit` as an experimental future path for iOS 26+ devices. It is not the primary implementation for iOS 16.

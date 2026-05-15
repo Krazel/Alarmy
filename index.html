@@ -15,7 +15,10 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <h1>Alarmas</h1>
+        <div>
+          <span class="eyebrow">Despertador</span>
+          <h1>Alarme</h1>
+        </div>
         <button class="icon-button" id="addAlarmButton" type="button" aria-label="Crear alarma">
           <span aria-hidden="true">+</span>
         </button>
@@ -27,12 +30,29 @@
         <small id="nextAlarmDetail">Crea una alarma para empezar.</small>
       </section>
 
+      <section class="sleep-card" id="sleepCard">
+        <div class="sleep-card__top">
+          <span>Próximo despertar</span>
+          <strong id="heroTime">07:30</strong>
+          <small id="heroDetail">Laborables · música aleatoria</small>
+        </div>
+        <div class="sleep-card__scene" aria-hidden="true">
+          <span class="sleep-sun"></span>
+          <span class="sleep-hill sleep-hill-back"></span>
+          <span class="sleep-hill sleep-hill-front"></span>
+        </div>
+        <div class="sleep-actions">
+          <button class="sleep-start" id="startNightButton" type="button">Empezar noche</button>
+          <button class="sleep-edit" id="editNextButton" type="button">Ajustar</button>
+        </div>
+      </section>
+
       <section class="notice">
         <div>
-          <strong>Importante en iPhone</strong>
-          <span>Deja esta app abierta o instalada en pantalla de inicio.</span>
+          <strong>Modo iPhone</strong>
+          <span>No cierres la app del todo. Puede sonar con el móvil bloqueado si la noche está preparada.</span>
         </div>
-        <button id="prepareButton" type="button">Preparar sonido</button>
+        <button id="prepareButton" type="button">Preparar</button>
       </section>
 
       <section class="alarm-list" id="alarmList" aria-label="Lista de alarmas"></section>
@@ -52,6 +72,25 @@
         </button>
       </nav>
     </main>
+
+    <section class="night-screen" id="nightScreen" hidden>
+      <div class="night-sky" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="night-content">
+        <span class="eyebrow">Noche activa</span>
+        <h2 id="nightClock">23:48</h2>
+        <p id="nightWakeText">Despertar a las 07:30</p>
+        <small>Móvil bloqueado sí; app cerrada del todo no.</small>
+      </div>
+      <div class="night-panel">
+        <div>
+          <strong id="nightSoundText">Música aleatoria</strong>
+          <span id="nightMotionText">Mover el móvil pospone</span>
+        </div>
+        <button id="endNightButton" type="button">Terminar noche</button>
+      </div>
+    </section>
 
     <dialog class="sheet" id="alarmDialog">
       <form class="sheet-body" id="alarmForm" method="dialog">

@@ -8,6 +8,10 @@ const els = {
   addAlarmButton: document.querySelector("#addAlarmButton"),
   prepareButton: document.querySelector("#prepareButton"),
   alarmList: document.querySelector("#alarmList"),
+  heroTime: document.querySelector("#heroTime"),
+  heroDetail: document.querySelector("#heroDetail"),
+  startNightButton: document.querySelector("#startNightButton"),
+  editNextButton: document.querySelector("#editNextButton"),
   nextAlarmText: document.querySelector("#nextAlarmText"),
   nextAlarmDetail: document.querySelector("#nextAlarmDetail"),
   alarmDialog: document.querySelector("#alarmDialog"),
@@ -34,6 +38,12 @@ const els = {
   motionFill: document.querySelector("#motionFill"),
   snoozeButton: document.querySelector("#snoozeButton"),
   stopButton: document.querySelector("#stopButton"),
+  nightScreen: document.querySelector("#nightScreen"),
+  nightClock: document.querySelector("#nightClock"),
+  nightWakeText: document.querySelector("#nightWakeText"),
+  nightSoundText: document.querySelector("#nightSoundText"),
+  nightMotionText: document.querySelector("#nightMotionText"),
+  endNightButton: document.querySelector("#endNightButton"),
 };
 
 let alarms = platform.loadAlarms();
@@ -46,6 +56,9 @@ let wakeLock = null;
 let motionScore = 0;
 let motionHandler = null;
 let prepared = false;
+let nightActive = false;
+let nightAlarmId = null;
+let nightClockTimer = null;
 
 function loadAlarms() {
   return platform.loadAlarms();
@@ -199,6 +212,30 @@ function renderNextAlarm() {
   els.nextAlarmDetail.textContent = `Sonará ${formatDateTime(upcoming.date)}.`;
 }
 
+function getNextUpcomingAlarm() {
+  return alarms
+    .filter((alarm) => alarm.enabled)
+    .map((alarm) => ({ alarm, date: nextOccurrence(alarm) }))
+    .filter((entry) => entry.date)
+    .sort((a, b) => a.date - b.date)[0] || null;
+}
+
+function renderSleepHero() {
+  const upcoming = getNextUpcomingAlarm();
+  if (!upcoming) {
+    els.heroTime.textContent = "--:--";
+    els.heroDetail.textContent = "Activa una alarma para empezar la noche.";
+    els.startNightButton.disabled = true;
+    return;
+  }
+
+  const alarm = upcoming.alarm;
+  const sounds = alarm.randomSound ? "música aleatoria" : soundName(alarm.soundIds?.[0]);
+  els.heroTime.textContent = alarm.time;
+  els.heroDetail.textContent = `${daySummary(alarm.days)} · ${sounds} · subida ${formatDuration(alarm.fadeDuration)}`;
+  els.startNightButton.disabled = false;
+}
+
 function renderFadeOutput() {
   els.fadeDurationOutput.value = formatDuration(Number(els.fadeDuration.value));
 }
@@ -298,6 +335,43 @@ async function prepareDevice() {
       // Motion permission is best-effort in browsers.
     }
   }
+}
+
+function updateNightClock() {
+  const now = new Date();
+  els.nightClock.textContent = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+async function startNight() {
+  const upcoming = getNextUpcomingAlarm();
+  if (!upcoming) return;
+  const alarm = upcoming.alarm;
+  nightActive = true;
+  nightAlarmId = alarm.id;
+  els.nightWakeText.textContent = `Despertar a las ${alarm.time}`;
+  els.nightSoundText.textContent = alarm.randomSound
+    ? `Música aleatoria entre ${alarm.soundIds.length} sonidos`
+    : soundName(alarm.soundIds?.[0]);
+  els.nightMotionText.textContent = alarm.motionSnooze
+    ? "Mover el móvil pospone"
+    : "Posponer solo con botón";
+  els.nightScreen.hidden = false;
+  updateNightClock();
+  window.clearInterval(nightClockTimer);
+  nightClockTimer = window.setInterval(updateNightClock, 1000);
+  await prepareDevice();
+  await requestWakeLock();
+  await platform.startNightSession?.(alarm);
+}
+
+async function endNight() {
+  nightActive = false;
+  nightAlarmId = null;
+  window.clearInterval(nightClockTimer);
+  nightClockTimer = null;
+  els.nightScreen.hidden = true;
+  await platform.endNightSession?.();
+  await releaseWakeLock();
 }
 
 function stopAudio() {
@@ -471,6 +545,7 @@ async function ringAlarm(alarm) {
   els.ringSound.textContent = alarm.silentOverride
     ? "Modo alarma prioritaria"
     : "Mueve el móvil para posponer";
+  els.nightScreen.hidden = true;
   els.ringScreen.hidden = false;
   if (!prepared) {
     els.motionHelp.textContent = "Si no suena, toca Posponer o Apagar y luego Preparar sonido.";
@@ -489,6 +564,10 @@ function stopActiveAlarm() {
     saveAlarms();
   }
   activeAlarm = null;
+  nightActive = false;
+  nightAlarmId = null;
+  window.clearInterval(nightClockTimer);
+  nightClockTimer = null;
   els.ringScreen.hidden = true;
   render();
 }
@@ -558,6 +637,7 @@ function seedFirstAlarm() {
 
 function render() {
   renderAlarms();
+  renderSleepHero();
 }
 
 function registerServiceWorker() {
@@ -567,6 +647,12 @@ function registerServiceWorker() {
 }
 
 els.addAlarmButton.addEventListener("click", () => openDialog());
+els.editNextButton.addEventListener("click", () => {
+  const upcoming = getNextUpcomingAlarm();
+  openDialog(upcoming?.alarm.id || null);
+});
+els.startNightButton.addEventListener("click", startNight);
+els.endNightButton.addEventListener("click", endNight);
 els.prepareButton.addEventListener("click", prepareDevice);
 els.closeDialogButton.addEventListener("click", closeDialog);
 els.deleteAlarmButton.addEventListener("click", deleteCurrentAlarm);

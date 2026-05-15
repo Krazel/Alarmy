@@ -9,7 +9,7 @@ export const platform = {
     canRunWhenClosed: false,
     canOverrideSilentMode: false,
     canUseMotionOnHttp: false,
-    futureNativeTarget: "capacitor-ios-alarmkit",
+    futureNativeTarget: "capacitor-ios-background-audio-notifications",
   },
 
   createId() {
@@ -64,6 +64,19 @@ export const platform = {
     }
 
     return { ok: true, alarmId };
+  },
+
+  async startNightSession(alarm) {
+    const scheduled = await this.scheduleAlarm(alarm);
+    return {
+      ...scheduled,
+      session: "night",
+      guidance: "Keep the app installed/open in the background; do not force-close it.",
+    };
+  },
+
+  async endNightSession() {
+    return { ok: true, session: "ended" };
   },
 
   async requestNativeAlarmAuthorization() {
