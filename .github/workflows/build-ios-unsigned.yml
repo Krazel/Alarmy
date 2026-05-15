@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -58,3 +58,19 @@ jobs:
           name: Alarma-unsigned-ipa
           path: Alarma-unsigned.ipa
           retention-days: 3
+
+      - name: Publish latest IPA release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp Alarma-unsigned.ipa Alarma-iPhone-latest.ipa
+          if gh release view latest-ipa >/dev/null 2>&1; then
+            gh release upload latest-ipa Alarma-iPhone-latest.ipa --clobber
+          else
+            gh release create latest-ipa Alarma-iPhone-latest.ipa \
+              --title "Latest unsigned iOS IPA" \
+              --notes "Latest unsigned IPA built from ${GITHUB_SHA}." \
+              --latest
+          fi
