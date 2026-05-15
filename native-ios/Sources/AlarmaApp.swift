@@ -398,7 +398,6 @@ struct ContentView: View {
             EditAlarmView(
                 alarm: store.sleepAlarm,
                 title: "Alarma de noche",
-                allowRepeatDays: false,
                 onSave: { updated in store.updateSleepAlarm(updated) },
                 onDelete: nil
             )
