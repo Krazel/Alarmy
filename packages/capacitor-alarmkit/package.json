@@ -13,7 +13,7 @@
   "files": [
     "ios",
     "dist",
-    "AlarmyAlarmKit.podspec"
+    "AlarmyCapacitorAlarmkit.podspec"
   ],
   "scripts": {
     "build": "node scripts/build.cjs"
