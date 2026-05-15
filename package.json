@@ -1,12 +1,13 @@
 {
   "scripts": {
     "dev": "node dev-server.cjs",
-    "build": "node scripts/prepare-capacitor-web.cjs",
+    "build": "npm --prefix packages/capacitor-alarmkit run build && node scripts/prepare-capacitor-web.cjs",
     "cap:add:ios": "npx cap add ios",
     "cap:sync:ios": "npm run build && npx cap sync ios"
   },
   "type": "module",
   "dependencies": {
+    "@alarmy/capacitor-alarmkit": "file:packages/capacitor-alarmkit",
     "@capacitor/core": "^7.4.3"
   },
   "devDependencies": {

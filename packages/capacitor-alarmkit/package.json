@@ -1,0 +1,27 @@
+{
+  "name": "@alarmy/capacitor-alarmkit",
+  "version": "0.0.1",
+  "description": "Local Capacitor bridge for Apple's AlarmKit.",
+  "main": "dist/plugin.cjs.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "files": [
+    "ios",
+    "dist",
+    "AlarmyAlarmKit.podspec"
+  ],
+  "scripts": {
+    "build": "node scripts/build.cjs"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/core": "^7.4.3"
+  }
+}

@@ -1,7 +1,7 @@
 node_modules/
 www/
-ios/
-android/
+/ios/
+/android/
 build/
 dist/
 *.log

@@ -44,9 +44,11 @@ export const platform = {
 
 ## Native iOS target
 
-When moving to iOS, keep the UI and `alarm-core.js`, then replace `platform-web.js` with a Capacitor plugin that schedules native alarms.
+The project now includes a first local Capacitor plugin draft in `packages/capacitor-alarmkit`.
 
-The native layer should own:
+When running inside Capacitor, `src/platform-web.js` checks for `window.Capacitor.Plugins.AlarmKitNative` and delegates alarm scheduling/cancellation to native Swift. In a normal browser/PWA it keeps the foreground-only fallback.
+
+The native layer owns or should own:
 
 - scheduling alarms while the app is closed;
 - critical/priority alarm behavior where Apple permits it;
@@ -55,3 +57,16 @@ The native layer should own:
 - persistence bridge if localStorage is replaced by native storage.
 
 The web layer should remain a prototype/runtime fallback, not the source of OS-level alarm reliability.
+
+## Current native status
+
+Implemented draft:
+
+- `AlarmKitNative.isAvailable()`
+- `AlarmKitNative.requestAuthorization()`
+- `AlarmKitNative.scheduleAlarm(alarm)`
+- `AlarmKitNative.cancelAlarm({ id })`
+
+The GitHub Actions workflow adds `NSAlarmKitUsageDescription` to the generated iOS `Info.plist`.
+
+This still needs validation on a real iPhone running iOS 26+ because AlarmKit behavior, signing, and Sideloadly installation cannot be fully verified from Windows.

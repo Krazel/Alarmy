@@ -32,6 +32,11 @@ jobs:
       - name: Sync iOS project
         run: npx cap sync ios
 
+      - name: Configure AlarmKit usage description
+        run: |
+          /usr/libexec/PlistBuddy -c "Add :NSAlarmKitUsageDescription string We'll schedule alarm alerts you create in Alarma." ios/App/App/Info.plist || \
+          /usr/libexec/PlistBuddy -c "Set :NSAlarmKitUsageDescription We'll schedule alarm alerts you create in Alarma." ios/App/App/Info.plist
+
       - name: Build unsigned iOS app
         run: |
           set -euo pipefail

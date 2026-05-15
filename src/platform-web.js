@@ -40,11 +40,44 @@ export const platform = {
   },
 
   async scheduleAlarm(alarm) {
-    // Web cannot schedule a reliable OS-level alarm. Native iOS adapter will implement this.
+    const native = nativeAlarmKit();
+    if (native) {
+      const result = await native.scheduleAlarm({
+        id: alarm.id,
+        label: alarm.label || "Alarma",
+        time: alarm.time,
+        days: alarm.days || [],
+        snoozeMinutes: alarm.snoozeMinutes || 5,
+      });
+      return { ok: !!result.scheduled, mode: "alarmkit", alarmId: alarm.id, nativeId: result.nativeId };
+    }
+
+    // Web cannot schedule a reliable OS-level alarm.
     return { ok: true, mode: "foreground-only", alarmId: alarm.id };
   },
 
   async cancelAlarm(alarmId) {
+    const native = nativeAlarmKit();
+    if (native) {
+      const result = await native.cancelAlarm({ id: alarmId });
+      return { ok: !!result.cancelled, alarmId };
+    }
+
     return { ok: true, alarmId };
   },
+
+  async requestNativeAlarmAuthorization() {
+    const native = nativeAlarmKit();
+    if (!native) return { authorized: false, mode: "web" };
+    const availability = await native.isAvailable();
+    if (!availability.available) {
+      return { authorized: false, mode: "alarmkit", reason: availability.reason };
+    }
+    const result = await native.requestAuthorization();
+    return { authorized: !!result.authorized, mode: "alarmkit" };
+  },
 };
+
+function nativeAlarmKit() {
+  return globalThis.Capacitor?.Plugins?.AlarmKitNative || null;
+}

@@ -283,6 +283,7 @@ async function ensureAudio() {
 async function prepareDevice() {
   try {
     await ensureAudio();
+    await platform.requestNativeAlarmAuthorization?.();
     prepared = true;
     els.prepareButton.textContent = "Preparado";
     els.prepareButton.disabled = true;
