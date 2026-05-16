@@ -775,11 +775,16 @@ struct SleepBackdrop: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                backgroundImage
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .clipped()
+                if let uiImage = backgroundUIImage {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                } else {
+                    fallbackBackground
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                }
 
                 LinearGradient(
                     colors: theme == .sunset
@@ -796,17 +801,38 @@ struct SleepBackdrop: View {
         }
     }
 
-    private var backgroundImage: Image {
+    private var backgroundUIImage: UIImage? {
         let assetName = theme == .sunset ? "SunsetBackground" : "NightBackground"
         let fileName = theme == .sunset ? "sunset-background" : "night-background"
         if let uiImage = UIImage(named: assetName) {
-            return Image(uiImage: uiImage)
+            return uiImage
         }
         if let url = Bundle.main.url(forResource: fileName, withExtension: "png"),
            let uiImage = UIImage(contentsOfFile: url.path) {
-            return Image(uiImage: uiImage)
+            return uiImage
         }
-        return Image(systemName: theme == .sunset ? "sun.max.fill" : "moon.stars.fill")
+        return nil
+    }
+
+    @ViewBuilder
+    private var fallbackBackground: some View {
+        if theme == .sunset {
+            SunsetScene()
+        } else {
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.03, green: 0.08, blue: 0.16),
+                        Color(red: 0.02, green: 0.17, blue: 0.28),
+                        Color(red: 0.01, green: 0.03, blue: 0.08)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                Stars()
+                    .fill(Color.white.opacity(0.76))
+            }
+        }
     }
 }
 

@@ -51,6 +51,14 @@ jobs:
             echo "No .app found"
             exit 1
           fi
+          if [ ! -f "$APP_PATH/Assets.car" ] && [ ! -f "$APP_PATH/sunset-background.png" ]; then
+            cp native-ios/Resources/*.png "$APP_PATH/"
+          fi
+          if [ ! -f "$APP_PATH/Assets.car" ] && [ ! -f "$APP_PATH/sunset-background.png" ]; then
+            echo "Background resources were not bundled"
+            find "$APP_PATH" -maxdepth 2 -type f | sort
+            exit 1
+          fi
           mkdir -p unsigned-ipa/Payload
           cp -R "$APP_PATH" "unsigned-ipa/Payload/$(basename "$APP_PATH")"
           VERSIONED_IPA="Alarma-iPhone-v${APP_VERSION}-build-${GITHUB_RUN_NUMBER}.ipa"
