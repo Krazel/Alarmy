@@ -68,6 +68,55 @@ struct Weekday: Identifiable, Hashable {
     ]
 }
 
+enum SleepTheme: String, CaseIterable, Identifiable {
+    case sunset
+    case night
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .sunset: return "Hora de dormir"
+        case .night: return "Dormir"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .sunset: return "Una sola alarma para cuidar tu descanso."
+        case .night: return "Tu unica alarma para ir a la cama."
+        }
+    }
+
+    var activeTitle: String {
+        switch self {
+        case .sunset: return "Buenas noches"
+        case .night: return "La noche ha comenzado"
+        }
+    }
+
+    var primary: Color {
+        switch self {
+        case .sunset: return Color(red: 0.86, green: 0.34, blue: 0.20)
+        case .night: return Color(red: 0.37, green: 0.83, blue: 0.88)
+        }
+    }
+
+    var text: Color {
+        switch self {
+        case .sunset: return Color(red: 0.30, green: 0.17, blue: 0.10)
+        case .night: return Color.white
+        }
+    }
+
+    var secondaryText: Color {
+        switch self {
+        case .sunset: return Color(red: 0.49, green: 0.39, blue: 0.31)
+        case .night: return Color(red: 0.63, green: 0.76, blue: 0.86)
+        }
+    }
+}
+
 struct AlarmSound: Identifiable, Hashable {
     let id: String
     let name: String
@@ -91,9 +140,13 @@ final class AlarmStore: ObservableObject {
     @Published var sleepAlarm = Alarm(label: "Noche", hour: 7, minute: 30, weekdays: [], soundIds: ["sunrise", "sunset", "piano", "rain"], randomSound: true, enabled: true) {
         didSet { saveSleepAlarm() }
     }
+    @Published var sleepTheme: SleepTheme = .sunset {
+        didSet { UserDefaults.standard.set(sleepTheme.rawValue, forKey: themeKey) }
+    }
 
     private let key = "alarma.native.alarms.v1"
     private let sleepKey = "alarma.native.sleepAlarm.v1"
+    private let themeKey = "alarma.native.sleepTheme.v1"
 
     var notificationAlarms: [Alarm] {
         [sleepAlarm]
@@ -102,6 +155,7 @@ final class AlarmStore: ObservableObject {
     init() {
         load()
         loadSleepAlarm()
+        loadTheme()
         if alarms.isEmpty {
             alarms = [
                 Alarm(),
@@ -159,6 +213,14 @@ final class AlarmStore: ObservableObject {
     private func saveSleepAlarm() {
         guard let data = try? JSONEncoder().encode(sleepAlarm) else { return }
         UserDefaults.standard.set(data, forKey: sleepKey)
+    }
+
+    private func loadTheme() {
+        guard let rawValue = UserDefaults.standard.string(forKey: themeKey),
+              let theme = SleepTheme(rawValue: rawValue) else {
+            return
+        }
+        sleepTheme = theme
     }
 }
 
@@ -485,43 +547,58 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var editingSleepAlarm = false
 
-    private var appVersionText: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "dev"
-        return "v\(version)\nbuild \(build)"
-    }
-
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(red: 1, green: 0.98, blue: 0.92), Color(red: 0.98, green: 0.82, blue: 0.66)], startPoint: .top, endPoint: .bottom)
+            SleepBackdrop(theme: store.sleepTheme)
                 .ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 18) {
-                    header
-                    hero
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                    .padding(.top, 70)
+
+                AlarmHeroCard(
+                    alarm: store.sleepAlarm,
+                    theme: store.sleepTheme,
+                    onAdjust: adjustSleepAlarm,
+                    onEdit: { editingSleepAlarm = true }
+                )
+                .padding(.top, 42)
+
+                Spacer()
+
+                Button {
+                    session.start(alarm: store.sleepAlarm)
+                } label: {
+                    Label("Empezar la noche", systemImage: "moon.stars.fill")
+                        .font(.title3.weight(.black))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 66)
+                        .background(
+                            LinearGradient(colors: [store.sleepTheme.primary.opacity(0.92), store.sleepTheme.primary.opacity(0.74)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                        .shadow(color: store.sleepTheme.primary.opacity(0.30), radius: 18, x: 0, y: 10)
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 28)
-                .padding(.bottom, 36)
+                .padding(.bottom, 30)
             }
+            .padding(.horizontal, 24)
         }
         .sheet(isPresented: $editingSleepAlarm) {
             EditAlarmView(
                 alarm: store.sleepAlarm,
-                title: "Alarma principal",
-                allowRepeatDays: false,
+                theme: store.sleepTheme,
                 onSave: { updated in store.updateSleepAlarm(updated) },
                 onDelete: nil
             )
         }
         .fullScreenCover(isPresented: Binding(get: { session.isActive }, set: { if !$0 { session.stop() } })) {
             if let alarm = session.activeAlarm {
-                NightActiveView(alarm: alarm)
+                NightActiveView(alarm: alarm, theme: store.sleepTheme)
             }
         }
         .fullScreenCover(item: $session.ringingAlarm) { alarm in
-            RingView(alarm: alarm)
+            RingView(alarm: alarm, theme: store.sleepTheme)
         }
         .onAppear {
             session.startAlarmMonitor { [store.sleepAlarm] }
@@ -538,73 +615,34 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Despertador")
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(.orange)
-                    .textCase(.uppercase)
-                Text("Alarma")
-                    .font(.system(size: 54, weight: .bold, design: .serif))
-                    .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(store.sleepTheme.title)
+                    .font(.system(size: 46, weight: .bold, design: .serif))
+                    .foregroundStyle(store.sleepTheme.text)
+                    .minimumScaleFactor(0.75)
+                Text(store.sleepTheme.subtitle)
+                    .font(.headline.weight(.medium))
+                    .foregroundStyle(store.sleepTheme.secondaryText)
             }
-            Spacer()
-            VStack(spacing: 10) {
-                Text(appVersionText)
-                    .font(.caption.weight(.black))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.74))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-        }
-    }
 
-    private var hero: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Alarma principal")
-                .font(.headline)
-                .foregroundStyle(Color(red: 0.86, green: 0.28, blue: 0.16))
-            SwipeTimeText(
-                timeText: store.sleepAlarm.timeText,
-                onAdjust: adjustSleepAlarm
-            )
-            Text("Para dormir y despertar - subida \(Int(store.sleepAlarm.fadeDuration / 60)) min")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(Color(red: 0.41, green: 0.20, blue: 0.11).opacity(0.76))
-            HStack {
-                Button {
-                    session.start(alarm: store.sleepAlarm)
-                } label: {
-                    Text("Empezar noche")
-                        .font(.headline.weight(.black))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 58)
-                        .background(Color.orange)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+            Spacer()
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                    store.sleepTheme = store.sleepTheme == .sunset ? .night : .sunset
                 }
-                Button("Ajustar") {
-                    editingSleepAlarm = true
-                }
-                .font(.headline.weight(.black))
-                .frame(width: 96, height: 58)
-                .background(Color.white.opacity(0.55))
-                .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            } label: {
+                Image(systemName: store.sleepTheme == .sunset ? "moon.stars.fill" : "sun.max.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .frame(width: 46, height: 46)
+                    .background(store.sleepTheme == .sunset ? Color.white.opacity(0.72) : Color.white.opacity(0.10))
+                    .foregroundStyle(store.sleepTheme.primary)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(store.sleepTheme == .sunset ? Color.black.opacity(0.05) : Color.white.opacity(0.14), lineWidth: 1))
+                    .shadow(color: .black.opacity(store.sleepTheme == .sunset ? 0.10 : 0.28), radius: 12, x: 0, y: 8)
             }
         }
-        .padding(18)
-        .background(
-            SunsetScene()
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.16))
-                )
-        )
     }
 
     private func adjustSleepAlarm(component: TimeComponent, amount: Int) {
@@ -625,18 +663,103 @@ enum TimeComponent {
     case minute
 }
 
+struct AlarmHeroCard: View {
+    let alarm: Alarm
+    let theme: SleepTheme
+    let onAdjust: (TimeComponent, Int) -> Void
+    let onEdit: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            HStack(alignment: .top) {
+                ZStack {
+                    Circle()
+                        .fill(theme == .sunset ? Color(red: 0.78, green: 0.36, blue: 0.17).opacity(0.18) : theme.primary.opacity(0.16))
+                        .frame(width: 58, height: 58)
+                    Image(systemName: theme == .sunset ? "moon.stars.fill" : "moon.fill")
+                        .font(.system(size: 29, weight: .bold))
+                        .foregroundStyle(theme.primary)
+                }
+                Spacer()
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 18, weight: .black))
+                        .frame(width: 50, height: 50)
+                        .background(theme == .sunset ? Color.white.opacity(0.66) : Color.white.opacity(0.08))
+                        .foregroundStyle(theme.primary)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(theme == .sunset ? Color.black.opacity(0.05) : theme.primary.opacity(0.22), lineWidth: 1))
+                }
+            }
+
+            VStack(spacing: 8) {
+                SwipeTimeText(timeText: alarm.timeText, textColor: theme.text, alignment: .center, onAdjust: onAdjust)
+                    .frame(height: 96)
+                Text("Cada noche")
+                    .font(.headline.weight(.black))
+                    .foregroundStyle(theme.primary)
+            }
+
+            HStack(spacing: 10) {
+                FeaturePill(icon: "shuffle", text: alarm.randomSound ? "Aleatoria" : soundName(alarm.soundIds.first), theme: theme)
+                FeaturePill(icon: "chart.line.uptrend.xyaxis", text: "Subida \(Int(alarm.fadeDuration / 60)) min", theme: theme)
+                FeaturePill(icon: "iphone.radiowaves.left.and.right", text: "Mover pospone", theme: theme)
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 28)
+                .fill(theme == .sunset ? Color.white.opacity(0.50) : Color(red: 0.02, green: 0.13, blue: 0.20).opacity(0.68))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28)
+                        .stroke(theme == .sunset ? Color(red: 0.94, green: 0.70, blue: 0.45).opacity(0.42) : theme.primary.opacity(0.70), lineWidth: theme == .sunset ? 1 : 1.4)
+                )
+                .shadow(color: theme == .sunset ? Color(red: 0.55, green: 0.29, blue: 0.10).opacity(0.13) : theme.primary.opacity(0.22), radius: 18, x: 0, y: 10)
+        )
+    }
+}
+
+struct FeaturePill: View {
+    let icon: String
+    let text: String?
+    let theme: SleepTheme
+
+    var body: some View {
+        Label(text ?? "Sonido", systemImage: icon)
+            .font(.caption.weight(.bold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .frame(maxWidth: .infinity)
+            .frame(height: 64)
+            .background(theme == .sunset ? Color.white.opacity(0.34) : Color.white.opacity(0.05))
+            .foregroundStyle(theme == .sunset ? Color(red: 0.35, green: 0.20, blue: 0.12) : Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(theme == .sunset ? Color(red: 0.91, green: 0.66, blue: 0.42).opacity(0.42) : theme.primary.opacity(0.20), lineWidth: 1)
+            )
+    }
+}
+
+private func soundName(_ id: String?) -> String {
+    guard let id, let sound = AlarmSound.all.first(where: { $0.id == id }) else { return "Aleatoria" }
+    return sound.name
+}
+
 struct SwipeTimeText: View {
     let timeText: String
+    var textColor = Color(red: 0.31, green: 0.15, blue: 0.08)
+    var alignment: Alignment = .leading
     let onAdjust: (TimeComponent, Int) -> Void
     @State private var lastStep = 0
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .leading) {
+            ZStack(alignment: alignment) {
                 Text(timeText)
                     .font(.system(size: 88, weight: .bold, design: .serif))
                     .minimumScaleFactor(0.7)
-                    .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
+                    .foregroundStyle(textColor)
                     .allowsHitTesting(false)
 
                 HStack(spacing: 0) {
@@ -648,7 +771,7 @@ struct SwipeTimeText: View {
                         .highPriorityGesture(timeDragGesture(for: .minute))
                 }
             }
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .leading)
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: alignment)
         }
         .frame(height: 104)
         .frame(maxWidth: .infinity)
@@ -666,6 +789,91 @@ struct SwipeTimeText: View {
             .onEnded { _ in
                 lastStep = 0
             }
+    }
+}
+
+struct SleepBackdrop: View {
+    let theme: SleepTheme
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            ZStack {
+                LinearGradient(
+                    colors: theme == .sunset
+                        ? [Color(red: 1.0, green: 0.95, blue: 0.85), Color(red: 1.0, green: 0.82, blue: 0.58), Color(red: 0.74, green: 0.34, blue: 0.19)]
+                        : [Color(red: 0.00, green: 0.04, blue: 0.08), Color(red: 0.02, green: 0.13, blue: 0.22), Color(red: 0.00, green: 0.02, blue: 0.05)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                if theme == .night {
+                    Stars()
+                        .fill(Color.white.opacity(0.88))
+                    Circle()
+                        .fill(Color(red: 0.78, green: 0.92, blue: 1.0))
+                        .frame(width: 34, height: 34)
+                        .blur(radius: 1)
+                        .position(x: size.width * 0.78, y: size.height * 0.16)
+                    Circle()
+                        .stroke(Color(red: 0.37, green: 0.83, blue: 0.88).opacity(0.14), lineWidth: 80)
+                        .frame(width: size.width * 0.90, height: size.width * 0.90)
+                        .position(x: size.width * 0.50, y: size.height * 0.42)
+                } else {
+                    Circle()
+                        .fill(Color(red: 1.0, green: 0.83, blue: 0.54).opacity(0.30))
+                        .frame(width: size.width * 1.1, height: size.width * 1.1)
+                        .blur(radius: 45)
+                        .position(x: size.width * 0.50, y: size.height * 0.45)
+                }
+
+                landscapeLayer(color: theme == .sunset ? Color(red: 0.93, green: 0.56, blue: 0.34).opacity(0.26) : Color(red: 0.08, green: 0.27, blue: 0.38).opacity(0.65), y: 0.76, size: size)
+                landscapeLayer(color: theme == .sunset ? Color(red: 0.78, green: 0.39, blue: 0.22).opacity(0.28) : Color(red: 0.02, green: 0.13, blue: 0.20).opacity(0.90), y: 0.82, size: size)
+                lake(size: size)
+                    .fill(theme == .sunset ? Color.white.opacity(0.16) : Color(red: 0.05, green: 0.28, blue: 0.42).opacity(0.58))
+                    .blur(radius: theme == .sunset ? 10 : 4)
+                    .offset(y: size.height * 0.05)
+
+                LinearGradient(colors: [.clear, theme == .sunset ? Color(red: 0.55, green: 0.23, blue: 0.11).opacity(0.34) : Color.black.opacity(0.70)], startPoint: .center, endPoint: .bottom)
+            }
+        }
+    }
+
+    private func landscapeLayer(color: Color, y: CGFloat, size: CGSize) -> some View {
+        Path { path in
+            path.move(to: CGPoint(x: 0, y: size.height))
+            path.addLine(to: CGPoint(x: 0, y: size.height * y))
+            path.addCurve(to: CGPoint(x: size.width * 0.28, y: size.height * (y - 0.03)), control1: CGPoint(x: size.width * 0.08, y: size.height * (y - 0.05)), control2: CGPoint(x: size.width * 0.17, y: size.height * (y + 0.02)))
+            path.addCurve(to: CGPoint(x: size.width * 0.55, y: size.height * (y - 0.07)), control1: CGPoint(x: size.width * 0.40, y: size.height * (y - 0.10)), control2: CGPoint(x: size.width * 0.48, y: size.height * (y - 0.01)))
+            path.addCurve(to: CGPoint(x: size.width, y: size.height * (y - 0.04)), control1: CGPoint(x: size.width * 0.70, y: size.height * (y - 0.16)), control2: CGPoint(x: size.width * 0.84, y: size.height * (y + 0.02)))
+            path.addLine(to: CGPoint(x: size.width, y: size.height))
+            path.closeSubpath()
+        }
+        .fill(color)
+    }
+
+    private func lake(size: CGSize) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: 0, y: size.height * 0.73))
+            path.addCurve(to: CGPoint(x: size.width, y: size.height * 0.70), control1: CGPoint(x: size.width * 0.25, y: size.height * 0.67), control2: CGPoint(x: size.width * 0.62, y: size.height * 0.78))
+            path.addLine(to: CGPoint(x: size.width, y: size.height))
+            path.addLine(to: CGPoint(x: 0, y: size.height))
+            path.closeSubpath()
+        }
+    }
+}
+
+struct Stars: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let points: [(CGFloat, CGFloat, CGFloat)] = [
+            (0.16, 0.10, 2), (0.28, 0.18, 1.4), (0.48, 0.12, 1.8), (0.68, 0.20, 1.2), (0.84, 0.11, 1.6),
+            (0.20, 0.32, 1.2), (0.37, 0.28, 1.6), (0.58, 0.34, 1.3), (0.76, 0.31, 1.7), (0.90, 0.39, 1.1)
+        ]
+        for point in points {
+            path.addEllipse(in: CGRect(x: rect.width * point.0, y: rect.height * point.1, width: point.2, height: point.2))
+        }
+        return path
     }
 }
 
@@ -776,120 +984,296 @@ struct AlarmRow: View {
 struct EditAlarmView: View {
     @Environment(\.dismiss) private var dismiss
     @State var alarm: Alarm
-    var title = "Editar alarma"
-    var allowRepeatDays = false
+    let theme: SleepTheme
     let onSave: (Alarm) -> Void
     let onDelete: (() -> Void)?
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Nombre", text: $alarm.label)
-                    DatePicker("Hora", selection: timeBinding, displayedComponents: .hourAndMinute)
-                        .datePickerStyle(.wheel)
+        ZStack {
+            SleepBackdrop(theme: theme)
+                .ignoresSafeArea()
+                .overlay(theme == .sunset ? Color.white.opacity(0.45) : Color.black.opacity(0.14))
+
+            VStack(spacing: 20) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 20, weight: .black))
+                            .frame(width: 44, height: 44)
+                            .background(theme == .sunset ? Color.white.opacity(0.58) : Color.white.opacity(0.08))
+                            .foregroundStyle(theme.text)
+                            .clipShape(Circle())
+                    }
+
+                    Spacer()
+                    Text("Editar alarma")
+                        .font(.title3.weight(.black))
+                        .foregroundStyle(theme.text)
+                    Spacer()
+                    Color.clear.frame(width: 44, height: 44)
                 }
 
-                if allowRepeatDays {
-                    Section("Dias") {
-                    HStack {
-                        ForEach(Weekday.all) { day in
-                            Button(day.short) {
-                                if alarm.weekdays.contains(day.calendarValue) {
-                                    alarm.weekdays.remove(day.calendarValue)
-                                } else {
-                                    alarm.weekdays.insert(day.calendarValue)
-                                }
-                            }
-                            .font(.headline.weight(.black))
-                            .frame(maxWidth: .infinity, minHeight: 38)
-                            .background(alarm.weekdays.contains(day.calendarValue) ? Color.orange.opacity(0.25) : Color.gray.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                    }
-                    }
+                TimeEditPanel(alarm: $alarm, theme: theme)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Musicas posibles")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(theme.text)
+
+                    SoundSelector(alarm: $alarm, theme: theme)
                 }
 
-                Section("Musicas posibles") {
-                    Button("Deseleccionar todas") {
-                        alarm.soundIds.removeAll()
-                    }
-                    ForEach(AlarmSound.all) { sound in
-                        HStack {
-                            Toggle(sound.name, isOn: Binding(
-                                get: { alarm.soundIds.contains(sound.id) },
-                                set: { enabled in
-                                    if enabled {
-                                        if !alarm.soundIds.contains(sound.id) { alarm.soundIds.append(sound.id) }
-                                    } else {
-                                        alarm.soundIds.removeAll { $0 == sound.id }
-                                    }
-                                }
-                            ))
-                            Button("Probar") {
-                                AlarmSoundPlayer.preview(sound: sound)
-                            }
-                            .font(.caption.weight(.black))
-                            .buttonStyle(.bordered)
-                        }
-                    }
-                    Text("Si eliges mas de una, la app escoge una al azar.")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.secondary)
-                }
+                FadeDurationControl(duration: $alarm.fadeDuration, theme: theme)
 
-                Section("Despertar") {
-                    Toggle("Volumen progresivo", isOn: $alarm.fadeInEnabled)
-                    FadeDurationControl(duration: $alarm.fadeDuration)
-                    Toggle("Mover para posponer", isOn: $alarm.motionSnooze)
-                    Stepper("Posponer \(alarm.snoozeMinutes) min", value: $alarm.snoozeMinutes, in: 1...60, step: 1)
+                Toggle(isOn: $alarm.motionSnooze) {
+                    Label("Mover para posponer", systemImage: "iphone.radiowaves.left.and.right")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(theme.text)
                 }
+                .tint(theme.primary)
+                .padding(16)
+                .background(panelFill)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
 
-                if onDelete != nil {
-                    Section {
-                        Button("Eliminar", role: .destructive) {
-                            onDelete?()
-                            dismiss()
-                        }
-                    }
+                Spacer(minLength: 0)
+
+                Button {
+                    alarm.randomSound = alarm.soundIds.count != 1
+                    alarm.weekdays = []
+                    onSave(alarm)
+                    dismiss()
+                } label: {
+                    Text("Guardar")
+                        .font(.title3.weight(.black))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 60)
+                        .background(
+                            LinearGradient(colors: [theme.primary.opacity(0.95), theme.primary.opacity(0.72)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
                 }
             }
-            .navigationTitle(title)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cerrar") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar") {
-                        alarm.randomSound = alarm.soundIds.count > 1
-                        if !allowRepeatDays { alarm.weekdays = [] }
-                        onSave(alarm)
-                        dismiss()
+            .padding(.horizontal, 24)
+            .padding(.top, 58)
+            .padding(.bottom, 28)
+        }
+    }
+
+    private var panelFill: Color {
+        theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.07)
+    }
+}
+
+struct TimeEditPanel: View {
+    @Binding var alarm: Alarm
+    let theme: SleepTheme
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(previousHour)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(theme.secondaryText.opacity(0.55))
+            HStack(spacing: 18) {
+                Text(String(format: "%02d", alarm.hour))
+                Text(":")
+                Text(String(format: "%02d", alarm.minute))
+            }
+            .font(.system(size: 62, weight: .bold, design: .serif))
+            .foregroundStyle(theme.text)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 4)
+                    .onEnded { value in
+                        if abs(value.translation.width) > abs(value.translation.height) {
+                            adjust(.minute, value.translation.width > 0 ? 1 : -1)
+                        } else {
+                            adjust(.hour, value.translation.height < 0 ? 1 : -1)
+                        }
                     }
+            )
+            Text(nextMinute)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(theme.secondaryText.opacity(0.55))
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 188)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(theme == .sunset ? theme.primary.opacity(0.82) : Color.white.opacity(0.06))
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(theme == .sunset ? Color.white.opacity(0.20) : Color.white.opacity(0.16), lineWidth: 1))
+        )
+        .foregroundStyle(.white)
+    }
+
+    private var previousHour: String {
+        String(format: "%02d        %02d", (alarm.hour + 23) % 24, (alarm.minute + 59) % 60)
+    }
+
+    private var nextMinute: String {
+        String(format: "%02d        %02d", (alarm.hour + 1) % 24, (alarm.minute + 1) % 60)
+    }
+
+    private func adjust(_ component: TimeComponent, _ amount: Int) {
+        switch component {
+        case .hour:
+            alarm.hour = (alarm.hour + amount + 24) % 24
+        case .minute:
+            alarm.minute = (alarm.minute + amount + 60) % 60
+        }
+    }
+}
+
+struct SoundSelector: View {
+    @Binding var alarm: Alarm
+    let theme: SleepTheme
+
+    var body: some View {
+        if theme == .night {
+            HStack(spacing: 10) {
+                randomButton
+                ForEach(AlarmSound.all.prefix(4)) { sound in
+                    soundButton(sound)
+                }
+            }
+        } else {
+            VStack(spacing: 8) {
+                randomRow
+                ForEach(AlarmSound.all.prefix(4)) { sound in
+                    soundRow(sound)
                 }
             }
         }
     }
 
-    private var timeBinding: Binding<Date> {
-        Binding {
-            var components = DateComponents()
-            components.hour = alarm.hour
-            components.minute = alarm.minute
-            return Calendar.current.date(from: components) ?? Date()
-        } set: { date in
-            let components = Calendar.current.dateComponents([.hour, .minute], from: date)
-            alarm.hour = components.hour ?? alarm.hour
-            alarm.minute = components.minute ?? alarm.minute
+    private var randomButton: some View {
+        Button {
+            alarm.randomSound = true
+            alarm.soundIds = AlarmSound.all.map(\.id)
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: "shuffle")
+                    .font(.title2.weight(.bold))
+                Text("Aleatoria")
+                    .font(.caption.weight(.bold))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 92)
         }
+        .buttonStyle(SoundTileStyle(selected: alarm.randomSound, theme: theme))
+    }
+
+    private func soundButton(_ sound: AlarmSound) -> some View {
+        Button {
+            alarm.randomSound = false
+            alarm.soundIds = [sound.id]
+            AlarmSoundPlayer.preview(sound: sound)
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: icon(for: sound.id))
+                    .font(.title2.weight(.bold))
+                Text(soundShortName(sound))
+                    .font(.caption.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 92)
+        }
+        .buttonStyle(SoundTileStyle(selected: !alarm.randomSound && alarm.soundIds.first == sound.id, theme: theme))
+    }
+
+    private var randomRow: some View {
+        Button {
+            alarm.randomSound = true
+            alarm.soundIds = AlarmSound.all.map(\.id)
+        } label: {
+            rowContent(icon: "shuffle", title: "Aleatoria", subtitle: "Una diferente cada noche", selected: alarm.randomSound)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func soundRow(_ sound: AlarmSound) -> some View {
+        Button {
+            alarm.randomSound = false
+            alarm.soundIds = [sound.id]
+            AlarmSoundPlayer.preview(sound: sound)
+        } label: {
+            rowContent(icon: icon(for: sound.id), title: sound.name, subtitle: nil, selected: !alarm.randomSound && alarm.soundIds.first == sound.id)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func rowContent(icon: String, title: String, subtitle: String?, selected: Bool) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.title3.weight(.bold))
+                .frame(width: 34)
+                .foregroundStyle(theme.primary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.black))
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(theme.secondaryText)
+                }
+            }
+            Spacer()
+            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(selected ? theme.primary : theme.secondaryText.opacity(0.45))
+        }
+        .foregroundStyle(theme.text)
+        .padding(.horizontal, 14)
+        .frame(height: 46)
+        .background(theme == .sunset ? Color.white.opacity(0.44) : Color.white.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(selected ? theme.primary.opacity(0.58) : theme.secondaryText.opacity(0.16), lineWidth: 1))
+    }
+
+    private func icon(for id: String) -> String {
+        switch id {
+        case "sunrise": return "sunrise.fill"
+        case "sunset": return "water.waves"
+        case "piano": return "pianokeys"
+        case "rain": return "cloud.rain.fill"
+        case "sea": return "water.waves"
+        default: return "music.note"
+        }
+    }
+
+    private func soundShortName(_ sound: AlarmSound) -> String {
+        switch sound.id {
+        case "sunset": return "Olas"
+        case "rain": return "Lluvia"
+        default: return sound.name
+        }
+    }
+}
+
+struct SoundTileStyle: ButtonStyle {
+    let selected: Bool
+    let theme: SleepTheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(selected ? theme.primary : theme.text)
+            .background(theme == .sunset ? Color.white.opacity(0.42) : Color.white.opacity(0.07))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? theme.primary : theme.secondaryText.opacity(0.14), lineWidth: selected ? 1.5 : 1))
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
     }
 }
 
 struct FadeDurationControl: View {
     @Binding var duration: Double
+    var theme: SleepTheme = .sunset
 
     private var progress: Double {
-        (duration - 30) / 270
+        (duration - 60) / 540
     }
 
     private var durationText: String {
@@ -902,75 +1286,94 @@ struct FadeDurationControl: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Subida")
+                Label("Volumen progresivo", systemImage: "waveform")
                 Spacer()
                 Text(durationText)
                     .font(.headline.weight(.black))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(theme.primary)
             }
+            .foregroundStyle(theme.text)
 
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.gray.opacity(0.18))
+                        .fill(theme.secondaryText.opacity(0.18))
                         .frame(height: 4)
                     Capsule()
-                        .fill(Color.orange)
+                        .fill(theme.primary)
                         .frame(width: proxy.size.width * progress, height: 4)
-                    Rectangle()
-                        .fill(Color(red: 0.31, green: 0.15, blue: 0.08))
-                        .frame(width: 3, height: 18)
-                        .offset(x: max(0, min(proxy.size.width - 3, proxy.size.width * progress)))
+                    Circle()
+                        .fill(theme.primary)
+                        .frame(width: 20, height: 20)
+                        .offset(x: max(0, min(proxy.size.width - 20, proxy.size.width * progress - 10)))
                 }
                 .frame(height: 24)
             }
             .frame(height: 24)
 
-            Slider(value: $duration, in: 30...300, step: 30) {
+            Slider(value: $duration, in: 60...600, step: 60) {
                 Text("Subida")
             } minimumValueLabel: {
-                Text("30s")
+                Text("1 min")
             } maximumValueLabel: {
-                Text("5m")
+                Text("10 min")
             }
+            .tint(theme.primary)
+            .foregroundStyle(theme.secondaryText)
         }
+        .padding(16)
+        .background(theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 }
 
 struct NightActiveView: View {
     @EnvironmentObject private var session: NightSession
     let alarm: Alarm
+    let theme: SleepTheme
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(red: 0.12, green: 0.09, blue: 0.16), Color(red: 0.28, green: 0.14, blue: 0.13)], startPoint: .top, endPoint: .bottom)
+            SleepBackdrop(theme: theme)
                 .ignoresSafeArea()
-            VStack(spacing: 16) {
-                Text("Noche activa")
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(.orange)
-                    .textCase(.uppercase)
-                Text(session.now, format: .dateTime.hour().minute())
-                    .font(.system(size: 86, weight: .bold, design: .serif))
-                    .foregroundStyle(.white)
-                Text("Despertar a las \(alarm.timeText)")
-                    .font(.title3.weight(.black))
-                    .foregroundStyle(.orange)
-                Text("Puedes bloquear el movil. No fuerces el cierre de la app.")
-                    .font(.subheadline.weight(.bold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.white.opacity(0.72))
-                    .padding(.horizontal)
-                Spacer()
-                Button("Terminar noche") {
-                    session.stop()
+
+            VStack(spacing: 22) {
+                Spacer(minLength: 86)
+
+                if theme == .sunset {
+                    Text("Buenas noches")
+                        .font(.system(size: 38, weight: .bold, design: .serif))
+                        .foregroundStyle(.white)
                 }
-                .font(.headline.weight(.black))
-                .frame(maxWidth: .infinity)
-                .frame(height: 60)
-                .background(Color.white.opacity(0.92))
-                .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                Text(alarm.timeText)
+                    .font(.system(size: 86, weight: .bold, design: .serif))
+                    .foregroundStyle(theme == .sunset ? Color.white.opacity(0.96) : Color.white.opacity(0.92))
+
+                Text("La noche ha comenzado")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(theme == .sunset ? Color.white : theme.primary)
+
+                Label("Mueve el movil\npara posponer", systemImage: "iphone.radiowaves.left.and.right")
+                    .font(.title3.weight(.medium))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(theme == .sunset ? Color.white.opacity(0.92) : theme.primary)
+
+                Spacer()
+
+                Button {
+                    session.stop()
+                } label: {
+                    Label("Terminar", systemImage: "stop.fill")
+                        .font(.title2.weight(.black))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 72)
+                        .background(theme == .sunset ? Color.white.opacity(0.88) : Color.white.opacity(0.10))
+                        .foregroundStyle(theme == .sunset ? Color(red: 0.30, green: 0.17, blue: 0.10) : Color.white)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(theme == .night ? Color.white.opacity(0.14) : Color.clear, lineWidth: 1))
+                }
+                .padding(.bottom, 30)
             }
             .padding(24)
         }
@@ -981,44 +1384,92 @@ struct RingView: View {
     @EnvironmentObject private var session: NightSession
     @EnvironmentObject private var store: AlarmStore
     let alarm: Alarm
+    let theme: SleepTheme
 
     var body: some View {
         ZStack {
-            SunsetScene()
+            SleepBackdrop(theme: theme)
                 .ignoresSafeArea()
-            LinearGradient(colors: [Color.white.opacity(0.06), Color(red: 0.24, green: 0.10, blue: 0.06).opacity(0.56)], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-            VStack(spacing: 22) {
-                Spacer()
+
+            VStack(spacing: 20) {
+                Spacer(minLength: 108)
+                Text("La noche ha comenzado")
+                    .font(.title2.weight(.medium))
+                    .foregroundStyle(theme == .sunset ? Color.white : theme.primary)
+
                 Text(alarm.timeText)
                     .font(.system(size: 100, weight: .bold, design: .serif))
-                    .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
-                Text(alarm.motionSnooze ? "Mueve el movil para posponer" : "Alarma sonando")
-                    .font(.title2.weight(.black))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Color.white.opacity(0.94))
+
+                Image(systemName: theme == .sunset ? "moon.fill" : "moon.stars.fill")
+                    .font(.system(size: 42, weight: .black))
+                    .foregroundStyle(theme == .sunset ? Color.white.opacity(0.88) : theme.primary)
+
+                Text(alarm.motionSnooze ? "Mueve el movil\npara posponer" : "Alarma sonando")
+                    .font(.title2.weight(.medium))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(theme == .sunset ? Color.white.opacity(0.94) : theme.primary)
+
                 ProgressView(value: session.motionProgress)
                     .tint(.white)
                     .padding(.horizontal, 40)
                     .onChange(of: session.motionProgress) { value in
                         if value > 0.92 { session.snooze(store: store) }
                     }
+
                 Spacer()
-                Button("Posponer") { session.snooze(store: store) }
-                    .font(.title2.weight(.black))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 74)
-                    .background(Color.orange)
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
-                Button("Apagar") { session.stop() }
-                    .font(.title2.weight(.black))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 74)
-                    .background(Color.white.opacity(0.92))
-                    .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
-                    .clipShape(Capsule())
+
+                if theme == .night {
+                    HStack(spacing: 22) {
+                        RingCircleButton(title: "Posponer", icon: "moon.zzz.fill", fill: theme.primary.opacity(0.24), action: { session.snooze(store: store) })
+                        RingCircleButton(title: "Terminar", icon: "stop.fill", fill: Color.white.opacity(0.10), action: { session.stop() })
+                    }
+                } else {
+                    Button { session.snooze(store: store) } label: {
+                        Label("Posponer", systemImage: "iphone.radiowaves.left.and.right")
+                            .font(.title2.weight(.black))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 72)
+                            .background(theme.primary)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
+                    Button { session.stop() } label: {
+                        Label("Terminar", systemImage: "stop.fill")
+                            .font(.title2.weight(.black))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 72)
+                            .background(Color.white.opacity(0.88))
+                            .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+                            .clipShape(Capsule())
+                    }
+                }
             }
             .padding(24)
+        }
+    }
+}
+
+struct RingCircleButton: View {
+    let title: String
+    let icon: String
+    let fill: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 30, weight: .black))
+                Text(title)
+                    .font(.headline.weight(.bold))
+            }
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
+            .background(fill)
+            .foregroundStyle(.white)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(Color.white.opacity(0.16), lineWidth: 1))
         }
     }
 }
