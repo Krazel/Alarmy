@@ -15,7 +15,7 @@ struct AlarmaApp: App {
                 .environmentObject(session)
                 .task {
                     await NotificationScheduler.shared.requestAuthorization()
-                    await NotificationScheduler.shared.reschedule(alarms: store.alarms)
+                    await NotificationScheduler.shared.reschedule(alarms: store.notificationAlarms)
                 }
         }
     }
@@ -90,6 +90,10 @@ final class AlarmStore: ObservableObject {
     private let key = "alarma.native.alarms.v1"
     private let sleepKey = "alarma.native.sleepAlarm.v1"
 
+    var notificationAlarms: [Alarm] {
+        alarms + [sleepAlarm]
+    }
+
     init() {
         load()
         loadSleepAlarm()
@@ -107,22 +111,23 @@ final class AlarmStore: ObservableObject {
         } else {
             alarms.append(alarm)
         }
-        Task { await NotificationScheduler.shared.reschedule(alarms: alarms) }
+        Task { await NotificationScheduler.shared.reschedule(alarms: notificationAlarms) }
     }
 
     func delete(_ alarm: Alarm) {
         alarms.removeAll { $0.id == alarm.id }
-        Task { await NotificationScheduler.shared.reschedule(alarms: alarms) }
+        Task { await NotificationScheduler.shared.reschedule(alarms: notificationAlarms) }
     }
 
     func toggle(_ alarm: Alarm, enabled: Bool) {
         guard let index = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
         alarms[index].enabled = enabled
-        Task { await NotificationScheduler.shared.reschedule(alarms: alarms) }
+        Task { await NotificationScheduler.shared.reschedule(alarms: notificationAlarms) }
     }
 
     func updateSleepAlarm(_ alarm: Alarm) {
         sleepAlarm = alarm
+        Task { await NotificationScheduler.shared.reschedule(alarms: notificationAlarms) }
     }
 
     private func load() {
@@ -156,7 +161,7 @@ final class NotificationScheduler {
     static let shared = NotificationScheduler()
 
     func requestAuthorization() async {
-        _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .timeSensitive])
     }
 
     func reschedule(alarms: [Alarm]) async {
@@ -174,6 +179,7 @@ final class NotificationScheduler {
         content.title = alarm.label.isEmpty ? "Alarma" : alarm.label
         content.body = "Toca para abrir Alarma."
         content.sound = .default
+        content.interruptionLevel = .timeSensitive
 
         if alarm.weekdays.isEmpty {
             var components = DateComponents()
@@ -219,6 +225,7 @@ final class NightSession: ObservableObject {
     func start(alarm: Alarm) {
         activeAlarm = alarm
         UIApplication.shared.isIdleTimerDisabled = true
+        sound.startKeepAlive()
         startClock()
         startMotionIfNeeded(alarm)
     }
@@ -292,6 +299,38 @@ final class AlarmSoundPlayer {
     private var rampTimer: Timer?
     private var phase = 0.0
     private var gain: Float = 0.04
+
+    func startKeepAlive() {
+        stop()
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? session.setActive(true)
+
+        let sampleRate = 44_100.0
+        gain = 0.0008
+        phase = 0
+
+        let node = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList in
+            guard let self else { return noErr }
+            let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
+            for frame in 0..<Int(frameCount) {
+                let value = Float(sin(self.phase)) * self.gain
+                self.phase += 2.0 * Double.pi * 110.0 / sampleRate
+                if self.phase > 2.0 * Double.pi { self.phase -= 2.0 * Double.pi }
+                for buffer in buffers {
+                    let pointer = buffer.mData!.assumingMemoryBound(to: Float.self)
+                    pointer[frame] = value
+                }
+            }
+            return noErr
+        }
+
+        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
+        engine.attach(node)
+        engine.connect(node, to: engine.mainMixerNode, format: format)
+        sourceNode = node
+        try? engine.start()
+    }
 
     func start(for alarm: Alarm) {
         stop()
@@ -498,6 +537,15 @@ struct ContentView: View {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.hour, .minute, .weekday], from: date)
         let key = DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short)
+
+        if let active = session.activeAlarm,
+           active.hour == components.hour,
+           active.minute == components.minute,
+           active.weekdays.isEmpty || active.weekdays.contains(components.weekday ?? 0) {
+            session.ring(active)
+            return
+        }
+
         for alarm in store.alarms where alarm.enabled {
             guard alarm.hour == components.hour, alarm.minute == components.minute else { continue }
             guard alarm.weekdays.isEmpty || alarm.weekdays.contains(components.weekday ?? 0) else { continue }
