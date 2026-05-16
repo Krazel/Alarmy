@@ -3,6 +3,7 @@ import CoreMotion
 import SwiftUI
 import UIKit
 import UserNotifications
+import UniformTypeIdentifiers
 
 @main
 struct AlarmaApp: App {
@@ -130,6 +131,14 @@ struct AlarmSound: Identifiable, Hashable {
     ]
 }
 
+struct CustomAlarmSound: Identifiable, Codable, Equatable, Hashable {
+    var id: String
+    var name: String
+    var fileName: String
+
+    var soundId: String { "custom:\(fileName)" }
+}
+
 @MainActor
 final class AlarmStore: ObservableObject {
     @Published var alarms: [Alarm] = [] {
@@ -141,10 +150,14 @@ final class AlarmStore: ObservableObject {
     @Published var sleepTheme: SleepTheme = .sunset {
         didSet { UserDefaults.standard.set(sleepTheme.rawValue, forKey: themeKey) }
     }
+    @Published var customSounds: [CustomAlarmSound] = [] {
+        didSet { saveCustomSounds() }
+    }
 
     private let key = "alarma.native.alarms.v1"
     private let sleepKey = "alarma.native.sleepAlarm.v1"
     private let themeKey = "alarma.native.sleepTheme.v1"
+    private let customSoundsKey = "alarma.native.customSounds.v1"
 
     var notificationAlarms: [Alarm] {
         [sleepAlarm]
@@ -154,6 +167,7 @@ final class AlarmStore: ObservableObject {
         load()
         loadSleepAlarm()
         loadTheme()
+        loadCustomSounds()
         if alarms.isEmpty {
             alarms = [
                 Alarm(),
@@ -185,6 +199,39 @@ final class AlarmStore: ObservableObject {
     func updateSleepAlarm(_ alarm: Alarm) {
         sleepAlarm = alarm
         Task { await NotificationScheduler.shared.reschedule(alarms: notificationAlarms) }
+    }
+
+    func importCustomSound(from sourceURL: URL) {
+        let didAccess = sourceURL.startAccessingSecurityScopedResource()
+        defer {
+            if didAccess { sourceURL.stopAccessingSecurityScopedResource() }
+        }
+
+        let originalName = sourceURL.deletingPathExtension().lastPathComponent
+        let fileExtension = sourceURL.pathExtension.isEmpty ? "m4a" : sourceURL.pathExtension
+        let fileName = "\(UUID().uuidString).\(fileExtension)"
+
+        do {
+            let soundsDirectory = try customSoundsDirectory()
+            let destinationURL = soundsDirectory.appendingPathComponent(fileName)
+            try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+            customSounds.append(CustomAlarmSound(id: UUID().uuidString, name: originalName, fileName: fileName))
+        } catch {
+            // Import errors are ignored in the UI for now; the picker remains open.
+        }
+    }
+
+    func removeCustomSound(_ sound: CustomAlarmSound) {
+        customSounds.removeAll { $0.id == sound.id }
+        sleepAlarm.soundIds.removeAll { $0 == sound.soundId }
+        alarms = alarms.map { alarm in
+            var updated = alarm
+            updated.soundIds.removeAll { $0 == sound.soundId }
+            return updated
+        }
+        if let url = try? customSoundsDirectory().appendingPathComponent(sound.fileName) {
+            try? FileManager.default.removeItem(at: url)
+        }
     }
 
     private func load() {
@@ -219,6 +266,26 @@ final class AlarmStore: ObservableObject {
             return
         }
         sleepTheme = theme
+    }
+
+    private func loadCustomSounds() {
+        guard let data = UserDefaults.standard.data(forKey: customSoundsKey),
+              let decoded = try? JSONDecoder().decode([CustomAlarmSound].self, from: data) else {
+            return
+        }
+        customSounds = decoded
+    }
+
+    private func saveCustomSounds() {
+        guard let data = try? JSONEncoder().encode(customSounds) else { return }
+        UserDefaults.standard.set(data, forKey: customSoundsKey)
+    }
+
+    private func customSoundsDirectory() throws -> URL {
+        let baseURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let directory = baseURL.appendingPathComponent("CustomSounds", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 }
 
@@ -420,6 +487,7 @@ final class NightSession: ObservableObject {
 final class AlarmSoundPlayer {
     private let engine = AVAudioEngine()
     private var sourceNode: AVAudioSourceNode?
+    private var audioPlayer: AVAudioPlayer?
     private var rampTimer: Timer?
     private var phase = 0.0
     private var gain: Float = 0.04
@@ -428,6 +496,14 @@ final class AlarmSoundPlayer {
         let player = AlarmSoundPlayer()
         player.startPreview(sound: sound)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            player.stop()
+        }
+    }
+
+    static func preview(customSound: CustomAlarmSound) {
+        let player = AlarmSoundPlayer()
+        player.startPreview(customSound: customSound)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
             player.stop()
         }
     }
@@ -476,6 +552,10 @@ final class AlarmSoundPlayer {
         try? session.setActive(true)
 
         let soundId = alarm.soundIds.count > 1 ? (alarm.soundIds.randomElement() ?? "sunrise") : (alarm.soundIds.first ?? "sunrise")
+        if soundId.hasPrefix("custom:") {
+            playCustomSound(fileName: String(soundId.dropFirst("custom:".count)), alarm: alarm)
+            return
+        }
         let sound = AlarmSound.all.first { $0.id == soundId } ?? AlarmSound.all[0]
         play(sound: sound, initialGain: alarm.fadeInEnabled ? 0.035 : 0.85)
 
@@ -497,6 +577,48 @@ final class AlarmSoundPlayer {
         try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? session.setActive(true)
         play(sound: sound, initialGain: 0.22)
+    }
+
+    private func startPreview(customSound: CustomAlarmSound) {
+        stop()
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? session.setActive(true)
+        playFile(named: customSound.fileName, volume: 0.55, loop: false)
+    }
+
+    private func playCustomSound(fileName: String, alarm: Alarm) {
+        let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 0.95
+        playFile(named: fileName, volume: initialVolume, loop: true)
+        guard alarm.fadeInEnabled else { return }
+        let started = Date()
+        rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self else { return }
+            let elapsed = Date().timeIntervalSince(started)
+            let progress = min(1, elapsed / max(1, alarm.fadeDuration))
+            self.audioPlayer?.volume = Float(0.04 + progress * 0.91)
+            if progress >= 1 { timer.invalidate() }
+        }
+    }
+
+    private func playFile(named fileName: String, volume: Float, loop: Bool) {
+        guard let directory = try? customSoundsDirectory() else { return }
+        let url = directory.appendingPathComponent(fileName)
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        do {
+            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.numberOfLoops = loop ? -1 : 0
+            audioPlayer?.volume = volume
+            audioPlayer?.prepareToPlay()
+            audioPlayer?.play()
+        } catch {
+            audioPlayer = nil
+        }
+    }
+
+    private func customSoundsDirectory() throws -> URL {
+        let baseURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("CustomSounds", isDirectory: true)
     }
 
     private func play(sound: AlarmSound, initialGain: Float) {
@@ -530,6 +652,8 @@ final class AlarmSoundPlayer {
     func stop() {
         rampTimer?.invalidate()
         rampTimer = nil
+        audioPlayer?.stop()
+        audioPlayer = nil
         if engine.isRunning { engine.stop() }
         if let sourceNode {
             engine.detach(sourceNode)
@@ -960,6 +1084,7 @@ struct AlarmRow: View {
 
 struct EditAlarmView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var store: AlarmStore
     @State var alarm: Alarm
     @State private var choosingSounds = false
     let theme: SleepTheme
@@ -1067,9 +1192,11 @@ struct EditAlarmView: View {
     }
 
     private var soundSummary: String {
-        let selected = AlarmSound.all.filter { alarm.soundIds.contains($0.id) }
+        let builtin = AlarmSound.all.filter { alarm.soundIds.contains($0.id) }.map(\.name)
+        let custom = store.customSounds.filter { alarm.soundIds.contains($0.soundId) }.map(\.name)
+        let selected = builtin + custom
         if selected.isEmpty { return "Ninguna seleccionada" }
-        if selected.count == 1 { return selected[0].name }
+        if selected.count == 1 { return selected[0] }
         return "\(selected.count) seleccionadas"
     }
 }
@@ -1079,28 +1206,14 @@ struct TimeEditPanel: View {
     let theme: SleepTheme
 
     var body: some View {
-        HStack(spacing: 16) {
-            TimeStepperColumn(
-                title: "Hora",
-                value: alarm.hour,
-                range: 0...23,
-                theme: theme,
-                onChange: { alarm.hour = $0 }
-            )
-
-            Text(":")
-                .font(.system(size: 58, weight: .bold, design: .serif))
-                .foregroundStyle(theme.text.opacity(0.72))
-                .padding(.top, 26)
-
-            TimeStepperColumn(
-                title: "Min",
-                value: alarm.minute,
-                range: 0...59,
-                theme: theme,
-                onChange: { alarm.minute = $0 }
-            )
-        }
+        DatePicker("Hora", selection: timeBinding, displayedComponents: .hourAndMinute)
+            .datePickerStyle(.wheel)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
+            .frame(height: 164)
+            .clipped()
+            .colorScheme(theme == .sunset ? .light : .dark)
+            .tint(theme.primary)
         .padding(16)
         .frame(maxWidth: .infinity)
         .background(
@@ -1110,56 +1223,21 @@ struct TimeEditPanel: View {
         )
         .foregroundStyle(.white)
     }
-}
 
-struct TimeStepperColumn: View {
-    let title: String
-    let value: Int
-    let range: ClosedRange<Int>
-    let theme: SleepTheme
-    let onChange: (Int) -> Void
-    @State private var lastStep = 0
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Text(title)
-                .font(.caption.weight(.black))
-                .foregroundStyle(theme.secondaryText)
-            Text(String(format: "%02d", value))
-                .font(.system(size: 54, weight: .bold, design: .serif))
-                .foregroundStyle(theme.text)
-                .frame(maxWidth: .infinity)
-                .frame(height: 96)
-                .background(theme == .sunset ? Color.white.opacity(0.32) : Color.black.opacity(0.16))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .contentShape(Rectangle())
-                .gesture(dragGesture)
-            Text("Arrastra")
-                .font(.caption2.weight(.black))
-                .foregroundStyle(theme.secondaryText.opacity(0.76))
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(theme.primary)
-    }
-
-    private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 4)
-            .onChanged { gesture in
-                let step = Int((-gesture.translation.height / 18).rounded(.towardZero))
-                guard step != lastStep else { return }
-                let delta = step - lastStep
-                lastStep = step
-                onChange(wrapped(value + delta))
+    private var timeBinding: Binding<Date> {
+        Binding(
+            get: {
+                var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+                components.hour = alarm.hour
+                components.minute = alarm.minute
+                return Calendar.current.date(from: components) ?? Date()
+            },
+            set: { date in
+                let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+                alarm.hour = components.hour ?? alarm.hour
+                alarm.minute = components.minute ?? alarm.minute
             }
-            .onEnded { _ in
-                lastStep = 0
-            }
-    }
-
-    private func wrapped(_ rawValue: Int) -> Int {
-        if rawValue < range.lowerBound { return range.upperBound }
-        if rawValue > range.upperBound { return range.lowerBound }
-        return rawValue
+        )
     }
 }
 
@@ -1204,8 +1282,10 @@ struct SnoozePresetSelector: View {
 
 struct SoundPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var store: AlarmStore
     @Binding var alarm: Alarm
     let theme: SleepTheme
+    @State private var importingSound = false
 
     var body: some View {
         ZStack {
@@ -1219,6 +1299,16 @@ struct SoundPickerSheet: View {
                         .font(.title3.weight(.black))
                         .foregroundStyle(theme.text)
                     Spacer()
+                    Button {
+                        importingSound = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.headline.weight(.black))
+                            .frame(width: 38, height: 38)
+                            .background(theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.08))
+                            .clipShape(Circle())
+                    }
+                    .foregroundStyle(theme.primary)
                     Button("Hecho") {
                         dismiss()
                     }
@@ -1245,18 +1335,33 @@ struct SoundPickerSheet: View {
             .padding(.top, 58)
             .padding(.bottom, 28)
         }
+        .fileImporter(isPresented: $importingSound, allowedContentTypes: [.audio], allowsMultipleSelection: false) { result in
+            if case let .success(urls) = result, let url = urls.first {
+                store.importCustomSound(from: url)
+            }
+        }
     }
 }
 
 struct SoundSelector: View {
+    @EnvironmentObject private var store: AlarmStore
     @Binding var alarm: Alarm
     let theme: SleepTheme
     let showAll: Bool
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             ForEach(visibleSounds) { sound in
                 soundRow(sound)
+            }
+            if !store.customSounds.isEmpty {
+                Text("Tus canciones")
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(theme.secondaryText)
+                    .padding(.top, 8)
+                ForEach(store.customSounds) { sound in
+                    customSoundRow(sound)
+                }
             }
         }
     }
@@ -1266,26 +1371,48 @@ struct SoundSelector: View {
     }
 
     private func soundRow(_ sound: AlarmSound) -> some View {
-        Button {
-            if alarm.soundIds.contains(sound.id) {
-                alarm.soundIds.removeAll { $0 == sound.id }
-            } else {
-                alarm.soundIds.append(sound.id)
-            }
-            alarm.randomSound = alarm.soundIds.count > 1
-            AlarmSoundPlayer.preview(sound: sound)
-        } label: {
-            rowContent(icon: icon(for: sound.id), title: sound.name, subtitle: subtitle(for: sound), selected: alarm.soundIds.contains(sound.id))
-        }
-        .buttonStyle(.plain)
+        rowContent(
+            icon: icon(for: sound.id),
+            title: sound.name,
+            subtitle: subtitle(for: sound),
+            selected: alarm.soundIds.contains(sound.id),
+            onToggle: {
+                toggleSound(sound.id)
+            },
+            onPreview: {
+                AlarmSoundPlayer.preview(sound: sound)
+            },
+            onDelete: nil
+        )
     }
 
-    private func rowContent(icon: String, title: String, subtitle: String?, selected: Bool) -> some View {
+    private func customSoundRow(_ sound: CustomAlarmSound) -> some View {
+        rowContent(
+            icon: "music.note",
+            title: sound.name,
+            subtitle: "Cancion importada",
+            selected: alarm.soundIds.contains(sound.soundId),
+            onToggle: {
+                toggleSound(sound.soundId)
+            },
+            onPreview: {
+                AlarmSoundPlayer.preview(customSound: sound)
+            },
+            onDelete: {
+                store.removeCustomSound(sound)
+            }
+        )
+    }
+
+    private func rowContent(icon: String, title: String, subtitle: String?, selected: Bool, onToggle: @escaping () -> Void, onPreview: @escaping () -> Void, onDelete: (() -> Void)?) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.title3.weight(.bold))
-                .frame(width: 34)
-                .foregroundStyle(theme.primary)
+            Button(action: onToggle) {
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.title2.weight(.bold))
+                    .frame(width: 34)
+                    .foregroundStyle(selected ? theme.primary : theme.secondaryText.opacity(0.45))
+            }
+            .buttonStyle(.plain)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.black))
@@ -1296,16 +1423,40 @@ struct SoundSelector: View {
                 }
             }
             Spacer()
-            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(selected ? theme.primary : theme.secondaryText.opacity(0.45))
+            Button(action: onPreview) {
+                Image(systemName: "play.fill")
+                    .font(.subheadline.weight(.black))
+                    .frame(width: 34, height: 34)
+                    .background(theme.primary.opacity(0.18))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(theme.primary)
+            if let onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.subheadline.weight(.bold))
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.secondaryText)
+            }
         }
         .foregroundStyle(theme.text)
         .padding(.horizontal, 14)
-        .frame(height: 46)
+        .frame(minHeight: 54)
         .background(theme == .sunset ? Color.white.opacity(0.44) : Color.white.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(selected ? theme.primary.opacity(0.58) : theme.secondaryText.opacity(0.16), lineWidth: 1))
+    }
+
+    private func toggleSound(_ id: String) {
+        if alarm.soundIds.contains(id) {
+            alarm.soundIds.removeAll { $0 == id }
+        } else {
+            alarm.soundIds.append(id)
+        }
+        alarm.randomSound = alarm.soundIds.count > 1
     }
 
     private func icon(for id: String) -> String {
