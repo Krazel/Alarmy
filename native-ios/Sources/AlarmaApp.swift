@@ -479,7 +479,7 @@ struct ContentView: View {
     private var appVersionText: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "dev"
-        return "v\(version) - build \(build)"
+        return "v\(version)\nbuild \(build)"
     }
 
     var body: some View {
@@ -548,18 +548,25 @@ struct ContentView: View {
                 Text("Alarma")
                     .font(.system(size: 54, weight: .bold, design: .serif))
                     .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
-                Text(appVersionText)
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(.secondary)
             }
             Spacer()
-            Button { creating = true } label: {
-                Image(systemName: "plus")
-                    .font(.title2.weight(.black))
-                    .frame(width: 48, height: 48)
-                    .background(Color.orange)
-                    .foregroundStyle(.white)
-                    .clipShape(Circle())
+            VStack(spacing: 10) {
+                Text(appVersionText)
+                    .font(.caption.weight(.black))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.74))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                Button { creating = true } label: {
+                    Image(systemName: "plus")
+                        .font(.title2.weight(.black))
+                        .frame(width: 48, height: 48)
+                        .background(Color.orange)
+                        .foregroundStyle(.white)
+                        .clipShape(Circle())
+                }
             }
         }
     }
