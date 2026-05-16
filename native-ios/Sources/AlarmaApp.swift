@@ -76,6 +76,7 @@ struct AlarmSound: Identifiable, Hashable {
 
     static let all: [AlarmSound] = [
         .init(id: "sunrise", name: "Amanecer", baseFrequency: 220, color: .orange),
+        .init(id: "sunset", name: "Atardecer", baseFrequency: 196, color: .pink),
         .init(id: "piano", name: "Piano suave", baseFrequency: 262, color: .brown),
         .init(id: "rain", name: "Lluvia lenta", baseFrequency: 174, color: .blue),
         .init(id: "sea", name: "Brisa del mar", baseFrequency: 392, color: .teal)
@@ -87,7 +88,7 @@ final class AlarmStore: ObservableObject {
     @Published var alarms: [Alarm] = [] {
         didSet { save() }
     }
-    @Published var sleepAlarm = Alarm(label: "Noche", hour: 7, minute: 30, weekdays: [], soundIds: ["sunrise", "piano", "rain"], randomSound: true, enabled: true) {
+    @Published var sleepAlarm = Alarm(label: "Noche", hour: 7, minute: 30, weekdays: [], soundIds: ["sunrise", "sunset", "piano", "rain"], randomSound: true, enabled: true) {
         didSet { saveSleepAlarm() }
     }
 
@@ -95,7 +96,7 @@ final class AlarmStore: ObservableObject {
     private let sleepKey = "alarma.native.sleepAlarm.v1"
 
     var notificationAlarms: [Alarm] {
-        alarms + [sleepAlarm]
+        [sleepAlarm]
     }
 
     init() {
@@ -462,13 +463,7 @@ struct ContentView: View {
     @EnvironmentObject private var store: AlarmStore
     @EnvironmentObject private var session: NightSession
     @Environment(\.scenePhase) private var scenePhase
-    @State private var editingAlarm: Alarm?
     @State private var editingSleepAlarm = false
-    @State private var creating = false
-
-    var nextAlarm: Alarm? {
-        store.alarms.filter(\.enabled).sorted { $0.timeText < $1.timeText }.first
-    }
 
     private var appVersionText: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -485,27 +480,16 @@ struct ContentView: View {
                 VStack(spacing: 18) {
                     header
                     hero
-                    alarmList
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 28)
                 .padding(.bottom, 36)
             }
         }
-        .sheet(item: $editingAlarm) { alarm in
-            EditAlarmView(alarm: alarm) { updated in store.upsert(updated) } onDelete: { store.delete(alarm) }
-        }
-        .sheet(isPresented: $creating) {
-            EditAlarmView(
-                alarm: Alarm(),
-                onSave: { updated in store.upsert(updated) },
-                onDelete: nil
-            )
-        }
         .sheet(isPresented: $editingSleepAlarm) {
             EditAlarmView(
                 alarm: store.sleepAlarm,
-                title: "Alarma de noche",
+                title: "Alarma principal",
                 onSave: { updated in store.updateSleepAlarm(updated) },
                 onDelete: nil
             )
@@ -519,15 +503,15 @@ struct ContentView: View {
             RingView(alarm: alarm)
         }
         .onAppear {
-            session.startAlarmMonitor { store.alarms }
-            session.syncBackgroundGuard(alarms: store.alarms)
+            session.startAlarmMonitor { [store.sleepAlarm] }
+            session.syncBackgroundGuard(alarms: [store.sleepAlarm])
         }
-        .onChange(of: store.alarms) { alarms in
-            session.syncBackgroundGuard(alarms: alarms)
+        .onChange(of: store.sleepAlarm) { alarm in
+            session.syncBackgroundGuard(alarms: [alarm])
         }
         .onChange(of: scenePhase) { phase in
             if phase == .background || phase == .inactive {
-                session.syncBackgroundGuard(alarms: store.alarms)
+                session.syncBackgroundGuard(alarms: [store.sleepAlarm])
             }
         }
     }
@@ -553,27 +537,20 @@ struct ContentView: View {
                     .padding(.vertical, 8)
                     .background(Color.white.opacity(0.74))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-                Button { creating = true } label: {
-                    Image(systemName: "plus")
-                        .font(.title2.weight(.black))
-                        .frame(width: 48, height: 48)
-                        .background(Color.orange)
-                        .foregroundStyle(.white)
-                        .clipShape(Circle())
-                }
             }
         }
     }
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Alarma de noche")
+            Text("Alarma principal")
                 .font(.headline)
                 .foregroundStyle(.orange)
             Text(store.sleepAlarm.timeText)
                 .font(.system(size: 88, weight: .bold, design: .serif))
                 .minimumScaleFactor(0.7)
-            Text("Alarma fiable con pantalla bloqueada - subida \(Int(store.sleepAlarm.fadeDuration / 60)) min")
+            timeQuickControls
+            Text("Para dormir y despertar - subida \(Int(store.sleepAlarm.fadeDuration / 60)) min")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.secondary)
             HStack {
@@ -605,16 +582,37 @@ struct ContentView: View {
         )
     }
 
-    private var alarmList: some View {
-        VStack(spacing: 12) {
-            ForEach(store.alarms) { alarm in
-                AlarmRow(alarm: alarm) {
-                    editingAlarm = alarm
-                } onToggle: { enabled in
-                    store.toggle(alarm, enabled: enabled)
-                }
-            }
+    private var timeQuickControls: some View {
+        HStack(spacing: 8) {
+            timeAdjustButton("-1h", minutes: -60)
+            timeAdjustButton("-5m", minutes: -5)
+            timeAdjustButton("+5m", minutes: 5)
+            timeAdjustButton("+1h", minutes: 60)
         }
+    }
+
+    private func timeAdjustButton(_ title: String, minutes: Int) -> some View {
+        Button {
+            adjustSleepAlarm(minutes: minutes)
+        } label: {
+            Text(title)
+                .font(.subheadline.weight(.black))
+                .frame(maxWidth: .infinity)
+                .frame(height: 38)
+                .background(Color.white.opacity(0.58))
+                .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
+    private func adjustSleepAlarm(minutes delta: Int) {
+        var alarm = store.sleepAlarm
+        let dayMinutes = 24 * 60
+        let current = alarm.hour * 60 + alarm.minute
+        let adjusted = (current + delta + dayMinutes) % dayMinutes
+        alarm.hour = adjusted / 60
+        alarm.minute = adjusted % 60
+        store.updateSleepAlarm(alarm)
     }
 
 }
