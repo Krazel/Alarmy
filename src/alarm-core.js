@@ -58,7 +58,7 @@ export function createDefaultAlarm(id) {
     id,
     label: "Manana",
     time: "07:30",
-    days: [1, 2, 3, 4, 5],
+    days: [],
     soundIds: ["aurora", "piano", "rain"],
     randomSound: true,
     fadeInEnabled: true,

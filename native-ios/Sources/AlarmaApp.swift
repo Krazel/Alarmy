@@ -30,7 +30,7 @@ struct Alarm: Identifiable, Codable, Equatable {
     var label = "Manana"
     var hour = 7
     var minute = 30
-    var weekdays: Set<Int> = [2, 3, 4, 5, 6]
+    var weekdays: Set<Int> = []
     var soundIds: [String] = ["sunrise", "piano", "rain"]
     var randomSound = true
     var fadeInEnabled = true
@@ -510,6 +510,7 @@ struct ContentView: View {
             EditAlarmView(
                 alarm: store.sleepAlarm,
                 title: "Alarma principal",
+                allowRepeatDays: false,
                 onSave: { updated in store.updateSleepAlarm(updated) },
                 onDelete: nil
             )
@@ -631,29 +632,40 @@ struct SwipeTimeText: View {
 
     var body: some View {
         GeometryReader { proxy in
-            Text(timeText)
-                .font(.system(size: 88, weight: .bold, design: .serif))
-                .minimumScaleFactor(0.7)
-                .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 8)
-                        .onChanged { value in
-                            let step = Int((-value.translation.height / 22).rounded(.towardZero))
-                            guard step != lastStep else { return }
-                            let delta = step - lastStep
-                            lastStep = step
-                            let component: TimeComponent = value.startLocation.x < proxy.size.width * 0.53 ? .hour : .minute
-                            onAdjust(component, delta)
-                        }
-                        .onEnded { _ in
-                            lastStep = 0
-                        }
-                )
+            ZStack(alignment: .leading) {
+                Text(timeText)
+                    .font(.system(size: 88, weight: .bold, design: .serif))
+                    .minimumScaleFactor(0.7)
+                    .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
+                    .allowsHitTesting(false)
+
+                HStack(spacing: 0) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(timeDragGesture(for: .hour))
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .highPriorityGesture(timeDragGesture(for: .minute))
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .leading)
         }
         .frame(height: 104)
         .frame(maxWidth: .infinity)
+    }
+
+    private func timeDragGesture(for component: TimeComponent) -> some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                let step = Int((-value.translation.height / 18).rounded(.towardZero))
+                guard step != lastStep else { return }
+                let delta = step - lastStep
+                lastStep = step
+                onAdjust(component, delta)
+            }
+            .onEnded { _ in
+                lastStep = 0
+            }
     }
 }
 
@@ -765,7 +777,7 @@ struct EditAlarmView: View {
     @Environment(\.dismiss) private var dismiss
     @State var alarm: Alarm
     var title = "Editar alarma"
-    var allowRepeatDays = true
+    var allowRepeatDays = false
     let onSave: (Alarm) -> Void
     let onDelete: (() -> Void)?
 
@@ -828,15 +840,9 @@ struct EditAlarmView: View {
 
                 Section("Despertar") {
                     Toggle("Volumen progresivo", isOn: $alarm.fadeInEnabled)
-                    Slider(value: $alarm.fadeDuration, in: 30...300, step: 30) {
-                        Text("Subida")
-                    } minimumValueLabel: {
-                        Text("30s")
-                    } maximumValueLabel: {
-                        Text("5m")
-                    }
+                    FadeDurationControl(duration: $alarm.fadeDuration)
                     Toggle("Mover para posponer", isOn: $alarm.motionSnooze)
-                    Stepper("Posponer \(alarm.snoozeMinutes) min", value: $alarm.snoozeMinutes, in: 5...20, step: 5)
+                    Stepper("Posponer \(alarm.snoozeMinutes) min", value: $alarm.snoozeMinutes, in: 1...60, step: 1)
                 }
 
                 if onDelete != nil {
@@ -856,6 +862,7 @@ struct EditAlarmView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Guardar") {
                         alarm.randomSound = alarm.soundIds.count > 1
+                        if !allowRepeatDays { alarm.weekdays = [] }
                         onSave(alarm)
                         dismiss()
                     }
@@ -874,6 +881,58 @@ struct EditAlarmView: View {
             let components = Calendar.current.dateComponents([.hour, .minute], from: date)
             alarm.hour = components.hour ?? alarm.hour
             alarm.minute = components.minute ?? alarm.minute
+        }
+    }
+}
+
+struct FadeDurationControl: View {
+    @Binding var duration: Double
+
+    private var progress: Double {
+        (duration - 30) / 270
+    }
+
+    private var durationText: String {
+        if duration < 60 { return "\(Int(duration)) s" }
+        let minutes = duration / 60
+        if minutes.rounded() == minutes { return "\(Int(minutes)) min" }
+        return String(format: "%.1f min", minutes)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Subida")
+                Spacer()
+                Text(durationText)
+                    .font(.headline.weight(.black))
+                    .foregroundStyle(.orange)
+            }
+
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.gray.opacity(0.18))
+                        .frame(height: 4)
+                    Capsule()
+                        .fill(Color.orange)
+                        .frame(width: proxy.size.width * progress, height: 4)
+                    Rectangle()
+                        .fill(Color(red: 0.31, green: 0.15, blue: 0.08))
+                        .frame(width: 3, height: 18)
+                        .offset(x: max(0, min(proxy.size.width - 3, proxy.size.width * progress)))
+                }
+                .frame(height: 24)
+            }
+            .frame(height: 24)
+
+            Slider(value: $duration, in: 30...300, step: 30) {
+                Text("Subida")
+            } minimumValueLabel: {
+                Text("30s")
+            } maximumValueLabel: {
+                Text("5m")
+            }
         }
     }
 }

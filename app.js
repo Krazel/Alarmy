@@ -94,6 +94,7 @@ function nextOccurrence(alarm, from = new Date()) {
 }
 
 function renderDays() {
+  if (!els.dayGrid) return;
   els.dayGrid.innerHTML = "";
   DAYS.forEach((day) => {
     const button = document.createElement("button");
@@ -232,12 +233,17 @@ function renderSleepHero() {
   const alarm = upcoming.alarm;
   const sounds = alarm.randomSound ? "música aleatoria" : soundName(alarm.soundIds?.[0]);
   els.heroTime.textContent = alarm.time;
-  els.heroDetail.textContent = `${daySummary(alarm.days)} · ${sounds} · subida ${formatDuration(alarm.fadeDuration)}`;
+  els.heroDetail.textContent = `${sounds} · subida ${formatDuration(alarm.fadeDuration)}`;
   els.startNightButton.disabled = false;
 }
 
 function renderFadeOutput() {
-  els.fadeDurationOutput.value = formatDuration(Number(els.fadeDuration.value));
+  const value = Number(els.fadeDuration.value);
+  const min = Number(els.fadeDuration.min);
+  const max = Number(els.fadeDuration.max);
+  const progress = ((value - min) / (max - min)) * 100;
+  els.fadeDurationOutput.value = formatDuration(value);
+  els.fadeDuration.style.setProperty("--range-progress", `${progress}%`);
 }
 
 function defaultAlarm() {
@@ -251,7 +257,7 @@ function openDialog(id = null) {
   els.deleteAlarmButton.hidden = !id;
   els.alarmLabel.value = alarm.label || "";
   els.alarmTime.value = alarm.time;
-  selectedDays = new Set(alarm.days || []);
+  selectedDays = new Set();
   selectedSounds = new Set(alarm.soundIds?.length ? alarm.soundIds : ["aurora"]);
   els.randomSound.checked = alarm.randomSound;
   els.fadeInEnabled.checked = alarm.fadeInEnabled;
@@ -270,18 +276,19 @@ function closeDialog() {
 }
 
 function saveForm() {
+  const snoozeMinutes = Math.max(1, Math.min(60, Number(els.snoozeMinutes.value) || 5));
   const alarm = {
     id: editingId || uid(),
     label: els.alarmLabel.value.trim() || "Alarma",
     time: els.alarmTime.value,
-    days: [...selectedDays],
+    days: [],
     soundIds: [...selectedSounds],
     randomSound: els.randomSound.checked,
     fadeInEnabled: els.fadeInEnabled.checked,
     silentOverride: els.silentOverride.checked,
     fadeDuration: Number(els.fadeDuration.value),
     motionSnooze: els.motionSnooze.checked,
-    snoozeMinutes: Number(els.snoozeMinutes.value),
+    snoozeMinutes,
     enabled: true,
   };
 
@@ -617,7 +624,7 @@ function seedFirstAlarm() {
   const second = defaultAlarm();
   second.id = uid();
   second.time = "08:45";
-  second.label = "Lunes a Viernes";
+  second.label = "Segunda alarma";
   second.soundIds = ["piano"];
   second.randomSound = false;
   second.enabled = false;
@@ -625,8 +632,7 @@ function seedFirstAlarm() {
   const third = defaultAlarm();
   third.id = uid();
   third.time = "09:30";
-  third.label = "Sábado";
-  third.days = [6];
+  third.label = "Tercera alarma";
   third.soundIds = ["rain"];
   third.randomSound = false;
   third.enabled = false;

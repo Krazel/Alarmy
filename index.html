@@ -34,7 +34,7 @@
         <div class="sleep-card__top">
           <span>Próximo despertar</span>
           <strong id="heroTime">07:30</strong>
-          <small id="heroDetail">Laborables · música aleatoria</small>
+          <small id="heroDetail">música aleatoria</small>
         </div>
         <div class="sleep-card__scene" aria-hidden="true">
           <span class="sleep-sun"></span>
@@ -112,11 +112,6 @@
         </label>
 
         <div class="field">
-          <span>Días</span>
-          <div class="day-grid" id="dayGrid"></div>
-        </div>
-
-        <div class="field">
           <span>Músicas posibles</span>
           <div class="sound-grid" id="soundGrid"></div>
         </div>
@@ -163,11 +158,7 @@
 
         <label class="field inline">
           <span>Posponer</span>
-          <select id="snoozeMinutes">
-            <option value="5">5 minutos</option>
-            <option value="10">10 minutos</option>
-            <option value="15">15 minutos</option>
-          </select>
+          <input id="snoozeMinutes" type="number" min="1" max="60" step="1" inputmode="numeric" value="5" />
         </label>
 
         <div class="sheet-actions">
