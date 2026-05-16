@@ -1,4 +1,4 @@
-const CACHE_NAME = "alarma-pwa-v5";
+const CACHE_NAME = "alarma-pwa-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,8 @@ const ASSETS = [
   "./src/alarm-core.js",
   "./src/platform-web.js",
   "./manifest.json",
+  "./backgrounds/sunset-background.png",
+  "./backgrounds/night-background.png",
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
 ];

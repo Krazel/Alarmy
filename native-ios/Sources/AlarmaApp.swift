@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreMotion
 import SwiftUI
+import UIKit
 import UserNotifications
 
 @main
@@ -774,7 +775,7 @@ struct SleepBackdrop: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                Image(theme == .sunset ? "SunsetBackground" : "NightBackground")
+                backgroundImage
                     .resizable()
                     .scaledToFill()
                     .frame(width: proxy.size.width, height: proxy.size.height)
@@ -793,6 +794,19 @@ struct SleepBackdrop: View {
             .clipped()
             .ignoresSafeArea()
         }
+    }
+
+    private var backgroundImage: Image {
+        let assetName = theme == .sunset ? "SunsetBackground" : "NightBackground"
+        let fileName = theme == .sunset ? "sunset-background" : "night-background"
+        if let uiImage = UIImage(named: assetName) {
+            return Image(uiImage: uiImage)
+        }
+        if let url = Bundle.main.url(forResource: fileName, withExtension: "png"),
+           let uiImage = UIImage(contentsOfFile: url.path) {
+            return Image(uiImage: uiImage)
+        }
+        return Image(systemName: theme == .sunset ? "sun.max.fill" : "moon.stars.fill")
     }
 }
 
@@ -917,7 +931,7 @@ struct AlarmRow: View {
 struct EditAlarmView: View {
     @Environment(\.dismiss) private var dismiss
     @State var alarm: Alarm
-    @State private var showAllSounds = false
+    @State private var choosingSounds = false
     let theme: SleepTheme
     let onSave: (Alarm) -> Void
     let onDelete: (() -> Void)?
@@ -959,31 +973,20 @@ struct EditAlarmView: View {
                                     .font(.headline.weight(.bold))
                                     .foregroundStyle(theme.text)
                                 Spacer()
-                                Button("Deseleccionar") {
-                                    alarm.soundIds.removeAll()
-                                    alarm.randomSound = false
+                                Button("Escoger") {
+                                    choosingSounds = true
                                 }
-                                .font(.caption.weight(.black))
+                                .font(.headline.weight(.black))
                                 .foregroundStyle(theme.primary)
                             }
 
-                            SoundSelector(alarm: $alarm, theme: theme, showAll: showAllSounds)
-
-                            if AlarmSound.all.count > 5 {
-                                Button {
-                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                                        showAllSounds.toggle()
-                                    }
-                                } label: {
-                                    Text(showAllSounds ? "Ver menos" : "Ver mas")
-                                        .font(.headline.weight(.black))
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 44)
-                                        .background(panelFill)
-                                        .foregroundStyle(theme.primary)
-                                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                                }
-                            }
+                            Text(soundSummary)
+                                .font(.subheadline.weight(.black))
+                                .foregroundStyle(theme.secondaryText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16)
+                                .background(panelFill)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
 
                         FadeDurationControl(duration: $alarm.fadeDuration, theme: theme)
@@ -997,6 +1000,8 @@ struct EditAlarmView: View {
                         .padding(16)
                         .background(panelFill)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                        SnoozePresetSelector(minutes: $alarm.snoozeMinutes, theme: theme)
                     }
                     .padding(.bottom, 4)
                 }
@@ -1022,10 +1027,20 @@ struct EditAlarmView: View {
             .padding(.top, 58)
             .padding(.bottom, 28)
         }
+        .sheet(isPresented: $choosingSounds) {
+            SoundPickerSheet(alarm: $alarm, theme: theme)
+        }
     }
 
     private var panelFill: Color {
         theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.07)
+    }
+
+    private var soundSummary: String {
+        let selected = AlarmSound.all.filter { alarm.soundIds.contains($0.id) }
+        if selected.isEmpty { return "Ninguna seleccionada" }
+        if selected.count == 1 { return selected[0].name }
+        return "\(selected.count) seleccionadas"
     }
 }
 
@@ -1073,44 +1088,133 @@ struct TimeStepperColumn: View {
     let range: ClosedRange<Int>
     let theme: SleepTheme
     let onChange: (Int) -> Void
+    @State private var lastStep = 0
 
     var body: some View {
         VStack(spacing: 10) {
             Text(title)
                 .font(.caption.weight(.black))
                 .foregroundStyle(theme.secondaryText)
-            Button {
-                onChange(wrapped(value + 1))
-            } label: {
-                Image(systemName: "chevron.up")
-                    .font(.headline.weight(.black))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 34)
-            }
             Text(String(format: "%02d", value))
                 .font(.system(size: 54, weight: .bold, design: .serif))
                 .foregroundStyle(theme.text)
                 .frame(maxWidth: .infinity)
-                .frame(height: 62)
+                .frame(height: 96)
                 .background(theme == .sunset ? Color.white.opacity(0.32) : Color.black.opacity(0.16))
                 .clipShape(RoundedRectangle(cornerRadius: 14))
-            Button {
-                onChange(wrapped(value - 1))
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(.headline.weight(.black))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 34)
-            }
+                .contentShape(Rectangle())
+                .gesture(dragGesture)
+            Text("Arrastra")
+                .font(.caption2.weight(.black))
+                .foregroundStyle(theme.secondaryText.opacity(0.76))
         }
         .buttonStyle(.plain)
         .foregroundStyle(theme.primary)
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { gesture in
+                let step = Int((-gesture.translation.height / 18).rounded(.towardZero))
+                guard step != lastStep else { return }
+                let delta = step - lastStep
+                lastStep = step
+                onChange(wrapped(value + delta))
+            }
+            .onEnded { _ in
+                lastStep = 0
+            }
     }
 
     private func wrapped(_ rawValue: Int) -> Int {
         if rawValue < range.lowerBound { return range.upperBound }
         if rawValue > range.upperBound { return range.lowerBound }
         return rawValue
+    }
+}
+
+struct SnoozePresetSelector: View {
+    @Binding var minutes: Int
+    let theme: SleepTheme
+    private let options = [1, 3, 5, 10]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Posponer", systemImage: "moon.zzz.fill")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(theme.text)
+
+            HStack(spacing: 8) {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        minutes = option
+                    } label: {
+                        Text("\(option) min")
+                            .font(.subheadline.weight(.black))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 42)
+                            .background(minutes == option ? theme.primary.opacity(0.22) : panelFill)
+                            .foregroundStyle(minutes == option ? theme.primary : theme.text)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(minutes == option ? theme.primary.opacity(0.58) : theme.secondaryText.opacity(0.16), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(16)
+        .background(panelFill)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    private var panelFill: Color {
+        theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.07)
+    }
+}
+
+struct SoundPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var alarm: Alarm
+    let theme: SleepTheme
+
+    var body: some View {
+        ZStack {
+            SleepBackdrop(theme: theme)
+                .ignoresSafeArea()
+                .overlay(theme == .sunset ? Color.white.opacity(0.48) : Color.black.opacity(0.24))
+
+            VStack(spacing: 18) {
+                HStack {
+                    Text("Musicas posibles")
+                        .font(.title3.weight(.black))
+                        .foregroundStyle(theme.text)
+                    Spacer()
+                    Button("Hecho") {
+                        dismiss()
+                    }
+                    .font(.headline.weight(.black))
+                    .foregroundStyle(theme.primary)
+                }
+
+                ScrollView(showsIndicators: false) {
+                    SoundSelector(alarm: $alarm, theme: theme, showAll: true)
+                }
+
+                Button("Deseleccionar") {
+                    alarm.soundIds.removeAll()
+                    alarm.randomSound = false
+                }
+                .font(.headline.weight(.black))
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .foregroundStyle(theme.primary)
+                .background(theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.07))
+                .clipShape(Capsule())
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 58)
+            .padding(.bottom, 28)
+        }
     }
 }
 

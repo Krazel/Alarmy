@@ -16,7 +16,6 @@
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <span class="eyebrow">Despertador</span>
           <h1>Alarme</h1>
         </div>
         <button class="icon-button" id="addAlarmButton" type="button" aria-label="Crear alarma">
@@ -32,9 +31,7 @@
 
       <section class="sleep-card" id="sleepCard">
         <div class="sleep-card__top">
-          <span>Próximo despertar</span>
           <strong id="heroTime">07:30</strong>
-          <small id="heroDetail">música aleatoria</small>
         </div>
         <div class="sleep-card__scene" aria-hidden="true">
           <span class="sleep-sun"></span>
@@ -56,21 +53,6 @@
       </section>
 
       <section class="alarm-list" id="alarmList" aria-label="Lista de alarmas"></section>
-
-      <nav class="bottom-nav" aria-label="Navegación principal">
-        <button class="active" type="button">
-          <span aria-hidden="true">⏰</span>
-          Alarmas
-        </button>
-        <button type="button">
-          <span aria-hidden="true">▥</span>
-          Estadísticas
-        </button>
-        <button type="button">
-          <span aria-hidden="true">⚙</span>
-          Ajustes
-        </button>
-      </nav>
     </main>
 
     <section class="night-screen" id="nightScreen" hidden>
@@ -118,7 +100,10 @@
 
         <div class="field">
           <span>Músicas posibles</span>
-          <div class="sound-grid" id="soundGrid"></div>
+          <div class="sound-summary">
+            <strong id="soundSummary">3 seleccionadas</strong>
+            <button id="openSoundPickerButton" type="button">Escoger</button>
+          </div>
         </div>
 
         <label class="toggle-row">
@@ -166,11 +151,31 @@
           <input id="snoozeMinutes" type="number" min="1" max="60" step="1" inputmode="numeric" value="5" />
         </label>
 
+        <div class="snooze-presets" id="snoozePresets" aria-label="Tiempo para posponer">
+          <button type="button" data-snooze-minutes="1">1 min</button>
+          <button type="button" data-snooze-minutes="3">3 min</button>
+          <button type="button" data-snooze-minutes="5">5 min</button>
+          <button type="button" data-snooze-minutes="10">10 min</button>
+        </div>
+
         <div class="sheet-actions">
           <button class="danger ghost-text" id="deleteAlarmButton" type="button">Eliminar</button>
           <button class="primary" type="submit">Guardar</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog class="sound-dialog" id="soundDialog">
+      <div class="sound-dialog-body">
+        <div class="sheet-header">
+          <h2>Musicas posibles</h2>
+          <button class="icon-button ghost" id="closeSoundDialogButton" type="button" aria-label="Cerrar">
+            <span aria-hidden="true">&lt;</span>
+          </button>
+        </div>
+        <div class="sound-grid" id="soundGrid"></div>
+        <button class="primary" id="doneSoundDialogButton" type="button">Hecho</button>
+      </div>
     </dialog>
 
     <section class="ring-screen" id="ringScreen" hidden>

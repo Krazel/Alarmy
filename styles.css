@@ -31,8 +31,9 @@ body {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at 20% 8%, rgba(255, 222, 166, 0.64), transparent 22rem),
-    linear-gradient(180deg, #fffaf0 0%, var(--bg) 52%, #f7dcc2 100%);
+    linear-gradient(180deg, rgba(255, 250, 240, 0.76) 0%, rgba(255, 247, 232, 0.64) 52%, rgba(91, 42, 22, 0.14) 100%),
+    url("backgrounds/sunset-background.png") center / cover no-repeat,
+    #fff7e8;
   color: var(--text);
   letter-spacing: 0;
   position: fixed;
@@ -55,7 +56,9 @@ button {
   height: 100svh;
   margin: 0 auto;
   overflow: hidden;
-  padding: max(38px, env(safe-area-inset-top)) 18px calc(98px + env(safe-area-inset-bottom));
+  overscroll-behavior: none;
+  touch-action: none;
+  padding: max(38px, env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
 }
 
 .topbar {
@@ -129,6 +132,8 @@ h1 {
   border: 1px solid rgba(229, 128, 72, 0.3);
   border-radius: 8px;
   background:
+    linear-gradient(180deg, rgba(255, 241, 209, 0.42), rgba(76, 35, 20, 0.24)),
+    url("backgrounds/sunset-background.png") center bottom / cover no-repeat,
     linear-gradient(180deg, rgba(255, 241, 209, 0.92), rgba(251, 218, 174, 0.86)),
     #ffe7bf;
   box-shadow: var(--shadow);
@@ -427,7 +432,8 @@ h1 {
   color: var(--accent);
 }
 
-.sheet {
+.sheet,
+.sound-dialog {
   width: min(100%, 430px);
   max-height: 100svh;
   margin: auto;
@@ -437,11 +443,13 @@ h1 {
   color: var(--text);
 }
 
-.sheet::backdrop {
+.sheet::backdrop,
+.sound-dialog::backdrop {
   background: rgba(66, 32, 16, 0.48);
 }
 
-.sheet-body {
+.sheet-body,
+.sound-dialog-body {
   display: grid;
   gap: 16px;
   max-height: 100svh;
@@ -495,6 +503,30 @@ h1 {
   background: transparent;
   border: 0;
   padding: 0;
+}
+
+.sound-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.sound-summary strong {
+  min-width: 0;
+  color: var(--accent-deep);
+  font-weight: 900;
+}
+
+.sound-summary button {
+  min-height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #fff1d6;
+  color: var(--accent-deep);
+  padding: 0 16px;
+  font-weight: 900;
+  cursor: pointer;
 }
 
 .field > span,
@@ -571,6 +603,28 @@ select {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
+}
+
+.snooze-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.snooze-presets button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 250, 239, 0.72);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.snooze-presets button.active {
+  border-color: var(--line-strong);
+  background: rgba(238, 110, 73, 0.14);
+  color: var(--accent-deep);
 }
 
 .sound-grid {
@@ -750,7 +804,9 @@ select {
   padding: max(72px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom));
   background:
     radial-gradient(circle at 50% 28%, rgba(240, 136, 91, 0.24), transparent 15rem),
-    linear-gradient(180deg, #241b28 0%, #4d2a25 52%, #211317 100%);
+    linear-gradient(180deg, rgba(18, 17, 31, 0.30) 0%, rgba(23, 31, 47, 0.18) 52%, rgba(8, 10, 19, 0.62) 100%),
+    url("backgrounds/night-background.png") center / cover no-repeat,
+    #101522;
   color: #fff3da;
 }
 
@@ -850,7 +906,9 @@ select {
   overflow: hidden;
   padding: max(70px, env(safe-area-inset-top)) 24px max(38px, env(safe-area-inset-bottom));
   background:
-    linear-gradient(180deg, rgba(255, 235, 199, 0.92) 0%, rgba(245, 160, 92, 0.88) 46%, rgba(87, 38, 22, 0.97) 100%);
+    linear-gradient(180deg, rgba(255, 235, 199, 0.52) 0%, rgba(245, 160, 92, 0.36) 46%, rgba(87, 38, 22, 0.76) 100%),
+    url("backgrounds/sunset-background.png") center / cover no-repeat,
+    #f6b070;
   color: var(--text);
   text-align: center;
 }

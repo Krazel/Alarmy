@@ -9,6 +9,7 @@ const entries = [
   "app.js",
   "manifest.json",
   "sw.js",
+  "backgrounds",
   "icons",
   "src",
 ];

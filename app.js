@@ -9,7 +9,6 @@ const els = {
   prepareButton: document.querySelector("#prepareButton"),
   alarmList: document.querySelector("#alarmList"),
   heroTime: document.querySelector("#heroTime"),
-  heroDetail: document.querySelector("#heroDetail"),
   startNightButton: document.querySelector("#startNightButton"),
   editNextButton: document.querySelector("#editNextButton"),
   nextAlarmText: document.querySelector("#nextAlarmText"),
@@ -24,6 +23,11 @@ const els = {
   alarmHour: document.querySelector("#alarmHour"),
   alarmMinute: document.querySelector("#alarmMinute"),
   dayGrid: document.querySelector("#dayGrid"),
+  soundSummary: document.querySelector("#soundSummary"),
+  openSoundPickerButton: document.querySelector("#openSoundPickerButton"),
+  soundDialog: document.querySelector("#soundDialog"),
+  closeSoundDialogButton: document.querySelector("#closeSoundDialogButton"),
+  doneSoundDialogButton: document.querySelector("#doneSoundDialogButton"),
   soundGrid: document.querySelector("#soundGrid"),
   randomSound: document.querySelector("#randomSound"),
   fadeInEnabled: document.querySelector("#fadeInEnabled"),
@@ -32,6 +36,7 @@ const els = {
   fadeDurationOutput: document.querySelector("#fadeDurationOutput"),
   motionSnooze: document.querySelector("#motionSnooze"),
   snoozeMinutes: document.querySelector("#snoozeMinutes"),
+  snoozePresets: document.querySelector("#snoozePresets"),
   ringScreen: document.querySelector("#ringScreen"),
   ringLabel: document.querySelector("#ringLabel"),
   ringTime: document.querySelector("#ringTime"),
@@ -126,9 +131,31 @@ function renderSounds() {
     button.addEventListener("click", () => {
       if (selectedSounds.has(sound.id) && selectedSounds.size > 1) selectedSounds.delete(sound.id);
       else selectedSounds.add(sound.id);
+      updateSoundSummary();
       renderSounds();
     });
     els.soundGrid.append(button);
+  });
+  updateSoundSummary();
+}
+
+function updateSoundSummary() {
+  const selected = SOUNDS.filter((sound) => selectedSounds.has(sound.id));
+  if (!selected.length) {
+    els.soundSummary.textContent = "Ninguna seleccionada";
+    return;
+  }
+  if (selected.length === 1) {
+    els.soundSummary.textContent = selected[0].name;
+    return;
+  }
+  els.soundSummary.textContent = `${selected.length} seleccionadas`;
+}
+
+function renderSnoozePresets() {
+  const value = Number(els.snoozeMinutes.value) || 5;
+  els.snoozePresets.querySelectorAll("button").forEach((button) => {
+    button.classList.toggle("active", Number(button.dataset.snoozeMinutes) === value);
   });
 }
 
@@ -228,15 +255,12 @@ function renderSleepHero() {
   const upcoming = getNextUpcomingAlarm();
   if (!upcoming) {
     els.heroTime.textContent = "--:--";
-    els.heroDetail.textContent = "Activa una alarma para empezar la noche.";
     els.startNightButton.disabled = true;
     return;
   }
 
   const alarm = upcoming.alarm;
-  const sounds = alarm.randomSound ? "música aleatoria" : soundName(alarm.soundIds?.[0]);
   els.heroTime.textContent = alarm.time;
-  els.heroDetail.textContent = `${sounds} · subida ${formatDuration(alarm.fadeDuration)}`;
   els.startNightButton.disabled = false;
 }
 
@@ -319,6 +343,7 @@ function openDialog(id = null) {
   els.snoozeMinutes.value = alarm.snoozeMinutes;
   renderDays();
   renderSounds();
+  renderSnoozePresets();
   renderFadeOutput();
   els.alarmDialog.showModal();
 }
@@ -463,7 +488,7 @@ async function playSound(soundId, alarm) {
   master.connect(compressor).connect(ctx.destination);
   audio.gain = master;
 
-  if (sound.id === "rain" || sound.id === "waves") {
+  if (sound.id === "rain" || sound.id === "waves" || sound.id === "sea" || sound.id === "river" || sound.id === "white-noise") {
     makeNoisePad(ctx, master, sound.id);
   } else {
     makeTonePattern(ctx, master, sound);
@@ -503,17 +528,17 @@ function makeNoisePad(ctx, master, type) {
   const gain = ctx.createGain();
   source.buffer = buffer;
   source.loop = true;
-  filter.type = type === "waves" ? "lowpass" : "bandpass";
-  filter.frequency.value = type === "waves" ? 420 : 900;
-  gain.gain.value = type === "waves" ? 0.28 : 0.18;
+  filter.type = type === "white-noise" ? "highpass" : type === "waves" || type === "sea" || type === "river" ? "lowpass" : "bandpass";
+  filter.frequency.value = type === "white-noise" ? 1100 : type === "waves" || type === "sea" || type === "river" ? 420 : 900;
+  gain.gain.value = type === "white-noise" ? 0.12 : type === "waves" || type === "sea" || type === "river" ? 0.28 : 0.18;
   source.connect(filter).connect(gain).connect(master);
   source.start();
   audio.nodes.push(source, filter, gain);
 
   const lfo = ctx.createOscillator();
   const lfoGain = ctx.createGain();
-  lfo.frequency.value = type === "waves" ? 0.16 : 0.5;
-  lfoGain.gain.value = type === "waves" ? 220 : 90;
+  lfo.frequency.value = type === "waves" || type === "sea" || type === "river" ? 0.16 : 0.5;
+  lfoGain.gain.value = type === "waves" || type === "sea" || type === "river" ? 220 : 90;
   lfo.connect(lfoGain).connect(filter.frequency);
   lfo.start();
   audio.nodes.push(lfo, lfoGain);
@@ -714,19 +739,34 @@ els.endNightButton.addEventListener("click", endNight);
 els.prepareButton.addEventListener("click", prepareDevice);
 els.closeDialogButton.addEventListener("click", closeDialog);
 els.deleteAlarmButton.addEventListener("click", deleteCurrentAlarm);
+els.openSoundPickerButton.addEventListener("click", () => {
+  renderSounds();
+  els.soundDialog.showModal();
+});
+els.closeSoundDialogButton.addEventListener("click", () => els.soundDialog.close());
+els.doneSoundDialogButton.addEventListener("click", () => els.soundDialog.close());
+els.soundDialog.addEventListener("click", (event) => {
+  if (event.target === els.soundDialog) els.soundDialog.close();
+});
 els.alarmForm.querySelectorAll("[data-time-dial]").forEach((button) => {
   button.addEventListener("pointerdown", startTimeDrag);
   button.addEventListener("pointermove", moveTimeDrag);
   button.addEventListener("pointerup", stopTimeDrag);
   button.addEventListener("pointercancel", stopTimeDrag);
-  button.addEventListener("click", () => {
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
     if (button.dataset.skipClick) {
       delete button.dataset.skipClick;
-      return;
     }
-    adjustTime(button.dataset.timeDial, button.dataset.timeDial === "minute" ? 5 : 1);
   });
 });
+els.snoozePresets.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-snooze-minutes]");
+  if (!button) return;
+  els.snoozeMinutes.value = button.dataset.snoozeMinutes;
+  renderSnoozePresets();
+});
+els.snoozeMinutes.addEventListener("input", renderSnoozePresets);
 els.alarmForm.addEventListener("submit", (event) => {
   event.preventDefault();
   saveForm();
