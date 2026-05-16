@@ -549,7 +549,11 @@ struct ContentView: View {
             Text(store.sleepAlarm.timeText)
                 .font(.system(size: 88, weight: .bold, design: .serif))
                 .minimumScaleFactor(0.7)
-            timeQuickControls
+            DatePicker("Hora", selection: sleepTimeBinding, displayedComponents: .hourAndMinute)
+                .labelsHidden()
+                .datePickerStyle(.wheel)
+                .frame(height: 118)
+                .clipped()
             Text("Para dormir y despertar - subida \(Int(store.sleepAlarm.fadeDuration / 60)) min")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.secondary)
@@ -582,37 +586,19 @@ struct ContentView: View {
         )
     }
 
-    private var timeQuickControls: some View {
-        HStack(spacing: 8) {
-            timeAdjustButton("-1h", minutes: -60)
-            timeAdjustButton("-5m", minutes: -5)
-            timeAdjustButton("+5m", minutes: 5)
-            timeAdjustButton("+1h", minutes: 60)
+    private var sleepTimeBinding: Binding<Date> {
+        Binding {
+            var components = DateComponents()
+            components.hour = store.sleepAlarm.hour
+            components.minute = store.sleepAlarm.minute
+            return Calendar.current.date(from: components) ?? Date()
+        } set: { date in
+            var alarm = store.sleepAlarm
+            let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+            alarm.hour = components.hour ?? alarm.hour
+            alarm.minute = components.minute ?? alarm.minute
+            store.updateSleepAlarm(alarm)
         }
-    }
-
-    private func timeAdjustButton(_ title: String, minutes: Int) -> some View {
-        Button {
-            adjustSleepAlarm(minutes: minutes)
-        } label: {
-            Text(title)
-                .font(.subheadline.weight(.black))
-                .frame(maxWidth: .infinity)
-                .frame(height: 38)
-                .background(Color.white.opacity(0.58))
-                .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-    }
-
-    private func adjustSleepAlarm(minutes delta: Int) {
-        var alarm = store.sleepAlarm
-        let dayMinutes = 24 * 60
-        let current = alarm.hour * 60 + alarm.minute
-        let adjusted = (current + delta + dayMinutes) % dayMinutes
-        alarm.hour = adjusted / 60
-        alarm.minute = adjusted % 60
-        store.updateSleepAlarm(alarm)
     }
 
 }
@@ -693,7 +679,7 @@ struct EditAlarmView: View {
                             set: { enabled in
                                 if enabled {
                                     if !alarm.soundIds.contains(sound.id) { alarm.soundIds.append(sound.id) }
-                                } else if alarm.soundIds.count > 1 {
+                                } else {
                                     alarm.soundIds.removeAll { $0 == sound.id }
                                 }
                             }
