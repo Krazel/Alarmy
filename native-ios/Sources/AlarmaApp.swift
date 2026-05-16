@@ -560,7 +560,7 @@ struct ContentView: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 header
-                    .padding(.top, 70)
+                    .padding(.top, 56)
 
                 AlarmHeroCard(
                     alarm: store.sleepAlarm,
@@ -568,7 +568,7 @@ struct ContentView: View {
                     onAdjust: adjustSleepAlarm,
                     onEdit: { editingSleepAlarm = true }
                 )
-                .padding(.top, 42)
+                .padding(.top, 30)
 
                 Spacer()
 
@@ -624,12 +624,12 @@ struct ContentView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(store.sleepTheme.title)
-                    .font(.system(size: 52, weight: .bold, design: .serif))
+                    .font(.system(size: 46, weight: .bold, design: .serif))
                     .foregroundStyle(store.sleepTheme.text)
                     .minimumScaleFactor(0.75)
 
                 Text(appIdentityText)
-                    .font(.subheadline.weight(.black))
+                    .font(.caption.weight(.black))
                     .foregroundStyle(store.sleepTheme.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.74)
@@ -684,16 +684,16 @@ struct AlarmHeroCard: View {
                 ZStack {
                     Circle()
                         .fill(theme == .sunset ? Color(red: 0.78, green: 0.36, blue: 0.17).opacity(0.18) : theme.primary.opacity(0.16))
-                        .frame(width: 58, height: 58)
+                        .frame(width: 52, height: 52)
                     Image(systemName: theme == .sunset ? "moon.stars.fill" : "moon.fill")
-                        .font(.system(size: 29, weight: .bold))
+                        .font(.system(size: 25, weight: .bold))
                         .foregroundStyle(theme.primary)
                 }
                 Spacer()
                 Button(action: onEdit) {
                     Image(systemName: "pencil")
                         .font(.system(size: 18, weight: .black))
-                        .frame(width: 50, height: 50)
+                        .frame(width: 46, height: 46)
                         .background(theme == .sunset ? Color.white.opacity(0.66) : Color.white.opacity(0.08))
                         .foregroundStyle(theme.primary)
                         .clipShape(Circle())
@@ -703,13 +703,13 @@ struct AlarmHeroCard: View {
 
             VStack(spacing: 8) {
                 SwipeTimeText(timeText: alarm.timeText, textColor: theme.text, alignment: .center, onAdjust: onAdjust)
-                    .frame(height: 96)
+                    .frame(height: 86)
                 Text("Cada noche")
                     .font(.headline.weight(.black))
                     .foregroundStyle(theme.primary)
             }
         }
-        .padding(20)
+        .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 28)
                 .fill(theme == .sunset ? Color.white.opacity(0.50) : Color(red: 0.02, green: 0.13, blue: 0.20).opacity(0.68))
@@ -733,7 +733,7 @@ struct SwipeTimeText: View {
         GeometryReader { proxy in
             ZStack(alignment: alignment) {
                 Text(timeText)
-                    .font(.system(size: 88, weight: .bold, design: .serif))
+                    .font(.system(size: 78, weight: .bold, design: .serif))
                     .minimumScaleFactor(0.7)
                     .foregroundStyle(textColor)
                     .allowsHitTesting(false)
@@ -749,7 +749,7 @@ struct SwipeTimeText: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: alignment)
         }
-        .frame(height: 104)
+        .frame(height: 90)
         .frame(maxWidth: .infinity)
     }
 
@@ -772,19 +772,25 @@ struct SleepBackdrop: View {
     let theme: SleepTheme
 
     var body: some View {
-        ZStack {
-            Image(theme == .sunset ? "SunsetBackground" : "NightBackground")
-                .resizable()
-                .scaledToFill()
-                .ignoresSafeArea()
+        GeometryReader { proxy in
+            ZStack {
+                Image(theme == .sunset ? "SunsetBackground" : "NightBackground")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
 
-            LinearGradient(
-                colors: theme == .sunset
-                    ? [Color.white.opacity(0.42), Color.white.opacity(0.10), Color(red: 0.47, green: 0.20, blue: 0.10).opacity(0.22)]
-                    : [Color.black.opacity(0.28), Color.black.opacity(0.08), Color.black.opacity(0.54)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+                LinearGradient(
+                    colors: theme == .sunset
+                        ? [Color.white.opacity(0.42), Color.white.opacity(0.10), Color(red: 0.47, green: 0.20, blue: 0.10).opacity(0.22)]
+                        : [Color.black.opacity(0.28), Color.black.opacity(0.08), Color.black.opacity(0.54)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(width: proxy.size.width, height: proxy.size.height)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
             .ignoresSafeArea()
         }
     }
