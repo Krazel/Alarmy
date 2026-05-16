@@ -566,7 +566,10 @@ struct ContentView: View {
             Text("Alarma principal")
                 .font(.headline)
                 .foregroundStyle(Color(red: 0.86, green: 0.28, blue: 0.16))
-            TimeNumberPicker(hour: sleepHourBinding, minute: sleepMinuteBinding)
+            SwipeTimeText(
+                timeText: store.sleepAlarm.timeText,
+                onAdjust: adjustSleepAlarm
+            )
             Text("Para dormir y despertar - subida \(Int(store.sleepAlarm.fadeDuration / 60)) min")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(Color(red: 0.41, green: 0.20, blue: 0.11).opacity(0.76))
@@ -603,65 +606,54 @@ struct ContentView: View {
         )
     }
 
-    private var sleepHourBinding: Binding<Int> {
-        Binding {
-            store.sleepAlarm.hour
-        } set: { hour in
-            var alarm = store.sleepAlarm
-            alarm.hour = hour
-            store.updateSleepAlarm(alarm)
+    private func adjustSleepAlarm(component: TimeComponent, amount: Int) {
+        var alarm = store.sleepAlarm
+        switch component {
+        case .hour:
+            alarm.hour = (alarm.hour + amount + 24) % 24
+        case .minute:
+            alarm.minute = (alarm.minute + amount + 60) % 60
         }
-    }
-
-    private var sleepMinuteBinding: Binding<Int> {
-        Binding {
-            store.sleepAlarm.minute
-        } set: { minute in
-            var alarm = store.sleepAlarm
-            alarm.minute = minute
-            store.updateSleepAlarm(alarm)
-        }
+        store.updateSleepAlarm(alarm)
     }
 
 }
 
-struct TimeNumberPicker: View {
-    @Binding var hour: Int
-    @Binding var minute: Int
+enum TimeComponent {
+    case hour
+    case minute
+}
+
+struct SwipeTimeText: View {
+    let timeText: String
+    let onAdjust: (TimeComponent, Int) -> Void
+    @State private var lastStep = 0
 
     var body: some View {
-        HStack(spacing: 0) {
-            Picker("Hora", selection: $hour) {
-                ForEach(0..<24, id: \.self) { value in
-                    Text(String(format: "%02d", value))
-                        .font(.system(size: 64, weight: .bold, design: .serif))
-                        .tag(value)
-                }
-            }
-            .pickerStyle(.wheel)
-            .frame(width: 118, height: 116)
-            .clipped()
-
-            Text(":")
-                .font(.system(size: 68, weight: .bold, design: .serif))
+        GeometryReader { proxy in
+            Text(timeText)
+                .font(.system(size: 88, weight: .bold, design: .serif))
+                .minimumScaleFactor(0.7)
                 .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
-                .offset(y: -2)
-
-            Picker("Minuto", selection: $minute) {
-                ForEach(0..<60, id: \.self) { value in
-                    Text(String(format: "%02d", value))
-                        .font(.system(size: 64, weight: .bold, design: .serif))
-                        .tag(value)
-                }
-            }
-            .pickerStyle(.wheel)
-            .frame(width: 118, height: 116)
-            .clipped()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 8)
+                        .onChanged { value in
+                            let step = Int((-value.translation.height / 22).rounded(.towardZero))
+                            guard step != lastStep else { return }
+                            let delta = step - lastStep
+                            lastStep = step
+                            let component: TimeComponent = value.startLocation.x < proxy.size.width * 0.53 ? .hour : .minute
+                            onAdjust(component, delta)
+                        }
+                        .onEnded { _ in
+                            lastStep = 0
+                        }
+                )
         }
+        .frame(height: 104)
         .frame(maxWidth: .infinity)
-        .background(Color.white.opacity(0.28))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .tint(Color(red: 0.31, green: 0.15, blue: 0.08))
     }
 }
 
