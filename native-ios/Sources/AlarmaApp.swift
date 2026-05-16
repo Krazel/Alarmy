@@ -811,6 +811,10 @@ struct SleepBackdrop: View {
            let uiImage = UIImage(contentsOfFile: url.path) {
             return uiImage
         }
+        if let url = Bundle.main.url(forResource: fileName, withExtension: "jpg"),
+           let uiImage = UIImage(contentsOfFile: url.path) {
+            return uiImage
+        }
         return nil
     }
 

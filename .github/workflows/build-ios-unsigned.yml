@@ -51,10 +51,10 @@ jobs:
             echo "No .app found"
             exit 1
           fi
-          if [ ! -f "$APP_PATH/Assets.car" ] && [ ! -f "$APP_PATH/sunset-background.png" ]; then
-            cp native-ios/Resources/*.png "$APP_PATH/"
+          if [ ! -f "$APP_PATH/sunset-background.jpg" ]; then
+            cp native-ios/Resources/*-background.jpg "$APP_PATH/"
           fi
-          if [ ! -f "$APP_PATH/Assets.car" ] && [ ! -f "$APP_PATH/sunset-background.png" ]; then
+          if [ ! -f "$APP_PATH/sunset-background.jpg" ] || [ ! -f "$APP_PATH/night-background.jpg" ]; then
             echo "Background resources were not bundled"
             find "$APP_PATH" -maxdepth 2 -type f | sort
             exit 1

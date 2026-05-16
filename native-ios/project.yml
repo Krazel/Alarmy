@@ -17,6 +17,8 @@ targets:
         buildPhase: resources
         excludes:
           - Info.plist
+          - Assets.xcassets
+          - "*.png"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dmkr.alarma
