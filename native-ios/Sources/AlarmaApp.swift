@@ -244,15 +244,9 @@ final class NightSession: ObservableObject {
         alarmMonitor = timer
     }
 
-    func syncBackgroundGuard(alarms: [Alarm]) {
+    func syncBackgroundGuard(alarms _: [Alarm]) {
         guard activeAlarm == nil, ringingAlarm == nil else { return }
-        let shouldRun = alarms.contains { $0.enabled }
-        if shouldRun {
-            if !backgroundGuardActive {
-                sound.startKeepAlive()
-                backgroundGuardActive = true
-            }
-        } else if backgroundGuardActive {
+        if backgroundGuardActive {
             sound.stop()
             backgroundGuardActive = false
         }
@@ -260,7 +254,7 @@ final class NightSession: ObservableObject {
 
     func start(alarm: Alarm) {
         activeAlarm = alarm
-        backgroundGuardActive = false
+        backgroundGuardActive = true
         UIApplication.shared.isIdleTimerDisabled = true
         sound.startKeepAlive()
         startClock()
@@ -579,7 +573,7 @@ struct ContentView: View {
             Text(store.sleepAlarm.timeText)
                 .font(.system(size: 88, weight: .bold, design: .serif))
                 .minimumScaleFactor(0.7)
-            Text("Sesion de sueno independiente - subida \(Int(store.sleepAlarm.fadeDuration / 60)) min")
+            Text("Alarma fiable con pantalla bloqueada - subida \(Int(store.sleepAlarm.fadeDuration / 60)) min")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.secondary)
             HStack {
@@ -639,7 +633,7 @@ struct AlarmRow: View {
                     Text(alarm.label)
                         .font(.headline.weight(.bold))
                         .foregroundStyle(.orange)
-                    Text("\(alarm.repeatText) - \(alarm.randomSound ? "aleatoria" : "fija") - mover pospone")
+                    Text("\(alarm.repeatText) - aviso iOS, sin audio todo el dia")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.secondary)
                 }
