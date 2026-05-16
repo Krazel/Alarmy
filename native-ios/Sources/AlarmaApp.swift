@@ -364,6 +364,14 @@ final class AlarmSoundPlayer {
     private var phase = 0.0
     private var gain: Float = 0.04
 
+    static func preview(sound: AlarmSound) {
+        let player = AlarmSoundPlayer()
+        player.startPreview(sound: sound)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            player.stop()
+        }
+    }
+
     static func configurePlaybackSession() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
@@ -407,10 +415,33 @@ final class AlarmSoundPlayer {
         try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
         try? session.setActive(true)
 
-        let soundId = alarm.randomSound ? (alarm.soundIds.randomElement() ?? "sunrise") : (alarm.soundIds.first ?? "sunrise")
+        let soundId = alarm.soundIds.count > 1 ? (alarm.soundIds.randomElement() ?? "sunrise") : (alarm.soundIds.first ?? "sunrise")
         let sound = AlarmSound.all.first { $0.id == soundId } ?? AlarmSound.all[0]
+        play(sound: sound, initialGain: alarm.fadeInEnabled ? 0.035 : 0.85)
+
+        if alarm.fadeInEnabled {
+            let started = Date()
+            rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+                guard let self else { return }
+                let elapsed = Date().timeIntervalSince(started)
+                let progress = min(1, elapsed / max(1, alarm.fadeDuration))
+                self.gain = Float(0.035 + progress * 0.865)
+                if progress >= 1 { timer.invalidate() }
+            }
+        }
+    }
+
+    private func startPreview(sound: AlarmSound) {
+        stop()
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? session.setActive(true)
+        play(sound: sound, initialGain: 0.22)
+    }
+
+    private func play(sound: AlarmSound, initialGain: Float) {
         let sampleRate = 44_100.0
-        gain = alarm.fadeInEnabled ? 0.035 : 0.85
+        gain = initialGain
         phase = 0
 
         let node = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList in
@@ -434,17 +465,6 @@ final class AlarmSoundPlayer {
         engine.connect(node, to: engine.mainMixerNode, format: format)
         sourceNode = node
         try? engine.start()
-
-        if alarm.fadeInEnabled {
-            let started = Date()
-            rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
-                guard let self else { return }
-                let elapsed = Date().timeIntervalSince(started)
-                let progress = min(1, elapsed / max(1, alarm.fadeDuration))
-                self.gain = Float(0.035 + progress * 0.865)
-                if progress >= 1 { timer.invalidate() }
-            }
-        }
     }
 
     func stop() {
@@ -545,18 +565,11 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Alarma principal")
                 .font(.headline)
-                .foregroundStyle(.orange)
-            Text(store.sleepAlarm.timeText)
-                .font(.system(size: 88, weight: .bold, design: .serif))
-                .minimumScaleFactor(0.7)
-            DatePicker("Hora", selection: sleepTimeBinding, displayedComponents: .hourAndMinute)
-                .labelsHidden()
-                .datePickerStyle(.wheel)
-                .frame(height: 118)
-                .clipped()
+                .foregroundStyle(Color(red: 0.86, green: 0.28, blue: 0.16))
+            TimeNumberPicker(hour: sleepHourBinding, minute: sleepMinuteBinding)
             Text("Para dormir y despertar - subida \(Int(store.sleepAlarm.fadeDuration / 60)) min")
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color(red: 0.41, green: 0.20, blue: 0.11).opacity(0.76))
             HStack {
                 Button {
                     session.start(alarm: store.sleepAlarm)
@@ -581,26 +594,147 @@ struct ContentView: View {
         }
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(LinearGradient(colors: [Color(red: 1.0, green: 0.88, blue: 0.63), Color(red: 0.91, green: 0.51, blue: 0.31)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            SunsetScene()
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.white.opacity(0.16))
+                )
         )
     }
 
-    private var sleepTimeBinding: Binding<Date> {
+    private var sleepHourBinding: Binding<Int> {
         Binding {
-            var components = DateComponents()
-            components.hour = store.sleepAlarm.hour
-            components.minute = store.sleepAlarm.minute
-            return Calendar.current.date(from: components) ?? Date()
-        } set: { date in
+            store.sleepAlarm.hour
+        } set: { hour in
             var alarm = store.sleepAlarm
-            let components = Calendar.current.dateComponents([.hour, .minute], from: date)
-            alarm.hour = components.hour ?? alarm.hour
-            alarm.minute = components.minute ?? alarm.minute
+            alarm.hour = hour
             store.updateSleepAlarm(alarm)
         }
     }
 
+    private var sleepMinuteBinding: Binding<Int> {
+        Binding {
+            store.sleepAlarm.minute
+        } set: { minute in
+            var alarm = store.sleepAlarm
+            alarm.minute = minute
+            store.updateSleepAlarm(alarm)
+        }
+    }
+
+}
+
+struct TimeNumberPicker: View {
+    @Binding var hour: Int
+    @Binding var minute: Int
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Picker("Hora", selection: $hour) {
+                ForEach(0..<24, id: \.self) { value in
+                    Text(String(format: "%02d", value))
+                        .font(.system(size: 64, weight: .bold, design: .serif))
+                        .tag(value)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(width: 118, height: 116)
+            .clipped()
+
+            Text(":")
+                .font(.system(size: 68, weight: .bold, design: .serif))
+                .foregroundStyle(Color(red: 0.31, green: 0.15, blue: 0.08))
+                .offset(y: -2)
+
+            Picker("Minuto", selection: $minute) {
+                ForEach(0..<60, id: \.self) { value in
+                    Text(String(format: "%02d", value))
+                        .font(.system(size: 64, weight: .bold, design: .serif))
+                        .tag(value)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(width: 118, height: 116)
+            .clipped()
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.28))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .tint(Color(red: 0.31, green: 0.15, blue: 0.08))
+    }
+}
+
+struct SunsetScene: View {
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 1.0, green: 0.86, blue: 0.64),
+                        Color(red: 0.97, green: 0.55, blue: 0.31),
+                        Color(red: 0.45, green: 0.20, blue: 0.12)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                Circle()
+                    .fill(Color(red: 1.0, green: 0.91, blue: 0.55).opacity(0.95))
+                    .frame(width: size.width * 0.28, height: size.width * 0.28)
+                    .position(x: size.width * 0.52, y: size.height * 0.54)
+
+                mountain(color: Color(red: 0.76, green: 0.35, blue: 0.19).opacity(0.54), height: 0.64)
+                mountain(color: Color(red: 0.45, green: 0.19, blue: 0.12).opacity(0.72), height: 0.78)
+
+                cloud(x: size.width * 0.17, y: size.height * 0.24, scale: 0.82)
+                cloud(x: size.width * 0.87, y: size.height * 0.18, scale: 0.56)
+                birds
+                    .stroke(Color(red: 0.40, green: 0.19, blue: 0.12).opacity(0.55), lineWidth: 1.5)
+                    .frame(width: size.width * 0.24, height: size.height * 0.12)
+                    .position(x: size.width * 0.76, y: size.height * 0.23)
+            }
+        }
+    }
+
+    private func mountain(color: Color, height: CGFloat) -> some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            Path { path in
+                path.move(to: CGPoint(x: 0, y: size.height))
+                path.addLine(to: CGPoint(x: 0, y: size.height * height))
+                path.addLine(to: CGPoint(x: size.width * 0.22, y: size.height * (height - 0.16)))
+                path.addLine(to: CGPoint(x: size.width * 0.44, y: size.height * (height - 0.05)))
+                path.addLine(to: CGPoint(x: size.width * 0.66, y: size.height * (height - 0.22)))
+                path.addLine(to: CGPoint(x: size.width, y: size.height * (height - 0.08)))
+                path.addLine(to: CGPoint(x: size.width, y: size.height))
+                path.closeSubpath()
+            }
+            .fill(color)
+        }
+    }
+
+    private func cloud(x: CGFloat, y: CGFloat, scale: CGFloat) -> some View {
+        ZStack {
+            Capsule().fill(Color.white.opacity(0.22)).frame(width: 82 * scale, height: 18 * scale)
+            Circle().fill(Color.white.opacity(0.18)).frame(width: 36 * scale, height: 36 * scale).offset(x: -22 * scale, y: -7 * scale)
+            Circle().fill(Color.white.opacity(0.18)).frame(width: 42 * scale, height: 42 * scale).offset(x: 6 * scale, y: -10 * scale)
+        }
+        .position(x: x, y: y)
+    }
+
+    private var birds: Path {
+        Path { path in
+            for index in 0..<3 {
+                let x = CGFloat(index) * 28
+                let y = CGFloat(index % 2) * 12
+                path.move(to: CGPoint(x: x, y: y + 10))
+                path.addQuadCurve(to: CGPoint(x: x + 14, y: y + 10), control: CGPoint(x: x + 7, y: y))
+                path.addQuadCurve(to: CGPoint(x: x + 28, y: y + 10), control: CGPoint(x: x + 21, y: y))
+            }
+        }
+    }
 }
 
 struct AlarmRow: View {
@@ -673,19 +807,31 @@ struct EditAlarmView: View {
                 }
 
                 Section("Musicas posibles") {
-                    ForEach(AlarmSound.all) { sound in
-                        Toggle(sound.name, isOn: Binding(
-                            get: { alarm.soundIds.contains(sound.id) },
-                            set: { enabled in
-                                if enabled {
-                                    if !alarm.soundIds.contains(sound.id) { alarm.soundIds.append(sound.id) }
-                                } else {
-                                    alarm.soundIds.removeAll { $0 == sound.id }
-                                }
-                            }
-                        ))
+                    Button("Deseleccionar todas") {
+                        alarm.soundIds.removeAll()
                     }
-                    Toggle("Musica aleatoria", isOn: $alarm.randomSound)
+                    ForEach(AlarmSound.all) { sound in
+                        HStack {
+                            Toggle(sound.name, isOn: Binding(
+                                get: { alarm.soundIds.contains(sound.id) },
+                                set: { enabled in
+                                    if enabled {
+                                        if !alarm.soundIds.contains(sound.id) { alarm.soundIds.append(sound.id) }
+                                    } else {
+                                        alarm.soundIds.removeAll { $0 == sound.id }
+                                    }
+                                }
+                            ))
+                            Button("Probar") {
+                                AlarmSoundPlayer.preview(sound: sound)
+                            }
+                            .font(.caption.weight(.black))
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                    Text("Si eliges mas de una, la app escoge una al azar.")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Despertar") {
@@ -717,6 +863,7 @@ struct EditAlarmView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Guardar") {
+                        alarm.randomSound = alarm.soundIds.count > 1
                         onSave(alarm)
                         dismiss()
                     }
@@ -786,7 +933,9 @@ struct RingView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(red: 1.0, green: 0.76, blue: 0.42), Color(red: 0.39, green: 0.17, blue: 0.10)], startPoint: .top, endPoint: .bottom)
+            SunsetScene()
+                .ignoresSafeArea()
+            LinearGradient(colors: [Color.white.opacity(0.06), Color(red: 0.24, green: 0.10, blue: 0.06).opacity(0.56)], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
             VStack(spacing: 22) {
                 Spacer()
