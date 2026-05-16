@@ -8,6 +8,10 @@ struct AlarmaApp: App {
     @StateObject private var store = AlarmStore()
     @StateObject private var session = NightSession()
 
+    init() {
+        AlarmSoundPlayer.configurePlaybackSession()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -219,11 +223,44 @@ final class NightSession: ObservableObject {
     private let sound = AlarmSoundPlayer()
     private var clockTimer: Timer?
     private var motionTimer: Timer?
+    private var alarmMonitor: DispatchSourceTimer?
+    private var firedRingKeys: Set<String> = []
+    private var backgroundGuardActive = false
 
     var isActive: Bool { activeAlarm != nil }
 
+    func startAlarmMonitor(alarmsProvider: @escaping @MainActor () -> [Alarm]) {
+        guard alarmMonitor == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "com.dmkr.alarma.monitor"))
+        timer.schedule(deadline: .now(), repeating: 1)
+        timer.setEventHandler { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.now = Date()
+                self.checkDueAlarms(alarms: alarmsProvider())
+            }
+        }
+        timer.resume()
+        alarmMonitor = timer
+    }
+
+    func syncBackgroundGuard(alarms: [Alarm]) {
+        guard activeAlarm == nil, ringingAlarm == nil else { return }
+        let shouldRun = alarms.contains { $0.enabled }
+        if shouldRun {
+            if !backgroundGuardActive {
+                sound.startKeepAlive()
+                backgroundGuardActive = true
+            }
+        } else if backgroundGuardActive {
+            sound.stop()
+            backgroundGuardActive = false
+        }
+    }
+
     func start(alarm: Alarm) {
         activeAlarm = alarm
+        backgroundGuardActive = false
         UIApplication.shared.isIdleTimerDisabled = true
         sound.startKeepAlive()
         startClock()
@@ -244,6 +281,7 @@ final class NightSession: ObservableObject {
     func ring(_ alarm: Alarm) {
         ringingAlarm = alarm
         activeAlarm = nil
+        backgroundGuardActive = false
         UIApplication.shared.isIdleTimerDisabled = true
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
@@ -291,6 +329,37 @@ final class NightSession: ObservableObject {
         let magnitude = sqrt(a.x * a.x + a.y * a.y + a.z * a.z)
         motionProgress = max(0, min(1, motionProgress * 0.88 + magnitude * 0.24))
     }
+
+    private func checkDueAlarms(alarms: [Alarm]) {
+        guard ringingAlarm == nil else { return }
+        syncBackgroundGuard(alarms: alarms)
+
+        let date = Date()
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.hour, .minute, .weekday], from: date)
+        let minuteKey = DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short)
+
+        if let active = activeAlarm,
+           active.hour == components.hour,
+           active.minute == components.minute,
+           active.weekdays.isEmpty || active.weekdays.contains(components.weekday ?? 0) {
+            let key = "\(active.id.uuidString)-\(minuteKey)"
+            guard !firedRingKeys.contains(key) else { return }
+            firedRingKeys.insert(key)
+            ring(active)
+            return
+        }
+
+        for alarm in alarms where alarm.enabled {
+            guard alarm.hour == components.hour, alarm.minute == components.minute else { continue }
+            guard alarm.weekdays.isEmpty || alarm.weekdays.contains(components.weekday ?? 0) else { continue }
+            let key = "\(alarm.id.uuidString)-\(minuteKey)"
+            guard !firedRingKeys.contains(key) else { continue }
+            firedRingKeys.insert(key)
+            ring(alarm)
+            break
+        }
+    }
 }
 
 final class AlarmSoundPlayer {
@@ -299,6 +368,11 @@ final class AlarmSoundPlayer {
     private var rampTimer: Timer?
     private var phase = 0.0
     private var gain: Float = 0.04
+
+    static func configurePlaybackSession() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+    }
 
     func startKeepAlive() {
         stop()
@@ -393,6 +467,7 @@ final class AlarmSoundPlayer {
 struct ContentView: View {
     @EnvironmentObject private var store: AlarmStore
     @EnvironmentObject private var session: NightSession
+    @Environment(\.scenePhase) private var scenePhase
     @State private var editingAlarm: Alarm?
     @State private var editingSleepAlarm = false
     @State private var creating = false
@@ -449,8 +524,17 @@ struct ContentView: View {
         .fullScreenCover(item: $session.ringingAlarm) { alarm in
             RingView(alarm: alarm)
         }
-        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
-            checkDueAlarms(date)
+        .onAppear {
+            session.startAlarmMonitor { store.alarms }
+            session.syncBackgroundGuard(alarms: store.alarms)
+        }
+        .onChange(of: store.alarms) { alarms in
+            session.syncBackgroundGuard(alarms: alarms)
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .background || phase == .inactive {
+                session.syncBackgroundGuard(alarms: store.alarms)
+            }
         }
     }
 
@@ -532,31 +616,6 @@ struct ContentView: View {
         }
     }
 
-    private func checkDueAlarms(_ date: Date) {
-        guard session.ringingAlarm == nil else { return }
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.hour, .minute, .weekday], from: date)
-        let key = DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short)
-
-        if let active = session.activeAlarm,
-           active.hour == components.hour,
-           active.minute == components.minute,
-           active.weekdays.isEmpty || active.weekdays.contains(components.weekday ?? 0) {
-            session.ring(active)
-            return
-        }
-
-        for alarm in store.alarms where alarm.enabled {
-            guard alarm.hour == components.hour, alarm.minute == components.minute else { continue }
-            guard alarm.weekdays.isEmpty || alarm.weekdays.contains(components.weekday ?? 0) else { continue }
-            guard alarm.lastRingKey != key else { continue }
-            if let index = store.alarms.firstIndex(where: { $0.id == alarm.id }) {
-                store.alarms[index].lastRingKey = key
-                session.ring(store.alarms[index])
-            }
-            break
-        }
-    }
 }
 
 struct AlarmRow: View {
