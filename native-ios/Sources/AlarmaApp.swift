@@ -443,7 +443,7 @@ final class NightSession: ObservableObject {
 
         if let activity = Activity<AlarmActivityAttributes>.activities.first(where: { $0.id == liveActivityId }) {
             Task {
-                await activity.update(ActivityContent(state: state, staleDate: nil))
+                await activity.update(using: state)
             }
             return
         }
@@ -452,7 +452,7 @@ final class NightSession: ObservableObject {
         do {
             let activity = try Activity.request(
                 attributes: attributes,
-                content: ActivityContent(state: state, staleDate: nil),
+                contentState: state,
                 pushType: nil
             )
             liveActivityId = activity.id
@@ -469,7 +469,7 @@ final class NightSession: ObservableObject {
         liveActivityId = nil
         for activity in activities {
             Task {
-                await activity.end(nil, dismissalPolicy: .immediate)
+                await activity.end(dismissalPolicy: .immediate)
             }
         }
     }
