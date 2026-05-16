@@ -75,17 +75,7 @@ enum SleepTheme: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var title: String {
-        switch self {
-        case .sunset: return "Hora de dormir"
-        case .night: return "Dormir"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .sunset: return "Una sola alarma para cuidar tu descanso."
-        case .night: return "Tu unica alarma para ir a la cama."
-        }
+        "Alarma"
     }
 
     var activeTitle: String {
@@ -128,7 +118,14 @@ struct AlarmSound: Identifiable, Hashable {
         .init(id: "sunset", name: "Atardecer", baseFrequency: 196, color: .pink),
         .init(id: "piano", name: "Piano suave", baseFrequency: 262, color: .brown),
         .init(id: "rain", name: "Lluvia lenta", baseFrequency: 174, color: .blue),
-        .init(id: "sea", name: "Brisa del mar", baseFrequency: 392, color: .teal)
+        .init(id: "sea", name: "Brisa del mar", baseFrequency: 392, color: .teal),
+        .init(id: "forest", name: "Bosque nocturno", baseFrequency: 146, color: .green),
+        .init(id: "wind", name: "Viento suave", baseFrequency: 185, color: .cyan),
+        .init(id: "bells", name: "Campanas suaves", baseFrequency: 330, color: .yellow),
+        .init(id: "chimes", name: "Carillones", baseFrequency: 440, color: .mint),
+        .init(id: "harp", name: "Arpa lenta", baseFrequency: 294, color: .purple),
+        .init(id: "river", name: "Rio tranquilo", baseFrequency: 247, color: .indigo),
+        .init(id: "white-noise", name: "Ruido blanco", baseFrequency: 128, color: .gray)
     ]
 }
 
@@ -547,6 +544,15 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var editingSleepAlarm = false
 
+    private var appIdentityText: String {
+        let name = Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String
+            ?? Bundle.main.infoDictionary?["CFBundleName"] as? String
+            ?? "Alarma"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "dev"
+        return "\(name) iPhone - v\(version) build \(build)"
+    }
+
     var body: some View {
         ZStack {
             SleepBackdrop(theme: store.sleepTheme)
@@ -616,14 +622,17 @@ struct ContentView: View {
 
     private var header: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(store.sleepTheme.title)
-                    .font(.system(size: 46, weight: .bold, design: .serif))
+                    .font(.system(size: 52, weight: .bold, design: .serif))
                     .foregroundStyle(store.sleepTheme.text)
                     .minimumScaleFactor(0.75)
-                Text(store.sleepTheme.subtitle)
-                    .font(.headline.weight(.medium))
+
+                Text(appIdentityText)
+                    .font(.subheadline.weight(.black))
                     .foregroundStyle(store.sleepTheme.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.74)
             }
 
             Spacer()
@@ -670,7 +679,7 @@ struct AlarmHeroCard: View {
     let onEdit: () -> Void
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             HStack(alignment: .top) {
                 ZStack {
                     Circle()
@@ -699,12 +708,6 @@ struct AlarmHeroCard: View {
                     .font(.headline.weight(.black))
                     .foregroundStyle(theme.primary)
             }
-
-            HStack(spacing: 10) {
-                FeaturePill(icon: "shuffle", text: alarm.randomSound ? "Aleatoria" : soundName(alarm.soundIds.first), theme: theme)
-                FeaturePill(icon: "chart.line.uptrend.xyaxis", text: "Subida \(Int(alarm.fadeDuration / 60)) min", theme: theme)
-                FeaturePill(icon: "iphone.radiowaves.left.and.right", text: "Mover pospone", theme: theme)
-            }
         }
         .padding(20)
         .background(
@@ -717,33 +720,6 @@ struct AlarmHeroCard: View {
                 .shadow(color: theme == .sunset ? Color(red: 0.55, green: 0.29, blue: 0.10).opacity(0.13) : theme.primary.opacity(0.22), radius: 18, x: 0, y: 10)
         )
     }
-}
-
-struct FeaturePill: View {
-    let icon: String
-    let text: String?
-    let theme: SleepTheme
-
-    var body: some View {
-        Label(text ?? "Sonido", systemImage: icon)
-            .font(.caption.weight(.bold))
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
-            .frame(maxWidth: .infinity)
-            .frame(height: 64)
-            .background(theme == .sunset ? Color.white.opacity(0.34) : Color.white.opacity(0.05))
-            .foregroundStyle(theme == .sunset ? Color(red: 0.35, green: 0.20, blue: 0.12) : Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(theme == .sunset ? Color(red: 0.91, green: 0.66, blue: 0.42).opacity(0.42) : theme.primary.opacity(0.20), lineWidth: 1)
-            )
-    }
-}
-
-private func soundName(_ id: String?) -> String {
-    guard let id, let sound = AlarmSound.all.first(where: { $0.id == id }) else { return "Aleatoria" }
-    return sound.name
 }
 
 struct SwipeTimeText: View {
@@ -796,69 +772,20 @@ struct SleepBackdrop: View {
     let theme: SleepTheme
 
     var body: some View {
-        GeometryReader { proxy in
-            let size = proxy.size
-            ZStack {
-                LinearGradient(
-                    colors: theme == .sunset
-                        ? [Color(red: 1.0, green: 0.95, blue: 0.85), Color(red: 1.0, green: 0.82, blue: 0.58), Color(red: 0.74, green: 0.34, blue: 0.19)]
-                        : [Color(red: 0.00, green: 0.04, blue: 0.08), Color(red: 0.02, green: 0.13, blue: 0.22), Color(red: 0.00, green: 0.02, blue: 0.05)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+        ZStack {
+            Image(theme == .sunset ? "SunsetBackground" : "NightBackground")
+                .resizable()
+                .scaledToFill()
+                .ignoresSafeArea()
 
-                if theme == .night {
-                    Stars()
-                        .fill(Color.white.opacity(0.88))
-                    Circle()
-                        .fill(Color(red: 0.78, green: 0.92, blue: 1.0))
-                        .frame(width: 34, height: 34)
-                        .blur(radius: 1)
-                        .position(x: size.width * 0.78, y: size.height * 0.16)
-                    Circle()
-                        .stroke(Color(red: 0.37, green: 0.83, blue: 0.88).opacity(0.14), lineWidth: 80)
-                        .frame(width: size.width * 0.90, height: size.width * 0.90)
-                        .position(x: size.width * 0.50, y: size.height * 0.42)
-                } else {
-                    Circle()
-                        .fill(Color(red: 1.0, green: 0.83, blue: 0.54).opacity(0.30))
-                        .frame(width: size.width * 1.1, height: size.width * 1.1)
-                        .blur(radius: 45)
-                        .position(x: size.width * 0.50, y: size.height * 0.45)
-                }
-
-                landscapeLayer(color: theme == .sunset ? Color(red: 0.93, green: 0.56, blue: 0.34).opacity(0.26) : Color(red: 0.08, green: 0.27, blue: 0.38).opacity(0.65), y: 0.76, size: size)
-                landscapeLayer(color: theme == .sunset ? Color(red: 0.78, green: 0.39, blue: 0.22).opacity(0.28) : Color(red: 0.02, green: 0.13, blue: 0.20).opacity(0.90), y: 0.82, size: size)
-                lake(size: size)
-                    .fill(theme == .sunset ? Color.white.opacity(0.16) : Color(red: 0.05, green: 0.28, blue: 0.42).opacity(0.58))
-                    .blur(radius: theme == .sunset ? 10 : 4)
-                    .offset(y: size.height * 0.05)
-
-                LinearGradient(colors: [.clear, theme == .sunset ? Color(red: 0.55, green: 0.23, blue: 0.11).opacity(0.34) : Color.black.opacity(0.70)], startPoint: .center, endPoint: .bottom)
-            }
-        }
-    }
-
-    private func landscapeLayer(color: Color, y: CGFloat, size: CGSize) -> some View {
-        Path { path in
-            path.move(to: CGPoint(x: 0, y: size.height))
-            path.addLine(to: CGPoint(x: 0, y: size.height * y))
-            path.addCurve(to: CGPoint(x: size.width * 0.28, y: size.height * (y - 0.03)), control1: CGPoint(x: size.width * 0.08, y: size.height * (y - 0.05)), control2: CGPoint(x: size.width * 0.17, y: size.height * (y + 0.02)))
-            path.addCurve(to: CGPoint(x: size.width * 0.55, y: size.height * (y - 0.07)), control1: CGPoint(x: size.width * 0.40, y: size.height * (y - 0.10)), control2: CGPoint(x: size.width * 0.48, y: size.height * (y - 0.01)))
-            path.addCurve(to: CGPoint(x: size.width, y: size.height * (y - 0.04)), control1: CGPoint(x: size.width * 0.70, y: size.height * (y - 0.16)), control2: CGPoint(x: size.width * 0.84, y: size.height * (y + 0.02)))
-            path.addLine(to: CGPoint(x: size.width, y: size.height))
-            path.closeSubpath()
-        }
-        .fill(color)
-    }
-
-    private func lake(size: CGSize) -> Path {
-        Path { path in
-            path.move(to: CGPoint(x: 0, y: size.height * 0.73))
-            path.addCurve(to: CGPoint(x: size.width, y: size.height * 0.70), control1: CGPoint(x: size.width * 0.25, y: size.height * 0.67), control2: CGPoint(x: size.width * 0.62, y: size.height * 0.78))
-            path.addLine(to: CGPoint(x: size.width, y: size.height))
-            path.addLine(to: CGPoint(x: 0, y: size.height))
-            path.closeSubpath()
+            LinearGradient(
+                colors: theme == .sunset
+                    ? [Color.white.opacity(0.42), Color.white.opacity(0.10), Color(red: 0.47, green: 0.20, blue: 0.10).opacity(0.22)]
+                    : [Color.black.opacity(0.28), Color.black.opacity(0.08), Color.black.opacity(0.54)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
         }
     }
 }
@@ -984,6 +911,7 @@ struct AlarmRow: View {
 struct EditAlarmView: View {
     @Environment(\.dismiss) private var dismiss
     @State var alarm: Alarm
+    @State private var showAllSounds = false
     let theme: SleepTheme
     let onSave: (Alarm) -> Void
     let onDelete: (() -> Void)?
@@ -994,7 +922,7 @@ struct EditAlarmView: View {
                 .ignoresSafeArea()
                 .overlay(theme == .sunset ? Color.white.opacity(0.45) : Color.black.opacity(0.14))
 
-            VStack(spacing: 20) {
+            VStack(spacing: 18) {
                 HStack {
                     Button {
                         dismiss()
@@ -1015,32 +943,60 @@ struct EditAlarmView: View {
                     Color.clear.frame(width: 44, height: 44)
                 }
 
-                TimeEditPanel(alarm: $alarm, theme: theme)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 18) {
+                        TimeEditPanel(alarm: $alarm, theme: theme)
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Musicas posibles")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(theme.text)
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Musicas posibles")
+                                    .font(.headline.weight(.bold))
+                                    .foregroundStyle(theme.text)
+                                Spacer()
+                                Button("Deseleccionar") {
+                                    alarm.soundIds.removeAll()
+                                    alarm.randomSound = false
+                                }
+                                .font(.caption.weight(.black))
+                                .foregroundStyle(theme.primary)
+                            }
 
-                    SoundSelector(alarm: $alarm, theme: theme)
+                            SoundSelector(alarm: $alarm, theme: theme, showAll: showAllSounds)
+
+                            if AlarmSound.all.count > 5 {
+                                Button {
+                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                                        showAllSounds.toggle()
+                                    }
+                                } label: {
+                                    Text(showAllSounds ? "Ver menos" : "Ver mas")
+                                        .font(.headline.weight(.black))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 44)
+                                        .background(panelFill)
+                                        .foregroundStyle(theme.primary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                                }
+                            }
+                        }
+
+                        FadeDurationControl(duration: $alarm.fadeDuration, theme: theme)
+
+                        Toggle(isOn: $alarm.motionSnooze) {
+                            Label("Mover para posponer", systemImage: "iphone.radiowaves.left.and.right")
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(theme.text)
+                        }
+                        .tint(theme.primary)
+                        .padding(16)
+                        .background(panelFill)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                    }
+                    .padding(.bottom, 4)
                 }
-
-                FadeDurationControl(duration: $alarm.fadeDuration, theme: theme)
-
-                Toggle(isOn: $alarm.motionSnooze) {
-                    Label("Mover para posponer", systemImage: "iphone.radiowaves.left.and.right")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(theme.text)
-                }
-                .tint(theme.primary)
-                .padding(16)
-                .background(panelFill)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-
-                Spacer(minLength: 0)
 
                 Button {
-                    alarm.randomSound = alarm.soundIds.count != 1
+                    alarm.randomSound = alarm.soundIds.count > 1
                     alarm.weekdays = []
                     onSave(alarm)
                     dismiss()
@@ -1072,136 +1028,114 @@ struct TimeEditPanel: View {
     let theme: SleepTheme
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text(previousHour)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(theme.secondaryText.opacity(0.55))
-            HStack(spacing: 18) {
-                Text(String(format: "%02d", alarm.hour))
-                Text(":")
-                Text(String(format: "%02d", alarm.minute))
-            }
-            .font(.system(size: 62, weight: .bold, design: .serif))
-            .foregroundStyle(theme.text)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 4)
-                    .onEnded { value in
-                        if abs(value.translation.width) > abs(value.translation.height) {
-                            adjust(.minute, value.translation.width > 0 ? 1 : -1)
-                        } else {
-                            adjust(.hour, value.translation.height < 0 ? 1 : -1)
-                        }
-                    }
+        HStack(spacing: 16) {
+            TimeStepperColumn(
+                title: "Hora",
+                value: alarm.hour,
+                range: 0...23,
+                theme: theme,
+                onChange: { alarm.hour = $0 }
             )
-            Text(nextMinute)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(theme.secondaryText.opacity(0.55))
+
+            Text(":")
+                .font(.system(size: 58, weight: .bold, design: .serif))
+                .foregroundStyle(theme.text.opacity(0.72))
+                .padding(.top, 26)
+
+            TimeStepperColumn(
+                title: "Min",
+                value: alarm.minute,
+                range: 0...59,
+                theme: theme,
+                onChange: { alarm.minute = $0 }
+            )
         }
+        .padding(16)
         .frame(maxWidth: .infinity)
-        .frame(height: 188)
         .background(
             RoundedRectangle(cornerRadius: 18)
-                .fill(theme == .sunset ? theme.primary.opacity(0.82) : Color.white.opacity(0.06))
+                .fill(theme == .sunset ? Color.white.opacity(0.54) : Color.white.opacity(0.07))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(theme == .sunset ? Color.white.opacity(0.20) : Color.white.opacity(0.16), lineWidth: 1))
         )
         .foregroundStyle(.white)
     }
+}
 
-    private var previousHour: String {
-        String(format: "%02d        %02d", (alarm.hour + 23) % 24, (alarm.minute + 59) % 60)
-    }
+struct TimeStepperColumn: View {
+    let title: String
+    let value: Int
+    let range: ClosedRange<Int>
+    let theme: SleepTheme
+    let onChange: (Int) -> Void
 
-    private var nextMinute: String {
-        String(format: "%02d        %02d", (alarm.hour + 1) % 24, (alarm.minute + 1) % 60)
-    }
-
-    private func adjust(_ component: TimeComponent, _ amount: Int) {
-        switch component {
-        case .hour:
-            alarm.hour = (alarm.hour + amount + 24) % 24
-        case .minute:
-            alarm.minute = (alarm.minute + amount + 60) % 60
+    var body: some View {
+        VStack(spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.black))
+                .foregroundStyle(theme.secondaryText)
+            Button {
+                onChange(wrapped(value + 1))
+            } label: {
+                Image(systemName: "chevron.up")
+                    .font(.headline.weight(.black))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 34)
+            }
+            Text(String(format: "%02d", value))
+                .font(.system(size: 54, weight: .bold, design: .serif))
+                .foregroundStyle(theme.text)
+                .frame(maxWidth: .infinity)
+                .frame(height: 62)
+                .background(theme == .sunset ? Color.white.opacity(0.32) : Color.black.opacity(0.16))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+            Button {
+                onChange(wrapped(value - 1))
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.headline.weight(.black))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 34)
+            }
         }
+        .buttonStyle(.plain)
+        .foregroundStyle(theme.primary)
+    }
+
+    private func wrapped(_ rawValue: Int) -> Int {
+        if rawValue < range.lowerBound { return range.upperBound }
+        if rawValue > range.upperBound { return range.lowerBound }
+        return rawValue
     }
 }
 
 struct SoundSelector: View {
     @Binding var alarm: Alarm
     let theme: SleepTheme
+    let showAll: Bool
 
     var body: some View {
-        if theme == .night {
-            HStack(spacing: 10) {
-                randomButton
-                ForEach(AlarmSound.all.prefix(4)) { sound in
-                    soundButton(sound)
-                }
-            }
-        } else {
-            VStack(spacing: 8) {
-                randomRow
-                ForEach(AlarmSound.all.prefix(4)) { sound in
-                    soundRow(sound)
-                }
+        VStack(spacing: 8) {
+            ForEach(visibleSounds) { sound in
+                soundRow(sound)
             }
         }
     }
 
-    private var randomButton: some View {
-        Button {
-            alarm.randomSound = true
-            alarm.soundIds = AlarmSound.all.map(\.id)
-        } label: {
-            VStack(spacing: 8) {
-                Image(systemName: "shuffle")
-                    .font(.title2.weight(.bold))
-                Text("Aleatoria")
-                    .font(.caption.weight(.bold))
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 92)
-        }
-        .buttonStyle(SoundTileStyle(selected: alarm.randomSound, theme: theme))
-    }
-
-    private func soundButton(_ sound: AlarmSound) -> some View {
-        Button {
-            alarm.randomSound = false
-            alarm.soundIds = [sound.id]
-            AlarmSoundPlayer.preview(sound: sound)
-        } label: {
-            VStack(spacing: 8) {
-                Image(systemName: icon(for: sound.id))
-                    .font(.title2.weight(.bold))
-                Text(soundShortName(sound))
-                    .font(.caption.weight(.bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 92)
-        }
-        .buttonStyle(SoundTileStyle(selected: !alarm.randomSound && alarm.soundIds.first == sound.id, theme: theme))
-    }
-
-    private var randomRow: some View {
-        Button {
-            alarm.randomSound = true
-            alarm.soundIds = AlarmSound.all.map(\.id)
-        } label: {
-            rowContent(icon: "shuffle", title: "Aleatoria", subtitle: "Una diferente cada noche", selected: alarm.randomSound)
-        }
-        .buttonStyle(.plain)
+    private var visibleSounds: [AlarmSound] {
+        showAll ? AlarmSound.all : Array(AlarmSound.all.prefix(5))
     }
 
     private func soundRow(_ sound: AlarmSound) -> some View {
         Button {
-            alarm.randomSound = false
-            alarm.soundIds = [sound.id]
+            if alarm.soundIds.contains(sound.id) {
+                alarm.soundIds.removeAll { $0 == sound.id }
+            } else {
+                alarm.soundIds.append(sound.id)
+            }
+            alarm.randomSound = alarm.soundIds.count > 1
             AlarmSoundPlayer.preview(sound: sound)
         } label: {
-            rowContent(icon: icon(for: sound.id), title: sound.name, subtitle: nil, selected: !alarm.randomSound && alarm.soundIds.first == sound.id)
+            rowContent(icon: icon(for: sound.id), title: sound.name, subtitle: subtitle(for: sound), selected: alarm.soundIds.contains(sound.id))
         }
         .buttonStyle(.plain)
     }
@@ -1241,40 +1175,39 @@ struct SoundSelector: View {
         case "piano": return "pianokeys"
         case "rain": return "cloud.rain.fill"
         case "sea": return "water.waves"
+        case "forest": return "tree.fill"
+        case "wind": return "wind"
+        case "bells": return "bell.fill"
+        case "chimes": return "sparkles"
+        case "harp": return "music.note"
+        case "river": return "drop.fill"
+        case "white-noise": return "waveform"
         default: return "music.note"
         }
     }
 
-    private func soundShortName(_ sound: AlarmSound) -> String {
+    private func subtitle(for sound: AlarmSound) -> String {
         switch sound.id {
-        case "sunset": return "Olas"
-        case "rain": return "Lluvia"
-        default: return sound.name
+        case "sunrise": return "Suave y brillante"
+        case "sunset": return "Calido y lento"
+        case "piano": return "Notas suaves"
+        case "rain": return "Constante y relajante"
+        case "sea": return "Olas tranquilas"
+        case "forest": return "Ambiente profundo"
+        case "wind": return "Aire ligero"
+        case "bells": return "Tonos claros"
+        case "chimes": return "Textura ligera"
+        case "harp": return "Melodia lenta"
+        case "river": return "Agua continua"
+        case "white-noise": return "Fondo uniforme"
+        default: return "Sonido"
         }
-    }
-}
-
-struct SoundTileStyle: ButtonStyle {
-    let selected: Bool
-    let theme: SleepTheme
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(selected ? theme.primary : theme.text)
-            .background(theme == .sunset ? Color.white.opacity(0.42) : Color.white.opacity(0.07))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? theme.primary : theme.secondaryText.opacity(0.14), lineWidth: selected ? 1.5 : 1))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
     }
 }
 
 struct FadeDurationControl: View {
     @Binding var duration: Double
     var theme: SleepTheme = .sunset
-
-    private var progress: Double {
-        (duration - 60) / 540
-    }
 
     private var durationText: String {
         if duration < 60 { return "\(Int(duration)) s" }
@@ -1284,7 +1217,7 @@ struct FadeDurationControl: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Volumen progresivo", systemImage: "waveform")
                 Spacer()
@@ -1293,23 +1226,6 @@ struct FadeDurationControl: View {
                     .foregroundStyle(theme.primary)
             }
             .foregroundStyle(theme.text)
-
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(theme.secondaryText.opacity(0.18))
-                        .frame(height: 4)
-                    Capsule()
-                        .fill(theme.primary)
-                        .frame(width: proxy.size.width * progress, height: 4)
-                    Circle()
-                        .fill(theme.primary)
-                        .frame(width: 20, height: 20)
-                        .offset(x: max(0, min(proxy.size.width - 20, proxy.size.width * progress - 10)))
-                }
-                .frame(height: 24)
-            }
-            .frame(height: 24)
 
             Slider(value: $duration, in: 60...600, step: 60) {
                 Text("Subida")
@@ -1324,6 +1240,9 @@ struct FadeDurationControl: View {
         .padding(16)
         .background(theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.07))
         .clipShape(RoundedRectangle(cornerRadius: 18))
+        .onAppear {
+            if duration < 60 { duration = 60 }
+        }
     }
 }
 
