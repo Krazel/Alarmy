@@ -24,6 +24,8 @@
   <string>Alarma usa el movimiento del iPhone para posponer la alarma.</string>
   <key>NSUserNotificationsUsageDescription</key>
   <string>Alarma usa notificaciones para avisarte si iOS pausa la app.</string>
+  <key>NSSupportsLiveActivities</key>
+  <true/>
   <key>UIBackgroundModes</key>
   <array>
     <string>audio</string>

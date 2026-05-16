@@ -1,4 +1,5 @@
 import AVFoundation
+import ActivityKit
 import CoreMotion
 import SwiftUI
 import UIKit
@@ -354,6 +355,7 @@ final class NightSession: ObservableObject {
     private var alarmMonitor: DispatchSourceTimer?
     private var firedRingKeys: Set<String> = []
     private var backgroundGuardActive = false
+    private var liveActivityId: String?
 
     var isActive: Bool { activeAlarm != nil }
 
@@ -387,9 +389,11 @@ final class NightSession: ObservableObject {
         sound.startKeepAlive()
         startClock()
         startMotionIfNeeded(alarm)
+        startOrUpdateLockScreenActivity(for: alarm, isRinging: false)
     }
 
     func stop() {
+        endLockScreenActivity()
         activeAlarm = nil
         ringingAlarm = nil
         motionProgress = 0
@@ -407,10 +411,12 @@ final class NightSession: ObservableObject {
         UIApplication.shared.isIdleTimerDisabled = true
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
+        startOrUpdateLockScreenActivity(for: alarm, isRinging: true)
     }
 
     func snooze(store: AlarmStore) {
         guard let alarm = ringingAlarm else { return }
+        endLockScreenActivity()
         sound.stop()
         var snoozed = alarm
         let date = Calendar.current.date(byAdding: .minute, value: alarm.snoozeMinutes, to: Date()) ?? Date()
@@ -424,6 +430,48 @@ final class NightSession: ObservableObject {
         ringingAlarm = nil
         store.upsert(snoozed)
         start(alarm: snoozed)
+    }
+
+    private func startOrUpdateLockScreenActivity(for alarm: Alarm, isRinging: Bool) {
+        guard #available(iOS 16.1, *), ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let state = AlarmActivityAttributes.ContentState(
+            label: alarm.label.isEmpty ? "Alarma" : alarm.label,
+            timeText: alarm.timeText,
+            statusText: isRinging ? "Alarma sonando" : "Noche activa",
+            isRinging: isRinging
+        )
+
+        if let activity = Activity<AlarmActivityAttributes>.activities.first(where: { $0.id == liveActivityId }) {
+            Task {
+                await activity.update(ActivityContent(state: state, staleDate: nil))
+            }
+            return
+        }
+
+        let attributes = AlarmActivityAttributes(alarmId: alarm.id.uuidString)
+        do {
+            let activity = try Activity.request(
+                attributes: attributes,
+                content: ActivityContent(state: state, staleDate: nil),
+                pushType: nil
+            )
+            liveActivityId = activity.id
+        } catch {
+            liveActivityId = nil
+        }
+    }
+
+    private func endLockScreenActivity() {
+        guard #available(iOS 16.1, *) else { return }
+        let activities = Activity<AlarmActivityAttributes>.activities.filter { activity in
+            liveActivityId == nil || activity.id == liveActivityId
+        }
+        liveActivityId = nil
+        for activity in activities {
+            Task {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
     }
 
     private func startClock() {
