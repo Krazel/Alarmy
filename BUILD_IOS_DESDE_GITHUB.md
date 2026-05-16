@@ -24,7 +24,7 @@ Este proyecto no se compila localmente en Windows. El flujo correcto es subir lo
 
 ## Procedimiento normal despues de cambiar codigo
 
-Desde `C:\Users\dmkra\Documents\Codex\Alarma`:
+Desde `C:\Users\dmkra\Documents\Codex Apps\Alarma`:
 
 ```powershell
 git status --short
