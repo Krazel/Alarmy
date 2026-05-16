@@ -2,6 +2,7 @@ param(
   [string]$Repo = "Krazel/Alarmy",
   [string]$WorkflowName = "Build unsigned iOS IPA",
   [string]$ArtifactName = "Alarma-unsigned-ipa",
+  [string]$AppVersion = "1.0",
   [string]$Commit = "",
   [int]$IntervalSeconds = 60,
   [int]$MaxAttempts = 30
@@ -55,11 +56,13 @@ for ($attempt = 1; $attempt -le $MaxAttempts; $attempt += 1) {
     $runDir = Join-Path $oldDir "Alarma-native-ipa-run-$($run.id)"
     New-Item -ItemType Directory -Force -Path $runDir | Out-Null
     $latestPath = Join-Path $artifactDir "Alarma-iPhone-latest.ipa"
+    $versionedPath = Join-Path $artifactDir "Alarma-iPhone-v$AppVersion-build-$($run.run_number).ipa"
     $releaseUrl = "https://github.com/$Repo/releases/download/latest-ipa/Alarma-iPhone-latest.ipa"
 
     Move-CurrentArtifacts
     try {
       Invoke-WebRequest -Uri $releaseUrl -Headers @{ "User-Agent" = "Alarma-Artifact-Watcher" } -OutFile $latestPath
+      Copy-Item -LiteralPath $latestPath -Destination $versionedPath -Force
     } catch {
       if (-not $env:GITHUB_TOKEN) {
         throw "La build termino, pero la release latest-ipa aun no esta disponible o requiere token. Reintenta en un minuto."
@@ -79,9 +82,11 @@ for ($attempt = 1; $attempt -le $MaxAttempts; $attempt += 1) {
         throw "No se encontro Alarma-unsigned.ipa dentro del artifact."
       }
       Copy-Item -LiteralPath $ipaPath -Destination $latestPath -Force
+      Copy-Item -LiteralPath $ipaPath -Destination $versionedPath -Force
     }
 
     Write-Host "IPA descargada: $latestPath"
+    Write-Host "IPA versionada: $versionedPath"
     exit 0
   } else {
     Write-Error "Build fallida: $($run.conclusion) $($run.html_url)"
