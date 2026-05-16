@@ -21,6 +21,8 @@ const els = {
   deleteAlarmButton: document.querySelector("#deleteAlarmButton"),
   alarmLabel: document.querySelector("#alarmLabel"),
   alarmTime: document.querySelector("#alarmTime"),
+  alarmHour: document.querySelector("#alarmHour"),
+  alarmMinute: document.querySelector("#alarmMinute"),
   dayGrid: document.querySelector("#dayGrid"),
   soundGrid: document.querySelector("#soundGrid"),
   randomSound: document.querySelector("#randomSound"),
@@ -59,6 +61,7 @@ let prepared = false;
 let nightActive = false;
 let nightAlarmId = null;
 let nightClockTimer = null;
+let timeDrag = null;
 
 function loadAlarms() {
   return platform.loadAlarms();
@@ -250,13 +253,62 @@ function defaultAlarm() {
   return AlarmCore.createDefaultAlarm(uid());
 }
 
+function setTimeValue(time) {
+  const [rawHour, rawMinute] = String(time || "07:30").split(":").map(Number);
+  const hour = Number.isFinite(rawHour) ? rawHour : 7;
+  const minute = Number.isFinite(rawMinute) ? rawMinute : 30;
+  els.alarmTime.value = `${String((hour + 24) % 24).padStart(2, "0")}:${String((minute + 60) % 60).padStart(2, "0")}`;
+  els.alarmHour.textContent = els.alarmTime.value.slice(0, 2);
+  els.alarmMinute.textContent = els.alarmTime.value.slice(3, 5);
+}
+
+function adjustTime(part, amount) {
+  const [hour, minute] = els.alarmTime.value.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hour || 0, minute || 0, 0, 0);
+  if (part === "hour") date.setHours(date.getHours() + amount);
+  else date.setMinutes(date.getMinutes() + amount);
+  setTimeValue(`${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`);
+}
+
+function startTimeDrag(event) {
+  const part = event.currentTarget.dataset.timeDial;
+  if (!part) return;
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+  timeDrag = {
+    part,
+    pointerId: event.pointerId,
+    startY: event.clientY,
+    lastSteps: 0,
+    moved: false,
+  };
+}
+
+function moveTimeDrag(event) {
+  if (!timeDrag || timeDrag.pointerId !== event.pointerId) return;
+  event.preventDefault();
+  const stepSize = 22;
+  const steps = Math.trunc((timeDrag.startY - event.clientY) / stepSize);
+  const delta = steps - timeDrag.lastSteps;
+  if (!delta) return;
+  timeDrag.lastSteps = steps;
+  timeDrag.moved = true;
+  adjustTime(timeDrag.part, delta * (timeDrag.part === "minute" ? 5 : 1));
+}
+
+function stopTimeDrag(event) {
+  if (!timeDrag || timeDrag.pointerId !== event.pointerId) return;
+  if (timeDrag.moved) event.currentTarget.dataset.skipClick = "true";
+  timeDrag = null;
+}
+
 function openDialog(id = null) {
   editingId = id;
   const alarm = id ? alarms.find((item) => item.id === id) : defaultAlarm();
   els.dialogTitle.textContent = id ? "Editar alarma" : "Nueva alarma";
   els.deleteAlarmButton.hidden = !id;
   els.alarmLabel.value = alarm.label || "";
-  els.alarmTime.value = alarm.time;
+  setTimeValue(alarm.time);
   selectedDays = new Set();
   selectedSounds = new Set(alarm.soundIds?.length ? alarm.soundIds : ["aurora"]);
   els.randomSound.checked = alarm.randomSound;
@@ -662,6 +714,19 @@ els.endNightButton.addEventListener("click", endNight);
 els.prepareButton.addEventListener("click", prepareDevice);
 els.closeDialogButton.addEventListener("click", closeDialog);
 els.deleteAlarmButton.addEventListener("click", deleteCurrentAlarm);
+els.alarmForm.querySelectorAll("[data-time-dial]").forEach((button) => {
+  button.addEventListener("pointerdown", startTimeDrag);
+  button.addEventListener("pointermove", moveTimeDrag);
+  button.addEventListener("pointerup", stopTimeDrag);
+  button.addEventListener("pointercancel", stopTimeDrag);
+  button.addEventListener("click", () => {
+    if (button.dataset.skipClick) {
+      delete button.dataset.skipClick;
+      return;
+    }
+    adjustTime(button.dataset.timeDial, button.dataset.timeDial === "minute" ? 5 : 1);
+  });
+});
 els.alarmForm.addEventListener("submit", (event) => {
   event.preventDefault();
   saveForm();

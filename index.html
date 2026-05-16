@@ -106,10 +106,15 @@
           <input id="alarmLabel" maxlength="28" placeholder="Mañana" autocomplete="off" />
         </label>
 
-        <label class="time-field">
+        <div class="time-field">
           <span>Hora</span>
-          <input id="alarmTime" type="time" required />
-        </label>
+          <div class="time-stepper" aria-label="Hora de la alarma">
+            <button class="time-value" type="button" data-time-dial="hour" aria-label="Cambiar hora"><span id="alarmHour">07</span></button>
+            <span class="time-separator" aria-hidden="true">:</span>
+            <button class="time-value" type="button" data-time-dial="minute" aria-label="Cambiar minutos"><span id="alarmMinute">30</span></button>
+          </div>
+          <input id="alarmTime" type="time" required hidden />
+        </div>
 
         <div class="field">
           <span>Músicas posibles</span>

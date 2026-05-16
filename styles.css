@@ -22,7 +22,10 @@
 
 html,
 body {
-  min-height: 100%;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -32,6 +35,8 @@ body {
     linear-gradient(180deg, #fffaf0 0%, var(--bg) 52%, #f7dcc2 100%);
   color: var(--text);
   letter-spacing: 0;
+  position: fixed;
+  inset: 0;
 }
 
 button,
@@ -47,9 +52,10 @@ button {
 .app-shell {
   position: relative;
   width: min(100%, 430px);
-  min-height: 100svh;
+  height: 100svh;
   margin: 0 auto;
-  padding: max(54px, env(safe-area-inset-top)) 18px calc(102px + env(safe-area-inset-bottom));
+  overflow: hidden;
+  padding: max(38px, env(safe-area-inset-top)) 18px calc(98px + env(safe-area-inset-bottom));
 }
 
 .topbar {
@@ -57,7 +63,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 h1,
@@ -118,7 +124,7 @@ h1 {
   position: relative;
   display: grid;
   gap: 22px;
-  min-height: 286px;
+  min-height: 258px;
   overflow: hidden;
   border: 1px solid rgba(229, 128, 72, 0.3);
   border-radius: 8px;
@@ -127,7 +133,7 @@ h1 {
     #ffe7bf;
   box-shadow: var(--shadow);
   padding: 22px 18px 18px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .sleep-card__top {
@@ -144,7 +150,7 @@ h1 {
 
 .sleep-card__top strong {
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(5.2rem, 27vw, 7.1rem);
+  font-size: clamp(4.85rem, 25vw, 6.7rem);
   line-height: 0.86;
 }
 
@@ -237,7 +243,7 @@ h1 {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .notice div {
@@ -274,7 +280,9 @@ h1 {
 
 .alarm-list {
   display: grid;
-  gap: 14px;
+  gap: 10px;
+  max-height: calc(100svh - 554px);
+  overflow: hidden;
 }
 
 .empty-state {
@@ -287,8 +295,8 @@ h1 {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
-  min-height: 144px;
-  padding: 22px 16px;
+  min-height: 122px;
+  padding: 16px 14px;
   cursor: pointer;
 }
 
@@ -303,14 +311,14 @@ h1 {
   display: block;
   margin-bottom: 5px;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 3.45rem;
+  font-size: 3.05rem;
   font-weight: 700;
   line-height: 0.9;
 }
 
 .alarm-title {
   display: block;
-  margin-bottom: 22px;
+  margin-bottom: 12px;
   color: var(--accent-deep);
   font-size: 1.3rem;
   font-weight: 800;
@@ -518,16 +526,44 @@ select {
   font-weight: 900;
 }
 
-.time-field input {
+.time-stepper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
   height: 110px;
   border: 0;
+  border-radius: 8px;
   background: linear-gradient(180deg, #ef7b54 0%, #df623f 100%);
   color: #fff7e8;
+  box-shadow: 0 12px 28px rgba(218, 91, 57, 0.24);
+  padding: 8px;
+  user-select: none;
+  touch-action: none;
+}
+
+.time-value {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 247, 232, 0.1);
+  color: inherit;
+  cursor: ns-resize;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 4.2rem;
   font-weight: 700;
   text-align: center;
-  box-shadow: 0 12px 28px rgba(218, 91, 57, 0.24);
+  touch-action: none;
+}
+
+.time-separator {
+  align-self: center;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 3.4rem;
+  font-weight: 700;
+  transform: translateY(-2px);
 }
 
 .day-grid,
