@@ -1642,7 +1642,7 @@ struct NightActiveView: View {
                         .foregroundStyle(.white)
                 }
 
-                Text(displayedAlarm.timeText)
+                Text(alarm.timeText)
                     .font(.system(size: 86, weight: .bold, design: .serif))
                     .foregroundStyle(theme == .sunset ? Color.white.opacity(0.96) : Color.white.opacity(0.92))
 
@@ -1707,7 +1707,7 @@ struct RingView: View {
                     .font(.title2.weight(.medium))
                     .foregroundStyle(theme == .sunset ? Color.white : theme.primary)
 
-                Text(alarm.timeText)
+                Text(displayedAlarm.timeText)
                     .font(.system(size: 100, weight: .bold, design: .serif))
                     .foregroundStyle(Color.white.opacity(0.94))
 
