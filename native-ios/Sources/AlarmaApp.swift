@@ -395,7 +395,7 @@ final class NightSession: ObservableObject {
         sound.startKeepAlive()
         startClock()
         startMotionIfNeeded(alarm)
-        startOrUpdateLockScreenActivity(for: alarm, isRinging: false)
+        endLockScreenActivity()
     }
 
     func stop() {
@@ -432,6 +432,7 @@ final class NightSession: ObservableObject {
         motionTimer?.invalidate()
         motion.stopDeviceMotionUpdates()
         motionProgress = 0
+        endLockScreenActivity()
         sound.stop()
         sound.startKeepAlive()
         var snoozed = alarm
@@ -443,7 +444,6 @@ final class NightSession: ObservableObject {
         snoozed.enabled = true
         ringingAlarm = snoozed
         snoozedUntil = date
-        startOrUpdateLockScreenActivity(for: snoozed, isRinging: false)
         snoozeTimer?.invalidate()
         snoozeTimer = Timer.scheduledTimer(withTimeInterval: max(1, date.timeIntervalSinceNow), repeats: false) { [weak self] _ in
             Task { @MainActor in
