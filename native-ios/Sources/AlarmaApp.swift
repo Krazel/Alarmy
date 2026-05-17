@@ -1660,10 +1660,10 @@ struct NightActiveView: View {
         .onAppear {
             showMotionHint = true
             showStartedTitle = true
-            withAnimation(.easeOut(duration: 2.8).delay(5.0)) {
+            withAnimation(.easeOut(duration: 1.4).delay(2.2)) {
                 showMotionHint = false
             }
-            withAnimation(.easeOut(duration: 2.8).delay(8.8)) {
+            withAnimation(.easeOut(duration: 1.4).delay(4.2)) {
                 showStartedTitle = false
             }
         }
