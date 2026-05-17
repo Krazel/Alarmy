@@ -161,7 +161,7 @@ final class AlarmStore: ObservableObject {
     private let customSoundsKey = "alarma.native.customSounds.v1"
 
     var notificationAlarms: [Alarm] {
-        [sleepAlarm]
+        []
     }
 
     init() {
@@ -810,15 +810,15 @@ struct ContentView: View {
             RingView(alarm: alarm, theme: store.sleepTheme)
         }
         .onAppear {
-            session.startAlarmMonitor { [store.sleepAlarm] }
-            session.syncBackgroundGuard(alarms: [store.sleepAlarm])
+            session.startAlarmMonitor { [] }
+            session.syncBackgroundGuard(alarms: [])
         }
-        .onChange(of: store.sleepAlarm) { alarm in
-            session.syncBackgroundGuard(alarms: [alarm])
+        .onChange(of: store.sleepAlarm) { _ in
+            session.syncBackgroundGuard(alarms: [])
         }
         .onChange(of: scenePhase) { phase in
             if phase == .background || phase == .inactive {
-                session.syncBackgroundGuard(alarms: [store.sleepAlarm])
+                session.syncBackgroundGuard(alarms: [])
             }
         }
         .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
