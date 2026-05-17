@@ -24,11 +24,13 @@ APK resultante:
 android-native/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Objetivo para releases:
+Objetivo para artifacts locales:
 
 ```text
-artifact/Alarma-Android-v1.0-build-N.apk
+artifact/Alarma-Android-v1.0-local.apk
 artifact/old/
 ```
 
-Debe mantenerse la misma regla que iOS: una sola build visible por plataforma en `artifact/` y builds antiguas en `artifact/old/`.
+Android se compila localmente desde Windows. No crear GitHub Actions para Android.
+
+Debe mantenerse la misma regla: una sola build visible por plataforma en `artifact/` y builds antiguas en `artifact/old/`.
