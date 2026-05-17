@@ -347,6 +347,7 @@ final class NightSession: ObservableObject {
     @Published var ringingAlarm: Alarm?
     @Published var now = Date()
     @Published var motionProgress = 0.0
+    @Published private(set) var isSnoozing = false
 
     private let motion = CMMotionManager()
     private let sound = AlarmSoundPlayer()
@@ -383,6 +384,7 @@ final class NightSession: ObservableObject {
     }
 
     func start(alarm: Alarm) {
+        isSnoozing = false
         activeAlarm = alarm
         backgroundGuardActive = true
         UIApplication.shared.isIdleTimerDisabled = true
@@ -396,6 +398,7 @@ final class NightSession: ObservableObject {
         endLockScreenActivity()
         activeAlarm = nil
         ringingAlarm = nil
+        isSnoozing = false
         motionProgress = 0
         clockTimer?.invalidate()
         motionTimer?.invalidate()
@@ -405,6 +408,7 @@ final class NightSession: ObservableObject {
     }
 
     func ring(_ alarm: Alarm) {
+        isSnoozing = false
         ringingAlarm = alarm
         activeAlarm = nil
         backgroundGuardActive = false
@@ -415,7 +419,11 @@ final class NightSession: ObservableObject {
     }
 
     func snooze(store: AlarmStore) {
-        guard let alarm = ringingAlarm else { return }
+        guard !isSnoozing, let alarm = ringingAlarm else { return }
+        isSnoozing = true
+        motionTimer?.invalidate()
+        motion.stopDeviceMotionUpdates()
+        motionProgress = 0
         endLockScreenActivity()
         sound.stop()
         var snoozed = alarm
@@ -430,6 +438,7 @@ final class NightSession: ObservableObject {
         ringingAlarm = nil
         store.upsert(snoozed)
         start(alarm: snoozed)
+        isSnoozing = false
     }
 
     private func startOrUpdateLockScreenActivity(for alarm: Alarm, isRinging: Bool) {
@@ -1695,35 +1704,27 @@ struct RingView: View {
                     .tint(.white)
                     .padding(.horizontal, 40)
                     .onChange(of: session.motionProgress) { value in
-                        if value > 0.92 { session.snooze(store: store) }
+                        if value > 0.96 { session.snooze(store: store) }
                     }
 
                 Spacer()
 
-                if theme == .night {
-                    HStack(spacing: 22) {
-                        RingCircleButton(title: "Posponer", icon: "moon.zzz.fill", fill: theme.primary.opacity(0.24), action: { session.snooze(store: store) })
-                        RingCircleButton(title: "Terminar", icon: "stop.fill", fill: Color.white.opacity(0.10), action: { session.stop() })
-                    }
-                } else {
-                    Button { session.snooze(store: store) } label: {
-                        Label("Posponer", systemImage: "iphone.radiowaves.left.and.right")
-                            .font(.title2.weight(.black))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 72)
-                            .background(theme.primary)
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
-                    }
-                    Button { session.stop() } label: {
-                        Label("Terminar", systemImage: "stop.fill")
-                            .font(.title2.weight(.black))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 72)
-                            .background(Color.white.opacity(0.88))
-                            .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
-                            .clipShape(Capsule())
-                    }
+                VStack(spacing: 12) {
+                    RingActionButton(
+                        title: session.isSnoozing ? "Posponiendo" : "Posponer",
+                        icon: "moon.zzz.fill",
+                        fill: theme.primary,
+                        foreground: theme == .sunset ? .white : Color(red: 0.01, green: 0.06, blue: 0.08),
+                        disabled: session.isSnoozing,
+                        action: { session.snooze(store: store) }
+                    )
+                    RingActionButton(
+                        title: "Terminar",
+                        icon: "stop.fill",
+                        fill: theme == .sunset ? Color.white.opacity(0.90) : Color.white.opacity(0.18),
+                        foreground: theme == .sunset ? Color(red: 0.30, green: 0.17, blue: 0.10) : .white,
+                        action: { session.stop() }
+                    )
                 }
             }
             .padding(24)
@@ -1733,27 +1734,36 @@ struct RingView: View {
     }
 }
 
-struct RingCircleButton: View {
+struct RingActionButton: View {
     let title: String
     let icon: String
     let fill: Color
+    let foreground: Color
+    var disabled = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 30, weight: .black))
+            Label {
                 Text(title)
-                    .font(.headline.weight(.bold))
+                    .font(.title2.weight(.black))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+            } icon: {
+                Image(systemName: icon)
+                    .font(.title2.weight(.black))
             }
             .frame(maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fit)
+            .frame(height: 72)
             .background(fill)
-            .foregroundStyle(.white)
-            .clipShape(Circle())
-            .overlay(Circle().stroke(Color.white.opacity(0.16), lineWidth: 1))
+            .foregroundStyle(foreground)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.white.opacity(0.22), lineWidth: 1))
+            .shadow(color: fill.opacity(0.24), radius: 16, x: 0, y: 8)
         }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.72 : 1)
     }
 }
 
