@@ -348,11 +348,13 @@ final class NightSession: ObservableObject {
     @Published var now = Date()
     @Published var motionProgress = 0.0
     @Published private(set) var isSnoozing = false
+    @Published private(set) var snoozedUntil: Date?
 
     private let motion = CMMotionManager()
     private let sound = AlarmSoundPlayer()
     private var clockTimer: Timer?
     private var motionTimer: Timer?
+    private var snoozeTimer: Timer?
     private var alarmMonitor: DispatchSourceTimer?
     private var firedRingKeys: Set<String> = []
     private var backgroundGuardActive = false
@@ -385,6 +387,8 @@ final class NightSession: ObservableObject {
 
     func start(alarm: Alarm) {
         isSnoozing = false
+        snoozedUntil = nil
+        snoozeTimer?.invalidate()
         activeAlarm = alarm
         backgroundGuardActive = true
         UIApplication.shared.isIdleTimerDisabled = true
@@ -399,9 +403,11 @@ final class NightSession: ObservableObject {
         activeAlarm = nil
         ringingAlarm = nil
         isSnoozing = false
+        snoozedUntil = nil
         motionProgress = 0
         clockTimer?.invalidate()
         motionTimer?.invalidate()
+        snoozeTimer?.invalidate()
         motion.stopDeviceMotionUpdates()
         sound.stop()
         UIApplication.shared.isIdleTimerDisabled = false
@@ -409,6 +415,8 @@ final class NightSession: ObservableObject {
 
     func ring(_ alarm: Alarm) {
         isSnoozing = false
+        snoozedUntil = nil
+        snoozeTimer?.invalidate()
         ringingAlarm = alarm
         activeAlarm = nil
         backgroundGuardActive = false
@@ -418,27 +426,40 @@ final class NightSession: ObservableObject {
         startOrUpdateLockScreenActivity(for: alarm, isRinging: true)
     }
 
-    func snooze(store: AlarmStore) {
+    func snooze() {
         guard !isSnoozing, let alarm = ringingAlarm else { return }
         isSnoozing = true
         motionTimer?.invalidate()
         motion.stopDeviceMotionUpdates()
         motionProgress = 0
-        endLockScreenActivity()
         sound.stop()
+        sound.startKeepAlive()
         var snoozed = alarm
         let date = Calendar.current.date(byAdding: .minute, value: alarm.snoozeMinutes, to: Date()) ?? Date()
         let components = Calendar.current.dateComponents([.hour, .minute], from: date)
-        snoozed.id = UUID()
-        snoozed.label = "\(alarm.label) pospuesta"
         snoozed.hour = components.hour ?? alarm.hour
         snoozed.minute = components.minute ?? alarm.minute
         snoozed.weekdays = []
         snoozed.enabled = true
-        ringingAlarm = nil
-        store.upsert(snoozed)
-        start(alarm: snoozed)
+        ringingAlarm = snoozed
+        snoozedUntil = date
+        startOrUpdateLockScreenActivity(for: snoozed, isRinging: false)
+        snoozeTimer?.invalidate()
+        snoozeTimer = Timer.scheduledTimer(withTimeInterval: max(1, date.timeIntervalSinceNow), repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.resumeSnoozedAlarm()
+            }
+        }
+    }
+
+    private func resumeSnoozedAlarm() {
+        guard isSnoozing, let alarm = ringingAlarm else { return }
         isSnoozing = false
+        snoozedUntil = nil
+        motionProgress = 0
+        sound.start(for: alarm)
+        startMotionIfNeeded(alarm)
+        startOrUpdateLockScreenActivity(for: alarm, isRinging: true)
     }
 
     private func startOrUpdateLockScreenActivity(for alarm: Alarm, isRinging: Bool) {
@@ -1621,7 +1642,7 @@ struct NightActiveView: View {
                         .foregroundStyle(.white)
                 }
 
-                Text(alarm.timeText)
+                Text(displayedAlarm.timeText)
                     .font(.system(size: 86, weight: .bold, design: .serif))
                     .foregroundStyle(theme == .sunset ? Color.white.opacity(0.96) : Color.white.opacity(0.92))
 
@@ -1672,7 +1693,6 @@ struct NightActiveView: View {
 
 struct RingView: View {
     @EnvironmentObject private var session: NightSession
-    @EnvironmentObject private var store: AlarmStore
     let alarm: Alarm
     let theme: SleepTheme
 
@@ -1695,7 +1715,7 @@ struct RingView: View {
                     .font(.system(size: 42, weight: .black))
                     .foregroundStyle(theme == .sunset ? Color.white.opacity(0.88) : theme.primary)
 
-                Text(alarm.motionSnooze ? "Mueve el movil\npara posponer" : "Alarma sonando")
+                Text(statusText)
                     .font(.title2.weight(.medium))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(theme == .sunset ? Color.white.opacity(0.94) : theme.primary)
@@ -1703,20 +1723,21 @@ struct RingView: View {
                 ProgressView(value: session.motionProgress)
                     .tint(.white)
                     .padding(.horizontal, 40)
+                    .opacity(session.isSnoozing ? 0 : 1)
                     .onChange(of: session.motionProgress) { value in
-                        if value > 0.96 { session.snooze(store: store) }
+                        if value > 0.96 { session.snooze() }
                     }
 
                 Spacer()
 
                 VStack(spacing: 12) {
                     RingActionButton(
-                        title: session.isSnoozing ? "Posponiendo" : "Posponer",
+                        title: session.isSnoozing ? "Pospuesta" : "Posponer",
                         icon: "moon.zzz.fill",
                         fill: theme.primary,
                         foreground: theme == .sunset ? .white : Color(red: 0.01, green: 0.06, blue: 0.08),
                         disabled: session.isSnoozing,
-                        action: { session.snooze(store: store) }
+                        action: { session.snooze() }
                     )
                     RingActionButton(
                         title: "Terminar",
@@ -1732,6 +1753,23 @@ struct RingView: View {
         .preferredColorScheme(theme == .night ? .dark : .light)
         .statusBarHidden(false)
     }
+
+    private var statusText: String {
+        if session.isSnoozing, let date = session.snoozedUntil {
+            return "Pospuesta hasta \(Self.snoozeFormatter.string(from: date))"
+        }
+        return displayedAlarm.motionSnooze ? "Mueve el movil\npara posponer" : "Alarma sonando"
+    }
+
+    private var displayedAlarm: Alarm {
+        session.ringingAlarm ?? alarm
+    }
+
+    private static let snoozeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
 }
 
 struct RingActionButton: View {
