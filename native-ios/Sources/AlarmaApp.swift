@@ -34,7 +34,7 @@ struct Alarm: Identifiable, Codable, Equatable {
     var hour = 7
     var minute = 30
     var weekdays: Set<Int> = []
-    var soundIds: [String] = ["sunrise", "piano", "rain"]
+    var soundIds: [String] = AlarmSound.defaultIds
     var randomSound = true
     var fadeInEnabled = true
     var fadeDuration = 180.0
@@ -113,22 +113,17 @@ enum SleepTheme: String, CaseIterable, Identifiable {
 struct AlarmSound: Identifiable, Hashable {
     let id: String
     let name: String
+    let fileName: String
     let baseFrequency: Double
     let color: Color
 
+    static let defaultIds = ["funny-alarm", "bosque-amanecer", "despertar-suave", "lo-fi-alarm"]
+
     static let all: [AlarmSound] = [
-        .init(id: "sunrise", name: "Amanecer", baseFrequency: 220, color: .orange),
-        .init(id: "sunset", name: "Atardecer", baseFrequency: 196, color: .pink),
-        .init(id: "piano", name: "Piano suave", baseFrequency: 262, color: .brown),
-        .init(id: "rain", name: "Lluvia lenta", baseFrequency: 174, color: .blue),
-        .init(id: "sea", name: "Brisa del mar", baseFrequency: 392, color: .teal),
-        .init(id: "forest", name: "Bosque nocturno", baseFrequency: 146, color: .green),
-        .init(id: "wind", name: "Viento suave", baseFrequency: 185, color: .cyan),
-        .init(id: "bells", name: "Campanas suaves", baseFrequency: 330, color: .yellow),
-        .init(id: "chimes", name: "Carillones", baseFrequency: 440, color: .mint),
-        .init(id: "harp", name: "Arpa lenta", baseFrequency: 294, color: .purple),
-        .init(id: "river", name: "Rio tranquilo", baseFrequency: 247, color: .indigo),
-        .init(id: "white-noise", name: "Ruido blanco", baseFrequency: 128, color: .gray)
+        .init(id: "funny-alarm", name: "Funny alarm", fileName: "funny-alarm", baseFrequency: 330, color: .orange),
+        .init(id: "bosque-amanecer", name: "Bosque al amanecer", fileName: "bosque-al-amanecer", baseFrequency: 220, color: .green),
+        .init(id: "despertar-suave", name: "Despertar suave", fileName: "despertar-suave", baseFrequency: 262, color: .mint),
+        .init(id: "lo-fi-alarm", name: "Lo-fi alarm clock", fileName: "lo-fi-alarm-clock", baseFrequency: 196, color: .purple)
     ]
 }
 
@@ -145,7 +140,7 @@ final class AlarmStore: ObservableObject {
     @Published var alarms: [Alarm] = [] {
         didSet { save() }
     }
-    @Published var sleepAlarm = Alarm(label: "Noche", hour: 7, minute: 30, weekdays: [], soundIds: ["sunrise", "sunset", "piano", "rain"], randomSound: true, enabled: true) {
+    @Published var sleepAlarm = Alarm(label: "Noche", hour: 7, minute: 30, weekdays: [], soundIds: AlarmSound.defaultIds, randomSound: true, enabled: true) {
         didSet { saveSleepAlarm() }
     }
     @Published var sleepTheme: SleepTheme = .sunset {
@@ -172,9 +167,10 @@ final class AlarmStore: ObservableObject {
         if alarms.isEmpty {
             alarms = [
                 Alarm(),
-                Alarm(label: "Fin de semana", hour: 9, minute: 0, weekdays: [1, 7], soundIds: ["sea"], randomSound: false, enabled: false)
+                Alarm(label: "Fin de semana", hour: 9, minute: 0, weekdays: [1, 7], soundIds: ["despertar-suave"], randomSound: false, enabled: false)
             ]
         }
+        normalizeStoredSounds()
     }
 
     func upsert(_ alarm: Alarm) {
@@ -280,6 +276,23 @@ final class AlarmStore: ObservableObject {
     private func saveCustomSounds() {
         guard let data = try? JSONEncoder().encode(customSounds) else { return }
         UserDefaults.standard.set(data, forKey: customSoundsKey)
+    }
+
+    private func normalizeStoredSounds() {
+        sleepAlarm.soundIds = normalizedSoundIds(sleepAlarm.soundIds)
+        sleepAlarm.randomSound = sleepAlarm.soundIds.count > 1
+        alarms = alarms.map { alarm in
+            var updated = alarm
+            updated.soundIds = normalizedSoundIds(alarm.soundIds)
+            updated.randomSound = updated.soundIds.count > 1
+            return updated
+        }
+    }
+
+    private func normalizedSoundIds(_ ids: [String]) -> [String] {
+        let builtinIds = Set(AlarmSound.defaultIds)
+        let valid = ids.filter { builtinIds.contains($0) || $0.hasPrefix("custom:") }
+        return valid.isEmpty ? AlarmSound.defaultIds : valid
     }
 
     private func customSoundsDirectory() throws -> URL {
@@ -629,24 +642,14 @@ final class AlarmSoundPlayer {
         try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
         try? session.setActive(true)
 
-        let soundId = alarm.soundIds.count > 1 ? (alarm.soundIds.randomElement() ?? "sunrise") : (alarm.soundIds.first ?? "sunrise")
+        let fallbackSoundId = AlarmSound.defaultIds[0]
+        let soundId = alarm.soundIds.count > 1 ? (alarm.soundIds.randomElement() ?? fallbackSoundId) : (alarm.soundIds.first ?? fallbackSoundId)
         if soundId.hasPrefix("custom:") {
             playCustomSound(fileName: String(soundId.dropFirst("custom:".count)), alarm: alarm)
             return
         }
         let sound = AlarmSound.all.first { $0.id == soundId } ?? AlarmSound.all[0]
-        play(sound: sound, initialGain: alarm.fadeInEnabled ? 0.035 : 0.85)
-
-        if alarm.fadeInEnabled {
-            let started = Date()
-            rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
-                guard let self else { return }
-                let elapsed = Date().timeIntervalSince(started)
-                let progress = min(1, elapsed / max(1, alarm.fadeDuration))
-                self.gain = Float(0.035 + progress * 0.865)
-                if progress >= 1 { timer.invalidate() }
-            }
-        }
+        playBundledSound(sound, alarm: alarm)
     }
 
     private func startPreview(sound: AlarmSound) {
@@ -654,7 +657,7 @@ final class AlarmSoundPlayer {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? session.setActive(true)
-        play(sound: sound, initialGain: 0.22)
+        playBundledFile(named: sound.fileName, volume: 0.55, loop: false)
     }
 
     private func startPreview(customSound: CustomAlarmSound) {
@@ -662,12 +665,30 @@ final class AlarmSoundPlayer {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? session.setActive(true)
-        playFile(named: customSound.fileName, volume: 0.55, loop: false)
+        playCustomFile(named: customSound.fileName, volume: 0.55, loop: false)
+    }
+
+    private func playBundledSound(_ sound: AlarmSound, alarm: Alarm) {
+        let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 0.95
+        if !playBundledFile(named: sound.fileName, volume: initialVolume, loop: true) {
+            play(sound: sound, initialGain: alarm.fadeInEnabled ? 0.035 : 0.85)
+        }
+        if alarm.fadeInEnabled {
+            let started = Date()
+            rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+                guard let self else { return }
+                let elapsed = Date().timeIntervalSince(started)
+                let progress = min(1, elapsed / max(1, alarm.fadeDuration))
+                self.audioPlayer?.volume = Float(0.04 + progress * 0.91)
+                self.gain = Float(0.035 + progress * 0.865)
+                if progress >= 1 { timer.invalidate() }
+            }
+        }
     }
 
     private func playCustomSound(fileName: String, alarm: Alarm) {
         let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 0.95
-        playFile(named: fileName, volume: initialVolume, loop: true)
+        playCustomFile(named: fileName, volume: initialVolume, loop: true)
         guard alarm.fadeInEnabled else { return }
         let started = Date()
         rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
@@ -679,18 +700,32 @@ final class AlarmSoundPlayer {
         }
     }
 
-    private func playFile(named fileName: String, volume: Float, loop: Bool) {
-        guard let directory = try? customSoundsDirectory() else { return }
+    @discardableResult
+    private func playBundledFile(named fileName: String, volume: Float, loop: Bool) -> Bool {
+        guard let url = Bundle.main.url(forResource: fileName, withExtension: "mp3") else { return false }
+        return playAudioFile(at: url, volume: volume, loop: loop)
+    }
+
+    @discardableResult
+    private func playCustomFile(named fileName: String, volume: Float, loop: Bool) -> Bool {
+        guard let directory = try? customSoundsDirectory() else { return false }
         let url = directory.appendingPathComponent(fileName)
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        guard FileManager.default.fileExists(atPath: url.path) else { return false }
+        return playAudioFile(at: url, volume: volume, loop: loop)
+    }
+
+    @discardableResult
+    private func playAudioFile(at url: URL, volume: Float, loop: Bool) -> Bool {
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer?.numberOfLoops = loop ? -1 : 0
             audioPlayer?.volume = volume
             audioPlayer?.prepareToPlay()
             audioPlayer?.play()
+            return true
         } catch {
             audioPlayer = nil
+            return false
         }
     }
 
@@ -1545,36 +1580,20 @@ struct SoundSelector: View {
 
     private func icon(for id: String) -> String {
         switch id {
-        case "sunrise": return "sunrise.fill"
-        case "sunset": return "water.waves"
-        case "piano": return "pianokeys"
-        case "rain": return "cloud.rain.fill"
-        case "sea": return "water.waves"
-        case "forest": return "tree.fill"
-        case "wind": return "wind"
-        case "bells": return "bell.fill"
-        case "chimes": return "sparkles"
-        case "harp": return "music.note"
-        case "river": return "drop.fill"
-        case "white-noise": return "waveform"
+        case "funny-alarm": return "bell.fill"
+        case "bosque-amanecer": return "tree.fill"
+        case "despertar-suave": return "sunrise.fill"
+        case "lo-fi-alarm": return "music.note"
         default: return "music.note"
         }
     }
 
     private func subtitle(for sound: AlarmSound) -> String {
         switch sound.id {
-        case "sunrise": return "Suave y brillante"
-        case "sunset": return "Calido y lento"
-        case "piano": return "Notas suaves"
-        case "rain": return "Constante y relajante"
-        case "sea": return "Olas tranquilas"
-        case "forest": return "Ambiente profundo"
-        case "wind": return "Aire ligero"
-        case "bells": return "Tonos claros"
-        case "chimes": return "Textura ligera"
-        case "harp": return "Melodia lenta"
-        case "river": return "Agua continua"
-        case "white-noise": return "Fondo uniforme"
+        case "funny-alarm": return "Alarma clara"
+        case "bosque-amanecer": return "Ambiente natural"
+        case "despertar-suave": return "Entrada tranquila"
+        case "lo-fi-alarm": return "Ritmo suave"
         default: return "Sonido"
         }
     }
