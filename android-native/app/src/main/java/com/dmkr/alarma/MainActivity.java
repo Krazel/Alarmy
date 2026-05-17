@@ -98,10 +98,10 @@ public class MainActivity extends Activity {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout titleBlock = vertical();
-        TextView title = text("Hip-Hop", 46, colorText(sunset), true);
+        TextView title = text("Alarma", 46, colorText(sunset), true);
         title.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         titleBlock.addView(title);
-        titleBlock.addView(text("Despierta con ritmo. Duerme con calma.", 15, colorSecondary(sunset), false));
+        titleBlock.addView(text("Despierta con calma. Duerme mejor.", 15, colorSecondary(sunset), false));
         header.addView(titleBlock, new LinearLayout.LayoutParams(0, -2, 1));
         header.addView(iconButton(prefs.getBoolean("animations", true) ? "✦" : "Ⅱ", v -> {
             prefs.edit().putBoolean("animations", !prefs.getBoolean("animations", true)).apply();

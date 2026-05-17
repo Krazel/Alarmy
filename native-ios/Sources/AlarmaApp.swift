@@ -151,6 +151,9 @@ final class AlarmStore: ObservableObject {
     @Published var sleepTheme: SleepTheme = .sunset {
         didSet { UserDefaults.standard.set(sleepTheme.rawValue, forKey: themeKey) }
     }
+    @Published var backgroundAnimationsEnabled = true {
+        didSet { UserDefaults.standard.set(backgroundAnimationsEnabled, forKey: backgroundAnimationsKey) }
+    }
     @Published var customSounds: [CustomAlarmSound] = [] {
         didSet { saveCustomSounds() }
     }
@@ -158,6 +161,7 @@ final class AlarmStore: ObservableObject {
     private let key = "alarma.native.alarms.v1"
     private let sleepKey = "alarma.native.sleepAlarm.v1"
     private let themeKey = "alarma.native.sleepTheme.v1"
+    private let backgroundAnimationsKey = "alarma.native.backgroundAnimations.v1"
     private let customSoundsKey = "alarma.native.customSounds.v1"
 
     var notificationAlarms: [Alarm] {
@@ -168,6 +172,7 @@ final class AlarmStore: ObservableObject {
         load()
         loadSleepAlarm()
         loadTheme()
+        loadBackgroundAnimations()
         loadCustomSounds()
         if alarms.isEmpty {
             alarms = [
@@ -267,6 +272,11 @@ final class AlarmStore: ObservableObject {
             return
         }
         sleepTheme = theme
+    }
+
+    private func loadBackgroundAnimations() {
+        guard UserDefaults.standard.object(forKey: backgroundAnimationsKey) != nil else { return }
+        backgroundAnimationsEnabled = UserDefaults.standard.bool(forKey: backgroundAnimationsKey)
     }
 
     private func loadCustomSounds() {
@@ -728,7 +738,7 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            SleepBackdrop(theme: store.sleepTheme)
+            SleepBackdrop(theme: store.sleepTheme, animationsEnabled: store.backgroundAnimationsEnabled)
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
@@ -773,11 +783,11 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: Binding(get: { session.isActive }, set: { if !$0 { session.stop() } })) {
             if let alarm = session.activeAlarm {
-                NightActiveView(alarm: alarm, theme: store.sleepTheme)
+                NightActiveView(alarm: alarm, theme: store.sleepTheme, animationsEnabled: store.backgroundAnimationsEnabled)
             }
         }
         .fullScreenCover(item: $session.ringingAlarm) { alarm in
-            RingView(alarm: alarm, theme: store.sleepTheme)
+            RingView(alarm: alarm, theme: store.sleepTheme, animationsEnabled: store.backgroundAnimationsEnabled)
         }
         .onAppear {
             session.startAlarmMonitor { [store.sleepAlarm] }
@@ -791,6 +801,8 @@ struct ContentView: View {
                 session.syncBackgroundGuard(alarms: [store.sleepAlarm])
             }
         }
+        .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
+        .statusBarHidden(false)
     }
 
     private var header: some View {
@@ -810,19 +822,38 @@ struct ContentView: View {
 
             Spacer()
 
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    store.sleepTheme = store.sleepTheme == .sunset ? .night : .sunset
+            HStack(spacing: 10) {
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        store.backgroundAnimationsEnabled.toggle()
+                    }
+                } label: {
+                    Image(systemName: store.backgroundAnimationsEnabled ? "sparkles" : "pause.fill")
+                        .font(.system(size: 17, weight: .bold))
+                        .frame(width: 46, height: 46)
+                        .background(store.sleepTheme == .sunset ? Color.white.opacity(0.72) : Color.white.opacity(store.backgroundAnimationsEnabled ? 0.12 : 0.07))
+                        .foregroundStyle(store.backgroundAnimationsEnabled ? store.sleepTheme.primary : store.sleepTheme.secondaryText)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(store.sleepTheme == .sunset ? Color.black.opacity(0.05) : Color.white.opacity(0.14), lineWidth: 1))
+                        .shadow(color: .black.opacity(store.sleepTheme == .sunset ? 0.10 : 0.28), radius: 12, x: 0, y: 8)
                 }
-            } label: {
-                Image(systemName: store.sleepTheme == .sunset ? "moon.stars.fill" : "sun.max.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .frame(width: 46, height: 46)
-                    .background(store.sleepTheme == .sunset ? Color.white.opacity(0.72) : Color.white.opacity(0.10))
-                    .foregroundStyle(store.sleepTheme.primary)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(store.sleepTheme == .sunset ? Color.black.opacity(0.05) : Color.white.opacity(0.14), lineWidth: 1))
-                    .shadow(color: .black.opacity(store.sleepTheme == .sunset ? 0.10 : 0.28), radius: 12, x: 0, y: 8)
+                .accessibilityLabel(store.backgroundAnimationsEnabled ? "Desactivar animaciones de fondo" : "Activar animaciones de fondo")
+
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        store.sleepTheme = store.sleepTheme == .sunset ? .night : .sunset
+                    }
+                } label: {
+                    Image(systemName: store.sleepTheme == .sunset ? "moon.stars.fill" : "sun.max.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .frame(width: 46, height: 46)
+                        .background(store.sleepTheme == .sunset ? Color.white.opacity(0.72) : Color.white.opacity(0.10))
+                        .foregroundStyle(store.sleepTheme.primary)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(store.sleepTheme == .sunset ? Color.black.opacity(0.05) : Color.white.opacity(0.14), lineWidth: 1))
+                        .shadow(color: .black.opacity(store.sleepTheme == .sunset ? 0.10 : 0.28), radius: 12, x: 0, y: 8)
+                }
+                .accessibilityLabel(store.sleepTheme == .sunset ? "Activar modo noche" : "Activar modo claro")
             }
         }
     }
@@ -877,7 +908,7 @@ struct AlarmHeroCard: View {
             VStack(spacing: 8) {
                 SwipeTimeText(timeText: alarm.timeText, textColor: theme.text, alignment: .center, onAdjust: onAdjust)
                     .frame(height: 86)
-                Text("Cada noche")
+                Text("Descansa")
                     .font(.headline.weight(.black))
                     .foregroundStyle(theme.primary)
             }
@@ -943,6 +974,7 @@ struct SwipeTimeText: View {
 
 struct SleepBackdrop: View {
     let theme: SleepTheme
+    var animationsEnabled = true
 
     var body: some View {
         GeometryReader { proxy in
@@ -966,6 +998,11 @@ struct SleepBackdrop: View {
                     endPoint: .bottom
                 )
                 .frame(width: proxy.size.width, height: proxy.size.height)
+
+                if animationsEnabled {
+                    AnimatedBackdropLayer(theme: theme)
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
@@ -1008,6 +1045,82 @@ struct SleepBackdrop: View {
                 Stars()
                     .fill(Color.white.opacity(0.76))
             }
+        }
+    }
+}
+
+struct AnimatedBackdropLayer: View {
+    let theme: SleepTheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            if !reduceMotion {
+                ZStack {
+                    if theme == .sunset {
+                        sunsetMotion(size: proxy.size)
+                    } else {
+                        nightMotion(size: proxy.size)
+                    }
+                }
+                .allowsHitTesting(false)
+                .onAppear { phase = true }
+            }
+        }
+    }
+
+    private func nightMotion(size: CGSize) -> some View {
+        ZStack {
+            ForEach(0..<18, id: \.self) { index in
+                let x = CGFloat((index * 37) % 100) / 100
+                let y = CGFloat((index * 23 + 11) % 72) / 100
+                let dotSize = CGFloat(1 + (index % 3))
+                Circle()
+                    .fill(Color.white.opacity(index % 2 == 0 ? 0.58 : 0.34))
+                    .frame(width: dotSize, height: dotSize)
+                    .position(x: size.width * x, y: size.height * y)
+                    .offset(y: phase ? -14 - CGFloat(index % 5) : 10 + CGFloat(index % 4))
+                    .opacity(phase ? 0.32 + Double(index % 3) * 0.12 : 0.70)
+                    .animation(
+                        .easeInOut(duration: 3.8 + Double(index % 6) * 0.45).repeatForever(autoreverses: true),
+                        value: phase
+                    )
+            }
+        }
+    }
+
+    private func sunsetMotion(size: CGSize) -> some View {
+        ZStack {
+            ForEach(0..<4, id: \.self) { index in
+                movingCloud(scale: 0.52 + CGFloat(index) * 0.10)
+                    .position(
+                        x: size.width * (0.08 + CGFloat(index) * 0.27),
+                        y: size.height * (0.18 + CGFloat(index % 2) * 0.11)
+                    )
+                    .offset(x: phase ? 24 + CGFloat(index * 5) : -18 - CGFloat(index * 4))
+                    .opacity(0.12 + Double(index) * 0.03)
+                    .animation(
+                        .easeInOut(duration: 7.5 + Double(index) * 1.1).repeatForever(autoreverses: true),
+                        value: phase
+                    )
+            }
+        }
+    }
+
+    private func movingCloud(scale: CGFloat) -> some View {
+        ZStack {
+            Capsule()
+                .fill(Color.white)
+                .frame(width: 94 * scale, height: 18 * scale)
+            Circle()
+                .fill(Color.white)
+                .frame(width: 34 * scale, height: 34 * scale)
+                .offset(x: -25 * scale, y: -8 * scale)
+            Circle()
+                .fill(Color.white)
+                .frame(width: 42 * scale, height: 42 * scale)
+                .offset(x: 7 * scale, y: -11 * scale)
         }
     }
 }
@@ -1141,7 +1254,7 @@ struct EditAlarmView: View {
 
     var body: some View {
         ZStack {
-            SleepBackdrop(theme: theme)
+            SleepBackdrop(theme: theme, animationsEnabled: store.backgroundAnimationsEnabled)
                 .ignoresSafeArea()
                 .overlay(theme == .sunset ? Color.white.opacity(0.45) : Color.black.opacity(0.14))
 
@@ -1233,6 +1346,7 @@ struct EditAlarmView: View {
         .sheet(isPresented: $choosingSounds) {
             SoundPickerSheet(alarm: $alarm, theme: theme)
         }
+        .preferredColorScheme(theme == .night ? .dark : .light)
     }
 
     private var panelFill: Color {
@@ -1337,7 +1451,7 @@ struct SoundPickerSheet: View {
 
     var body: some View {
         ZStack {
-            SleepBackdrop(theme: theme)
+            SleepBackdrop(theme: theme, animationsEnabled: store.backgroundAnimationsEnabled)
                 .ignoresSafeArea()
                 .overlay(theme == .sunset ? Color.white.opacity(0.48) : Color.black.opacity(0.24))
 
@@ -1388,6 +1502,8 @@ struct SoundPickerSheet: View {
                 store.importCustomSound(from: url)
             }
         }
+        .preferredColorScheme(theme == .night ? .dark : .light)
+        .statusBarHidden(false)
     }
 }
 
@@ -1589,10 +1705,12 @@ struct NightActiveView: View {
     @EnvironmentObject private var session: NightSession
     let alarm: Alarm
     let theme: SleepTheme
+    let animationsEnabled: Bool
+    @State private var showMotionHint = true
 
     var body: some View {
         ZStack {
-            SleepBackdrop(theme: theme)
+            SleepBackdrop(theme: theme, animationsEnabled: animationsEnabled)
                 .ignoresSafeArea()
 
             VStack(spacing: 22) {
@@ -1616,6 +1734,8 @@ struct NightActiveView: View {
                     .font(.title3.weight(.medium))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(theme == .sunset ? Color.white.opacity(0.92) : theme.primary)
+                    .opacity(showMotionHint ? 1 : 0)
+                    .frame(height: showMotionHint ? 62 : 0)
 
                 Spacer()
 
@@ -1635,6 +1755,14 @@ struct NightActiveView: View {
             }
             .padding(24)
         }
+        .preferredColorScheme(theme == .night ? .dark : .light)
+        .statusBarHidden(false)
+        .onAppear {
+            showMotionHint = true
+            withAnimation(.easeOut(duration: 1.2).delay(4.0)) {
+                showMotionHint = false
+            }
+        }
     }
 }
 
@@ -1643,10 +1771,11 @@ struct RingView: View {
     @EnvironmentObject private var store: AlarmStore
     let alarm: Alarm
     let theme: SleepTheme
+    let animationsEnabled: Bool
 
     var body: some View {
         ZStack {
-            SleepBackdrop(theme: theme)
+            SleepBackdrop(theme: theme, animationsEnabled: animationsEnabled)
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {
@@ -1705,6 +1834,8 @@ struct RingView: View {
             }
             .padding(24)
         }
+        .preferredColorScheme(theme == .night ? .dark : .light)
+        .statusBarHidden(false)
     }
 }
 
