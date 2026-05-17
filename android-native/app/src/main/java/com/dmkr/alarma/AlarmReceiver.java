@@ -2,6 +2,7 @@ package com.dmkr.alarma;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -17,6 +18,12 @@ public class AlarmReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        String label = intent.getStringExtra("label");
+        if (label == null || label.trim().isEmpty()) label = "Alarma";
+        Intent open = new Intent(context, MainActivity.class);
+        open.putExtra(MainActivity.EXTRA_RING, true);
+        open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent contentIntent = PendingIntent.getActivity(context, 3001, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel channel = new NotificationChannel(
@@ -33,8 +40,10 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         android.app.Notification notification = new android.app.Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("Alarma")
-            .setContentText("Es hora.")
+            .setContentTitle(label)
+            .setContentText("Alarma sonando")
+            .setContentIntent(contentIntent)
+            .setFullScreenIntent(contentIntent, true)
             .setPriority(android.app.Notification.PRIORITY_MAX)
             .setCategory(android.app.Notification.CATEGORY_ALARM)
             .setAutoCancel(true)
