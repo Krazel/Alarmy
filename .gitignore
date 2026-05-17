@@ -1,7 +1,13 @@
 node_modules/
 www/
 /ios/
-/android/
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+android-native/.gradle/
+android-native/app/build/
+android-native/build/
 build/
 dist/
 *.log
