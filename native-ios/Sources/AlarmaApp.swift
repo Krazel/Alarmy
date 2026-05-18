@@ -117,17 +117,17 @@ enum SleepTheme: String, CaseIterable, Identifiable {
 struct AlarmSound: Identifiable, Hashable {
     let id: String
     let name: String
+    let fileName: String
     let baseFrequency: Double
     let color: Color
 
-    static let defaultIds = ["silent"]
+    static let defaultIds = ["funny-alarm", "bosque-amanecer", "despertar-suave", "lo-fi-alarm"]
 
     static let all: [AlarmSound] = [
-        .init(id: "silent", name: "Sin sonido", baseFrequency: 0, color: .gray),
-        .init(id: "sunrise", name: "Amanecer", baseFrequency: 220, color: .orange),
-        .init(id: "sunset", name: "Atardecer", baseFrequency: 196, color: .pink),
-        .init(id: "piano", name: "Piano suave", baseFrequency: 262, color: .brown),
-        .init(id: "rain", name: "Lluvia lenta", baseFrequency: 174, color: .blue)
+        .init(id: "funny-alarm", name: "Funny alarm", fileName: "funny-alarm", baseFrequency: 330, color: .orange),
+        .init(id: "bosque-amanecer", name: "Bosque al amanecer", fileName: "bosque-al-amanecer", baseFrequency: 220, color: .green),
+        .init(id: "despertar-suave", name: "Despertar suave", fileName: "despertar-suave", baseFrequency: 262, color: .mint),
+        .init(id: "lo-fi-alarm", name: "Lo-fi alarm clock", fileName: "lo-fi-alarm-clock", baseFrequency: 196, color: .purple)
     ]
 }
 
@@ -502,7 +502,7 @@ final class AlarmStore: ObservableObject {
         if alarms.isEmpty {
             alarms = [
                 Alarm(),
-                Alarm(label: "Fin de semana", hour: 9, minute: 0, weekdays: [1, 7], soundIds: ["silent"], randomSound: false, enabled: false)
+                Alarm(label: "Fin de semana", hour: 9, minute: 0, weekdays: [1, 7], soundIds: ["despertar-suave"], randomSound: false, enabled: false)
             ]
         }
         normalizeStoredSounds()
@@ -1023,9 +1023,8 @@ final class AlarmSoundPlayer {
             playCustomSound(fileName: String(soundId.dropFirst("custom:".count)), alarm: alarm)
             return
         }
-        if soundId == "silent" { return }
         let sound = AlarmSound.all.first { $0.id == soundId } ?? AlarmSound.all[0]
-        playGeneratedSound(sound, alarm: alarm)
+        playBundledSound(sound, alarm: alarm)
     }
 
     private func startPreview(sound: AlarmSound) {
@@ -1033,10 +1032,7 @@ final class AlarmSoundPlayer {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? session.setActive(true)
-        guard sound.id != "silent" else { return }
-        if let url = generatedToneURL(name: "preview-\(sound.id)", frequency: sound.baseFrequency, amplitude: 0.55, duration: 1.4) {
-            playAudioFile(at: url, volume: 0.55, loop: false)
-        }
+        playBundledFile(named: sound.fileName, volume: 0.55, loop: false)
     }
 
     private func startPreview(customSound: CustomAlarmSound) {
@@ -1047,9 +1043,10 @@ final class AlarmSoundPlayer {
         playCustomFile(named: customSound.fileName, volume: 0.55, loop: false)
     }
 
-    private func playGeneratedSound(_ sound: AlarmSound, alarm: Alarm) {
+    private func playBundledSound(_ sound: AlarmSound, alarm: Alarm) {
         let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 0.95
-        if let url = generatedToneURL(name: "alarm-\(sound.id)", frequency: sound.baseFrequency, amplitude: 0.82, duration: 2.0) {
+        if !playBundledFile(named: sound.fileName, volume: initialVolume, loop: true),
+           let url = generatedToneURL(name: "alarm-\(sound.id)", frequency: sound.baseFrequency, amplitude: 0.82, duration: 2.0) {
             playAudioFile(at: url, volume: initialVolume, loop: true)
         }
         if alarm.fadeInEnabled {
@@ -1076,6 +1073,12 @@ final class AlarmSoundPlayer {
             self.audioPlayer?.volume = Float(0.04 + progress * 0.91)
             if progress >= 1 { timer.invalidate() }
         }
+    }
+
+    @discardableResult
+    private func playBundledFile(named fileName: String, volume: Float, loop: Bool) -> Bool {
+        guard let url = Bundle.main.url(forResource: fileName, withExtension: "mp3") else { return false }
+        return playAudioFile(at: url, volume: volume, loop: loop)
     }
 
     @discardableResult
@@ -2038,22 +2041,20 @@ struct SoundSelector: View {
 
     private func icon(for id: String) -> String {
         switch id {
-        case "silent": return "speaker.slash.fill"
-        case "sunrise": return "sunrise.fill"
-        case "sunset": return "sunset.fill"
-        case "piano": return "pianokeys"
-        case "rain": return "cloud.rain.fill"
+        case "funny-alarm": return "bell.fill"
+        case "bosque-amanecer": return "tree.fill"
+        case "despertar-suave": return "sunrise.fill"
+        case "lo-fi-alarm": return "music.note"
         default: return "music.note"
         }
     }
 
     private func subtitle(for sound: AlarmSound) -> String {
         switch sound.id {
-        case "silent": return "Prueba sin audio"
-        case "sunrise": return "Tono antiguo generado"
-        case "sunset": return "Tono antiguo generado"
-        case "piano": return "Tono antiguo generado"
-        case "rain": return "Tono antiguo generado"
+        case "funny-alarm": return "Alarma clara"
+        case "bosque-amanecer": return "Ambiente natural"
+        case "despertar-suave": return "Entrada tranquila"
+        case "lo-fi-alarm": return "Ritmo suave"
         default: return "Sonido"
         }
     }
