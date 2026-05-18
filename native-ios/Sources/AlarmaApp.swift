@@ -162,7 +162,7 @@ struct AlarmSound: Identifiable, Hashable {
     let baseFrequency: Double
     let color: Color
 
-    static let defaultIds = ["funny-alarm", "bosque-amanecer", "despertar-suave", "lo-fi-alarm"]
+    static let defaultIds = ["bosque-amanecer", "despertar-suave", "lo-fi-alarm"]
 
     static let all: [AlarmSound] = [
         .init(id: "funny-alarm", name: "Funny alarm", fileName: "funny-alarm", baseFrequency: 330, color: .orange),
@@ -533,7 +533,7 @@ final class AlarmStore: ObservableObject {
     private let appearanceKey = "alarma.native.appearance.v1"
     private let recordingEnabledKey = "alarma.native.sleepRecordingEnabled.v2"
     private let customSoundsKey = "alarma.native.customSounds.v1"
-    private let alarmDefaultsMigrationKey = "alarma.native.alarmDefaults.v1"
+    private let alarmDefaultsMigrationKey = "alarma.native.alarmDefaults.v2"
 
     var notificationAlarms: [Alarm] {
         []
@@ -665,6 +665,8 @@ final class AlarmStore: ObservableObject {
         sleepAlarm.fadeInEnabled = true
         sleepAlarm.fadeDuration = 180
         sleepAlarm.snoozeMinutes = 5
+        sleepAlarm.soundIds = AlarmSound.defaultIds
+        sleepAlarm.randomSound = sleepAlarm.soundIds.count > 1
         saveSleepAlarm()
         UserDefaults.standard.set(true, forKey: alarmDefaultsMigrationKey)
     }
@@ -1088,7 +1090,7 @@ final class AlarmSoundPlayer {
     static func preview(sound: AlarmSound) {
         let player = AlarmSoundPlayer()
         player.startPreview(sound: sound)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
             player.stop()
         }
     }
@@ -1096,7 +1098,7 @@ final class AlarmSoundPlayer {
     static func preview(customSound: CustomAlarmSound) {
         let player = AlarmSoundPlayer()
         player.startPreview(customSound: customSound)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
             player.stop()
         }
     }
