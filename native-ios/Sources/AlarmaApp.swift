@@ -191,17 +191,12 @@ enum AppTab: Hashable {
 @MainActor
 final class AppNavigation: ObservableObject {
     @Published var selectedTab: AppTab = .alarm
-    @Published var requestedJournalEntry: DreamJournalEditorRequest?
+    @Published var requestedJournalDate: Date?
 
     func openJournal(for date: Date = Date()) {
+        requestedJournalDate = date
         selectedTab = .journal
-        requestedJournalEntry = DreamJournalEditorRequest(date: date)
     }
-}
-
-struct DreamJournalEditorRequest: Identifiable, Equatable {
-    let id = UUID()
-    let date: Date
 }
 
 struct DreamEntry: Identifiable, Codable, Equatable {
@@ -2448,7 +2443,7 @@ struct DreamJournalView: View {
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
     @State private var draft = DreamEntry(day: Date())
-    @State private var editorRequest: DreamJournalEditorRequest?
+    @FocusState private var notesFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -2465,7 +2460,18 @@ struct DreamJournalView: View {
 
                         SleepStageChart(entry: draft)
 
-                        journalEntryButton
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Diario de sueños", systemImage: "book.closed.fill")
+                                .font(.headline.weight(.black))
+                            TextEditor(text: $draft.notes)
+                                .focused($notesFocused)
+                                .frame(minHeight: 170)
+                                .scrollContentBackground(.hidden)
+                                .padding(12)
+                                .background(editorFill)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                        .foregroundStyle(store.sleepTheme.text)
 
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Seguimiento nocturno", systemImage: "waveform")
@@ -2489,6 +2495,7 @@ struct DreamJournalView: View {
                     .padding(.bottom, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
             }
             .navigationTitle("Diario de sueño")
             .onAppear { loadEntry() }
@@ -2496,16 +2503,20 @@ struct DreamJournalView: View {
                 displayedMonth = Self.monthStart(for: selectedDate)
                 loadEntry()
             }
-            .onChange(of: navigation.requestedJournalEntry) { request in
-                guard let request else { return }
-                selectedDate = Calendar.current.startOfDay(for: request.date)
-                displayedMonth = Self.monthStart(for: request.date)
+            .onChange(of: navigation.requestedJournalDate) { date in
+                guard let date else { return }
+                selectedDate = Calendar.current.startOfDay(for: date)
+                displayedMonth = Self.monthStart(for: date)
                 loadEntry()
-                editorRequest = request
+                notesFocused = true
             }
+            .onChange(of: draft.notes) { _ in dreams.upsert(draft) }
             .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
-            .sheet(item: $editorRequest) { request in
-                DreamEntryEditorView(date: request.date)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Listo") { notesFocused = false }
+                }
             }
         }
     }
@@ -2547,138 +2558,9 @@ struct DreamJournalView: View {
         store.sleepTheme == .sunset ? Color.white.opacity(0.64) : Color.white.opacity(0.10)
     }
 
-    private var journalEntryButton: some View {
-        Button {
-            editorRequest = DreamJournalEditorRequest(date: selectedDate)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "square.and.pencil" : "book.closed.fill")
-                    .font(.title3.weight(.black))
-                    .frame(width: 34, height: 34)
-                    .background(store.sleepTheme.primary.opacity(0.18))
-                    .clipShape(Circle())
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Diario de sueños")
-                        .font(.headline.weight(.black))
-                    Text(journalEntrySummary)
-                        .font(.subheadline.weight(.bold))
-                        .lineLimit(2)
-                        .foregroundStyle(store.sleepTheme.secondaryText)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.headline.weight(.black))
-                    .foregroundStyle(store.sleepTheme.secondaryText)
-            }
-            .padding(16)
-            .background(panelFill)
-            .foregroundStyle(store.sleepTheme.text)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var journalEntrySummary: String {
-        let notes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        return notes.isEmpty ? "Escribir entrada de esta noche" : notes
-    }
-
     private static func monthStart(for date: Date) -> Date {
         Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? date
     }
-}
-
-struct DreamEntryEditorView: View {
-    @EnvironmentObject private var store: AlarmStore
-    @EnvironmentObject private var dreams: DreamStore
-    @Environment(\.dismiss) private var dismiss
-    let date: Date
-    @State private var draft = DreamEntry(day: Date())
-    @FocusState private var notesFocused: Bool
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                SleepBackdrop(theme: store.sleepTheme)
-                    .ignoresSafeArea()
-                    .overlay(store.sleepTheme == .sunset ? Color.white.opacity(0.56) : Color.black.opacity(0.22))
-                    .onTapGesture { notesFocused = false }
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Toggle(isOn: Binding(
-                        get: { !store.openJournalAfterAlarm },
-                        set: { store.openJournalAfterAlarm = !$0 }
-                    )) {
-                        Text("No volver a abrir al terminar alarma")
-                            .font(.subheadline.weight(.bold))
-                    }
-                    .tint(store.sleepTheme.primary)
-                    .padding(14)
-                    .background(panelFill)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label(Self.dateFormatter.string(from: date), systemImage: "book.closed.fill")
-                            .font(.headline.weight(.black))
-
-                        TextEditor(text: $draft.notes)
-                            .focused($notesFocused)
-                            .frame(height: 220)
-                            .scrollContentBackground(.hidden)
-                            .padding(12)
-                            .background(editorFill)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
-                    .padding(16)
-                    .background(panelFill)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-
-                    Spacer()
-                }
-                .padding(20)
-                .foregroundStyle(store.sleepTheme.text)
-            }
-            .navigationTitle("Nuevo sueño")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Cerrar") { dismiss() }
-                        .font(.headline.weight(.bold))
-                }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Listo") { notesFocused = false }
-                }
-            }
-            .onAppear {
-                draft = dreams.entry(for: date)
-                draft.day = Calendar.current.startOfDay(for: date)
-                notesFocused = true
-            }
-            .onChange(of: draft.notes) { _ in dreams.upsert(draft) }
-            .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
-        }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-    }
-
-    private var panelFill: Color {
-        store.sleepTheme == .sunset ? Color.white.opacity(0.68) : Color.white.opacity(0.09)
-    }
-
-    private var editorFill: Color {
-        store.sleepTheme == .sunset ? Color.white.opacity(0.72) : Color.white.opacity(0.12)
-    }
-
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "es_ES")
-        formatter.dateStyle = .full
-        return formatter
-    }()
 }
 
 struct SleepCalendarGrid: View {
