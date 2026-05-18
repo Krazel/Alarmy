@@ -648,9 +648,35 @@ final class AlarmStore: ObservableObject {
 
 final class NotificationScheduler {
     static let shared = NotificationScheduler()
+    private let sessionAlarmId = "night-session-alarm"
 
     func requestAuthorization() async {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .timeSensitive])
+    }
+
+    func scheduleSessionAlarm(_ alarm: Alarm) async {
+        guard let date = nextDate(for: alarm, after: Date()) else { return }
+        await scheduleSessionAlarm(alarm, at: date)
+    }
+
+    func scheduleSessionAlarm(_ alarm: Alarm, at date: Date) async {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [sessionAlarmId])
+
+        let content = UNMutableNotificationContent()
+        content.title = alarm.label.isEmpty ? "Alarma" : alarm.label
+        content.body = "La alarma está sonando."
+        content.sound = .default
+        content.interruptionLevel = .timeSensitive
+
+        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        let request = UNNotificationRequest(identifier: sessionAlarmId, content: content, trigger: trigger)
+        try? await center.add(request)
+    }
+
+    func cancelSessionAlarm() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [sessionAlarmId])
     }
 
     func reschedule(alarms: [Alarm]) async {
@@ -695,6 +721,26 @@ final class NotificationScheduler {
         if alarm.weekdays.isEmpty { return ["alarm-\(alarm.id.uuidString)-once"] }
         return alarm.weekdays.map { "alarm-\(alarm.id.uuidString)-\($0)" }
     }
+
+    private func nextDate(for alarm: Alarm, after date: Date) -> Date? {
+        let calendar = Calendar.current
+        let currentWeekday = calendar.component(.weekday, from: date)
+        for offset in 0...7 {
+            guard let candidateDay = calendar.date(byAdding: .day, value: offset, to: date) else { continue }
+            let candidateWeekday = calendar.component(.weekday, from: candidateDay)
+            if !alarm.weekdays.isEmpty, !alarm.weekdays.contains(candidateWeekday) { continue }
+
+            var components = calendar.dateComponents([.year, .month, .day], from: candidateDay)
+            components.hour = alarm.hour
+            components.minute = alarm.minute
+            components.second = 0
+            guard let candidate = calendar.date(from: components) else { continue }
+            if candidate > date || (offset > 0 && alarm.weekdays.contains(currentWeekday)) {
+                return candidate
+            }
+        }
+        return nil
+    }
 }
 
 @MainActor
@@ -719,6 +765,7 @@ final class NightSession: ObservableObject {
     private var sleepDay = Date()
     private var dreamStore: DreamStore?
     private var audioEventsSinceLastSample = 0
+    private var originalBrightness: CGFloat?
     private var alarmMonitor: DispatchSourceTimer?
     private var firedRingKeys: Set<String> = []
     private var backgroundGuardActive = false
@@ -759,10 +806,12 @@ final class NightSession: ObservableObject {
         self.dreamStore = dreamStore
         sleepStartedAt = Date()
         sleepDay = Date()
+        originalBrightness = UIScreen.main.brightness
         dreamStore?.markSleepStarted(day: sleepDay, at: sleepStartedAt ?? Date())
         backgroundGuardActive = true
         UIApplication.shared.isIdleTimerDisabled = true
         sound.startKeepAlive()
+        Task { await NotificationScheduler.shared.scheduleSessionAlarm(alarm) }
         startClock()
         startMotionIfNeeded(alarm, force: dreamStore != nil)
         startSleepAnalysisIfNeeded()
@@ -792,6 +841,8 @@ final class NightSession: ObservableObject {
         motionTimer?.invalidate()
         sleepAnalysisTimer?.invalidate()
         snoozeTimer?.invalidate()
+        NotificationScheduler.shared.cancelSessionAlarm()
+        restoreBrightness()
         if sleepStartedAt != nil, let dreamStore {
             dreamStore.markSleepEnded(day: sleepDay, at: Date())
             self.sleepStartedAt = nil
@@ -815,11 +866,15 @@ final class NightSession: ObservableObject {
         UIApplication.shared.isIdleTimerDisabled = true
         sleepRecorder.stop()
         sleepAnalysisTimer?.invalidate()
+        NotificationScheduler.shared.cancelSessionAlarm()
         if sleepStartedAt != nil, let dreamStore {
             dreamStore.markSleepEnded(day: sleepDay, at: Date())
             self.sleepStartedAt = nil
         }
         self.dreamStore = nil
+        if alarm.lightWakeEnabled {
+            UIScreen.main.brightness = 1
+        }
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
         startOrUpdateLockScreenActivity(for: alarm, isRinging: true)
@@ -834,6 +889,7 @@ final class NightSession: ObservableObject {
         endLockScreenActivity()
         sound.stop()
         sound.startKeepAlive()
+        restoreBrightness()
         var snoozed = alarm
         let date = Calendar.current.date(byAdding: .minute, value: alarm.snoozeMinutes, to: Date()) ?? Date()
         let components = Calendar.current.dateComponents([.hour, .minute], from: date)
@@ -849,6 +905,7 @@ final class NightSession: ObservableObject {
                 self?.resumeSnoozedAlarm()
             }
         }
+        Task { await NotificationScheduler.shared.scheduleSessionAlarm(snoozed, at: date) }
     }
 
     private func resumeSnoozedAlarm() {
@@ -857,6 +914,10 @@ final class NightSession: ObservableObject {
         snoozedUntil = nil
         lightLevel = 0
         motionProgress = 0
+        NotificationScheduler.shared.cancelSessionAlarm()
+        if alarm.lightWakeEnabled {
+            UIScreen.main.brightness = 1
+        }
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
         startOrUpdateLockScreenActivity(for: alarm, isRinging: true)
@@ -1019,6 +1080,14 @@ final class NightSession: ObservableObject {
 
         lightWakeStartedFor = alarm.id
         lightLevel = max(0, min(1, 1 - secondsUntilAlarm / leadSeconds))
+        let baseBrightness = originalBrightness ?? UIScreen.main.brightness
+        UIScreen.main.brightness = min(1, max(baseBrightness, baseBrightness + (1 - baseBrightness) * lightLevel))
+    }
+
+    private func restoreBrightness() {
+        guard let brightness = originalBrightness else { return }
+        UIScreen.main.brightness = brightness
+        originalBrightness = nil
     }
 }
 
@@ -2173,14 +2242,6 @@ struct NightActiveView: View {
         ZStack {
             SleepBackdrop(theme: theme)
                 .ignoresSafeArea()
-
-            if session.lightLevel > 0 {
-                Color.white
-                    .opacity(0.10 + session.lightLevel * 0.82)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-                    .animation(.easeInOut(duration: 1), value: session.lightLevel)
-            }
 
             VStack(spacing: 22) {
                 Spacer(minLength: 86)
