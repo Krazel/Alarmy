@@ -474,9 +474,6 @@ final class AlarmStore: ObservableObject {
     @Published var sleepRecordingEnabled = true {
         didSet { UserDefaults.standard.set(sleepRecordingEnabled, forKey: recordingEnabledKey) }
     }
-    @Published var saveAudioOnlyWhenSound = true {
-        didSet { UserDefaults.standard.set(saveAudioOnlyWhenSound, forKey: saveOnlyWhenSoundKey) }
-    }
     @Published var customSounds: [CustomAlarmSound] = [] {
         didSet { saveCustomSounds() }
     }
@@ -485,7 +482,6 @@ final class AlarmStore: ObservableObject {
     private let sleepKey = "alarma.native.sleepAlarm.v1"
     private let themeKey = "alarma.native.sleepTheme.v1"
     private let recordingEnabledKey = "alarma.native.sleepRecordingEnabled.v1"
-    private let saveOnlyWhenSoundKey = "alarma.native.saveAudioOnlyWhenSound.v1"
     private let customSoundsKey = "alarma.native.customSounds.v1"
 
     var notificationAlarms: [Alarm] {
@@ -602,9 +598,6 @@ final class AlarmStore: ObservableObject {
     private func loadRecordingSettings() {
         if UserDefaults.standard.object(forKey: recordingEnabledKey) != nil {
             sleepRecordingEnabled = UserDefaults.standard.bool(forKey: recordingEnabledKey)
-        }
-        if UserDefaults.standard.object(forKey: saveOnlyWhenSoundKey) != nil {
-            saveAudioOnlyWhenSound = UserDefaults.standard.bool(forKey: saveOnlyWhenSoundKey)
         }
     }
 
@@ -1354,7 +1347,7 @@ struct ContentView: View {
                         alarm: store.sleepAlarm,
                         dreamStore: dreams,
                         recordSounds: store.sleepRecordingEnabled,
-                        saveOnlyWhenSound: store.saveAudioOnlyWhenSound
+                        saveOnlyWhenSound: true
                     )
                 } label: {
                     Label("Empezar la noche", systemImage: "moon.stars.fill")
@@ -2668,9 +2661,6 @@ struct SettingsView: View {
 
                         settingsGroup("Seguimiento nocturno", systemImage: "waveform") {
                             settingToggle("Grabar sonidos nocturnos", isOn: $store.sleepRecordingEnabled)
-                            settingToggle("Guardar solo si hay sonido", isOn: $store.saveAudioOnlyWhenSound)
-                                .disabled(!store.sleepRecordingEnabled)
-                                .opacity(store.sleepRecordingEnabled ? 1 : 0.55)
                             Text("La detección de ronquidos, respiración fuerte y voz se guarda localmente como estimación.")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(store.sleepTheme.secondaryText)
