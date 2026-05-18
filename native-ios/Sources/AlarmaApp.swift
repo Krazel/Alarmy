@@ -748,34 +748,18 @@ final class NightSession: ObservableObject {
         }
     }
 
-    func start(alarm: Alarm, dreamStore: DreamStore? = nil, recordSounds: Bool = true, saveOnlyWhenSound: Bool = true) {
+    func start(alarm: Alarm) {
         isSnoozing = false
         snoozedUntil = nil
         snoozeTimer?.invalidate()
         lightLevel = 0
         lightWakeStartedFor = nil
         activeAlarm = alarm
-        self.dreamStore = dreamStore
-        sleepStartedAt = Date()
-        sleepDay = Date()
-        originalBrightness = UIScreen.main.brightness
-        dreamStore?.markSleepStarted(day: sleepDay, at: sleepStartedAt ?? Date())
         backgroundGuardActive = true
         UIApplication.shared.isIdleTimerDisabled = true
         sound.startKeepAlive()
         startClock()
-        startMotionIfNeeded(alarm, force: dreamStore != nil)
-        startSleepAnalysisIfNeeded()
-        if let dreamStore, recordSounds {
-            Task {
-                await sleepRecorder.start(day: self.sleepDay, saveOnlyWhenSound: saveOnlyWhenSound) { [weak self] event in
-                    Task { @MainActor in
-                        self?.audioEventsSinceLastSample += 1
-                        dreamStore.addAudioEvent(day: event.day, kind: event.kind)
-                    }
-                }
-            }
-        }
+        startMotionIfNeeded(alarm)
         endLockScreenActivity()
     }
 
@@ -793,13 +777,7 @@ final class NightSession: ObservableObject {
         sleepAnalysisTimer?.invalidate()
         snoozeTimer?.invalidate()
         restoreBrightness()
-        if sleepStartedAt != nil, let dreamStore {
-            dreamStore.markSleepEnded(day: sleepDay, at: Date())
-            self.sleepStartedAt = nil
-        }
-        self.dreamStore = nil
         motion.stopDeviceMotionUpdates()
-        sleepRecorder.stop()
         sound.stop()
         UIApplication.shared.isIdleTimerDisabled = false
     }
@@ -814,19 +792,13 @@ final class NightSession: ObservableObject {
         activeAlarm = nil
         backgroundGuardActive = false
         UIApplication.shared.isIdleTimerDisabled = true
-        sleepRecorder.stop()
         sleepAnalysisTimer?.invalidate()
-        if sleepStartedAt != nil, let dreamStore {
-            dreamStore.markSleepEnded(day: sleepDay, at: Date())
-            self.sleepStartedAt = nil
-        }
-        self.dreamStore = nil
         if alarm.lightWakeEnabled {
+            originalBrightness = originalBrightness ?? UIScreen.main.brightness
             UIScreen.main.brightness = 1
         }
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
-        startOrUpdateLockScreenActivity(for: alarm, isRinging: true)
     }
 
     func snooze() {
@@ -863,11 +835,11 @@ final class NightSession: ObservableObject {
         lightLevel = 0
         motionProgress = 0
         if alarm.lightWakeEnabled {
+            originalBrightness = originalBrightness ?? UIScreen.main.brightness
             UIScreen.main.brightness = 1
         }
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
-        startOrUpdateLockScreenActivity(for: alarm, isRinging: true)
     }
 
     private func startOrUpdateLockScreenActivity(for alarm: Alarm, isRinging: Bool) {
@@ -975,10 +947,6 @@ final class NightSession: ObservableObject {
         let components = calendar.dateComponents([.hour, .minute, .weekday], from: date)
         let minuteKey = DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short)
 
-        if let active = activeAlarm {
-            updateLightWake(for: active, now: date)
-        }
-
         if let active = activeAlarm,
            active.hour == components.hour,
            active.minute == components.minute,
@@ -986,7 +954,6 @@ final class NightSession: ObservableObject {
             let key = "\(active.id.uuidString)-\(minuteKey)"
             guard !firedRingKeys.contains(key) else { return }
             firedRingKeys.insert(key)
-            lightLevel = 0
             ring(active)
             return
         }
@@ -1000,35 +967,6 @@ final class NightSession: ObservableObject {
             ring(alarm)
             break
         }
-    }
-
-    private func updateLightWake(for alarm: Alarm, now: Date) {
-        guard alarm.lightWakeEnabled, alarm.lightWakeMinutes > 0 else {
-            lightLevel = 0
-            return
-        }
-
-        let calendar = Calendar.current
-        var targetComponents = calendar.dateComponents([.year, .month, .day], from: now)
-        targetComponents.hour = alarm.hour
-        targetComponents.minute = alarm.minute
-        targetComponents.second = 0
-        var targetDate = calendar.date(from: targetComponents) ?? now
-        if targetDate <= now {
-            targetDate = calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
-        }
-
-        let leadSeconds = TimeInterval(alarm.lightWakeMinutes * 60)
-        let secondsUntilAlarm = targetDate.timeIntervalSince(now)
-        guard secondsUntilAlarm <= leadSeconds, secondsUntilAlarm > 0 else {
-            lightLevel = 0
-            return
-        }
-
-        lightWakeStartedFor = alarm.id
-        lightLevel = max(0, min(1, 1 - secondsUntilAlarm / leadSeconds))
-        let baseBrightness = originalBrightness ?? UIScreen.main.brightness
-        UIScreen.main.brightness = min(1, max(baseBrightness, baseBrightness + (1 - baseBrightness) * lightLevel))
     }
 
     private func restoreBrightness() {
@@ -1293,12 +1231,7 @@ struct ContentView: View {
                 Spacer()
 
                 Button {
-                    session.start(
-                        alarm: store.sleepAlarm,
-                        dreamStore: dreams,
-                        recordSounds: store.sleepRecordingEnabled,
-                        saveOnlyWhenSound: true
-                    )
+                    session.start(alarm: store.sleepAlarm)
                 } label: {
                     Label("Empezar la noche", systemImage: "moon.stars.fill")
                         .font(.title3.weight(.black))
