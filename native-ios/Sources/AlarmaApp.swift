@@ -977,12 +977,8 @@ final class NightSession: ObservableObject {
 }
 
 final class AlarmSoundPlayer {
-    private let engine = AVAudioEngine()
-    private var sourceNode: AVAudioSourceNode?
     private var audioPlayer: AVAudioPlayer?
     private var rampTimer: Timer?
-    private var phase = 0.0
-    private var gain: Float = 0.04
 
     static func preview(sound: AlarmSound) {
         let player = AlarmSoundPlayer()
@@ -1010,31 +1006,9 @@ final class AlarmSoundPlayer {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? session.setActive(true)
-
-        let sampleRate = 44_100.0
-        gain = 0.0008
-        phase = 0
-
-        let node = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList in
-            guard let self else { return noErr }
-            let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
-            for frame in 0..<Int(frameCount) {
-                let value = Float(sin(self.phase)) * self.gain
-                self.phase += 2.0 * Double.pi * 110.0 / sampleRate
-                if self.phase > 2.0 * Double.pi { self.phase -= 2.0 * Double.pi }
-                for buffer in buffers {
-                    let pointer = buffer.mData!.assumingMemoryBound(to: Float.self)
-                    pointer[frame] = value
-                }
-            }
-            return noErr
+        if let url = generatedToneURL(name: "keepalive", frequency: 110, amplitude: 0.0008, duration: 1.0) {
+            playAudioFile(at: url, volume: 0.02, loop: true)
         }
-
-        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
-        engine.attach(node)
-        engine.connect(node, to: engine.mainMixerNode, format: format)
-        sourceNode = node
-        try? engine.start()
     }
 
     func start(for alarm: Alarm) {
@@ -1070,14 +1044,17 @@ final class AlarmSoundPlayer {
     }
 
     private func playGeneratedSound(_ sound: AlarmSound, alarm: Alarm) {
-        play(sound: sound, initialGain: alarm.fadeInEnabled ? 0.035 : 0.85)
+        let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 0.95
+        if let url = generatedToneURL(name: "alarm-\(sound.id)", frequency: sound.baseFrequency, amplitude: 0.82, duration: 2.0) {
+            playAudioFile(at: url, volume: initialVolume, loop: true)
+        }
         if alarm.fadeInEnabled {
             let started = Date()
             rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
                 guard let self else { return }
                 let elapsed = Date().timeIntervalSince(started)
                 let progress = min(1, elapsed / max(1, alarm.fadeDuration))
-                self.gain = Float(0.035 + progress * 0.865)
+                self.audioPlayer?.volume = Float(0.04 + progress * 0.91)
                 if progress >= 1 { timer.invalidate() }
             }
         }
@@ -1131,45 +1108,62 @@ final class AlarmSoundPlayer {
         return baseURL.appendingPathComponent("CustomSounds", isDirectory: true)
     }
 
-    private func play(sound: AlarmSound, initialGain: Float) {
-        let sampleRate = 44_100.0
-        gain = initialGain
-        phase = 0
-
-        let node = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList in
-            guard let self else { return noErr }
-            let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
-            for frame in 0..<Int(frameCount) {
-                let envelope = 0.55 + 0.45 * sin(self.phase * 0.012)
-                let value = Float(sin(self.phase) * envelope) * self.gain
-                self.phase += 2.0 * Double.pi * sound.baseFrequency / sampleRate
-                if self.phase > 2.0 * Double.pi { self.phase -= 2.0 * Double.pi }
-                for buffer in buffers {
-                    let pointer = buffer.mData!.assumingMemoryBound(to: Float.self)
-                    pointer[frame] = value
-                }
-            }
-            return noErr
-        }
-
-        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
-        engine.attach(node)
-        engine.connect(node, to: engine.mainMixerNode, format: format)
-        sourceNode = node
-        try? engine.start()
-    }
-
     func stop() {
         rampTimer?.invalidate()
         rampTimer = nil
         audioPlayer?.stop()
         audioPlayer = nil
-        if engine.isRunning { engine.stop() }
-        if let sourceNode {
-            engine.detach(sourceNode)
-        }
-        sourceNode = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    private func generatedToneURL(name: String, frequency: Double, amplitude: Double, duration: Double) -> URL? {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("AlarmaGeneratedAudio", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("\(name).wav")
+        if FileManager.default.fileExists(atPath: url.path) { return url }
+
+        let sampleRate = 44_100
+        let channelCount = 1
+        let bitsPerSample = 16
+        let sampleCount = Int(Double(sampleRate) * duration)
+        let byteRate = sampleRate * channelCount * bitsPerSample / 8
+        let blockAlign = channelCount * bitsPerSample / 8
+        let dataSize = sampleCount * blockAlign
+
+        var data = Data()
+        data.append(contentsOf: Array("RIFF".utf8))
+        data.append(UInt32(36 + dataSize).littleEndianData)
+        data.append(contentsOf: Array("WAVEfmt ".utf8))
+        data.append(UInt32(16).littleEndianData)
+        data.append(UInt16(1).littleEndianData)
+        data.append(UInt16(channelCount).littleEndianData)
+        data.append(UInt32(sampleRate).littleEndianData)
+        data.append(UInt32(byteRate).littleEndianData)
+        data.append(UInt16(blockAlign).littleEndianData)
+        data.append(UInt16(bitsPerSample).littleEndianData)
+        data.append(contentsOf: Array("data".utf8))
+        data.append(UInt32(dataSize).littleEndianData)
+
+        for sample in 0..<sampleCount {
+            let phase = 2.0 * Double.pi * frequency * Double(sample) / Double(sampleRate)
+            let envelope = 0.55 + 0.45 * sin(phase * 0.012)
+            let value = Int16(max(-1, min(1, sin(phase) * envelope * amplitude)) * Double(Int16.max))
+            data.append(value.littleEndianData)
+        }
+
+        do {
+            try data.write(to: url, options: .atomic)
+            return url
+        } catch {
+            return nil
+        }
+    }
+}
+
+private extension FixedWidthInteger {
+    var littleEndianData: Data {
+        var value = littleEndian
+        return Data(bytes: &value, count: MemoryLayout<Self>.size)
     }
 }
 
