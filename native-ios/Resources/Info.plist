@@ -22,6 +22,8 @@
   <true/>
   <key>NSMotionUsageDescription</key>
   <string>Alarma usa el movimiento del iPhone para posponer la alarma.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Alarma puede usar el microfono para estimar ronquidos, respiracion fuerte o voz durante la noche si activas el seguimiento.</string>
   <key>NSUserNotificationsUsageDescription</key>
   <string>Alarma usa notificaciones para avisarte si iOS pausa la app.</string>
   <key>NSSupportsLiveActivities</key>

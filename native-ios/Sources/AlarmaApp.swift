@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 struct AlarmaApp: App {
     @StateObject private var store = AlarmStore()
     @StateObject private var session = NightSession()
+    @StateObject private var dreams = DreamStore()
 
     init() {
         AlarmSoundPlayer.configurePlaybackSession()
@@ -17,9 +18,10 @@ struct AlarmaApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootTabView()
                 .environmentObject(store)
                 .environmentObject(session)
+                .environmentObject(dreams)
                 .task {
                     await NotificationScheduler.shared.requestAuthorization()
                     await NotificationScheduler.shared.reschedule(alarms: store.notificationAlarms)
@@ -40,6 +42,8 @@ struct Alarm: Identifiable, Codable, Equatable {
     var fadeDuration = 180.0
     var motionSnooze = true
     var snoozeMinutes = 5
+    var lightWakeEnabled = false
+    var lightWakeMinutes = 5
     var enabled = true
     var lastRingKey: String?
 
@@ -133,6 +137,66 @@ struct CustomAlarmSound: Identifiable, Codable, Equatable, Hashable {
     var fileName: String
 
     var soundId: String { "custom:\(fileName)" }
+}
+
+struct DreamEntry: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var day: Date
+    var notes = ""
+    var score = 72
+    var awakeMinutes = 0
+    var snoreEvents = 0
+    var strongBreathingEvents = 0
+    var talkingEvents = 0
+
+    var dayKey: String {
+        Self.key(for: day)
+    }
+
+    static func key(for date: Date) -> String {
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0)
+    }
+}
+
+@MainActor
+final class DreamStore: ObservableObject {
+    @Published var entries: [DreamEntry] = [] {
+        didSet { save() }
+    }
+
+    private let key = "alarma.native.dreamEntries.v1"
+
+    init() {
+        load()
+    }
+
+    func entry(for date: Date) -> DreamEntry {
+        let key = DreamEntry.key(for: date)
+        return entries.first { $0.dayKey == key } ?? DreamEntry(day: date)
+    }
+
+    func upsert(_ entry: DreamEntry) {
+        if let index = entries.firstIndex(where: { $0.dayKey == entry.dayKey }) {
+            entries[index] = entry
+        } else {
+            entries.append(entry)
+        }
+        entries.sort { $0.day > $1.day }
+    }
+
+    private func load() {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let decoded = try? JSONDecoder().decode([DreamEntry].self, from: data) else {
+            return
+        }
+        entries = decoded
+    }
+
+    private func save() {
+        guard let data = try? JSONEncoder().encode(entries) else { return }
+        UserDefaults.standard.set(data, forKey: key)
+    }
 }
 
 @MainActor
@@ -362,12 +426,14 @@ final class NightSession: ObservableObject {
     @Published var motionProgress = 0.0
     @Published private(set) var isSnoozing = false
     @Published private(set) var snoozedUntil: Date?
+    @Published private(set) var lightLevel = 0.0
 
     private let motion = CMMotionManager()
     private let sound = AlarmSoundPlayer()
     private var clockTimer: Timer?
     private var motionTimer: Timer?
     private var snoozeTimer: Timer?
+    private var lightWakeStartedFor: UUID?
     private var alarmMonitor: DispatchSourceTimer?
     private var firedRingKeys: Set<String> = []
     private var backgroundGuardActive = false
@@ -402,6 +468,8 @@ final class NightSession: ObservableObject {
         isSnoozing = false
         snoozedUntil = nil
         snoozeTimer?.invalidate()
+        lightLevel = 0
+        lightWakeStartedFor = nil
         activeAlarm = alarm
         backgroundGuardActive = true
         UIApplication.shared.isIdleTimerDisabled = true
@@ -417,6 +485,8 @@ final class NightSession: ObservableObject {
         ringingAlarm = nil
         isSnoozing = false
         snoozedUntil = nil
+        lightLevel = 0
+        lightWakeStartedFor = nil
         motionProgress = 0
         clockTimer?.invalidate()
         motionTimer?.invalidate()
@@ -429,6 +499,8 @@ final class NightSession: ObservableObject {
     func ring(_ alarm: Alarm) {
         isSnoozing = false
         snoozedUntil = nil
+        lightLevel = 0
+        lightWakeStartedFor = nil
         snoozeTimer?.invalidate()
         ringingAlarm = alarm
         activeAlarm = nil
@@ -469,6 +541,7 @@ final class NightSession: ObservableObject {
         guard isSnoozing, let alarm = ringingAlarm else { return }
         isSnoozing = false
         snoozedUntil = nil
+        lightLevel = 0
         motionProgress = 0
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
@@ -552,6 +625,10 @@ final class NightSession: ObservableObject {
         let components = calendar.dateComponents([.hour, .minute, .weekday], from: date)
         let minuteKey = DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short)
 
+        if let active = activeAlarm {
+            updateLightWake(for: active, now: date)
+        }
+
         if let active = activeAlarm,
            active.hour == components.hour,
            active.minute == components.minute,
@@ -559,6 +636,7 @@ final class NightSession: ObservableObject {
             let key = "\(active.id.uuidString)-\(minuteKey)"
             guard !firedRingKeys.contains(key) else { return }
             firedRingKeys.insert(key)
+            lightLevel = 0
             ring(active)
             return
         }
@@ -572,6 +650,33 @@ final class NightSession: ObservableObject {
             ring(alarm)
             break
         }
+    }
+
+    private func updateLightWake(for alarm: Alarm, now: Date) {
+        guard alarm.lightWakeEnabled, alarm.lightWakeMinutes > 0 else {
+            lightLevel = 0
+            return
+        }
+
+        let calendar = Calendar.current
+        var targetComponents = calendar.dateComponents([.year, .month, .day], from: now)
+        targetComponents.hour = alarm.hour
+        targetComponents.minute = alarm.minute
+        targetComponents.second = 0
+        var targetDate = calendar.date(from: targetComponents) ?? now
+        if targetDate <= now {
+            targetDate = calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
+        }
+
+        let leadSeconds = TimeInterval(alarm.lightWakeMinutes * 60)
+        let secondsUntilAlarm = targetDate.timeIntervalSince(now)
+        guard secondsUntilAlarm <= leadSeconds, secondsUntilAlarm > 0 else {
+            lightLevel = 0
+            return
+        }
+
+        lightWakeStartedFor = alarm.id
+        lightLevel = max(0, min(1, 1 - secondsUntilAlarm / leadSeconds))
     }
 }
 
@@ -773,6 +878,28 @@ final class AlarmSoundPlayer {
         }
         sourceNode = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
+struct RootTabView: View {
+    var body: some View {
+        TabView {
+            ContentView()
+                .tabItem {
+                    Label("Alarma", systemImage: "alarm.fill")
+                }
+
+            DreamJournalView()
+                .tabItem {
+                    Label("Diario", systemImage: "book.closed.fill")
+                }
+
+            SettingsView()
+                .tabItem {
+                    Label("Ajustes", systemImage: "gearshape.fill")
+                }
+        }
+        .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
     }
 }
 
@@ -1272,6 +1399,8 @@ struct EditAlarmView: View {
                         .background(panelFill)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
 
+                        LightWakeControl(enabled: $alarm.lightWakeEnabled, minutes: $alarm.lightWakeMinutes, theme: theme)
+
                         SnoozePresetSelector(minutes: $alarm.snoozeMinutes, theme: theme)
                     }
                     .padding(.bottom, 4)
@@ -1384,6 +1513,51 @@ struct SnoozePresetSelector: View {
                             .overlay(Capsule().stroke(minutes == option ? theme.primary.opacity(0.58) : theme.secondaryText.opacity(0.16), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(16)
+        .background(panelFill)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    private var panelFill: Color {
+        theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.07)
+    }
+}
+
+struct LightWakeControl: View {
+    @Binding var enabled: Bool
+    @Binding var minutes: Int
+    let theme: SleepTheme
+    private let options = [3, 5, 10, 15]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $enabled) {
+                Label("Luz progresiva", systemImage: "sun.max.fill")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(theme.text)
+            }
+            .tint(theme.primary)
+
+            if enabled {
+                HStack(spacing: 8) {
+                    ForEach(options, id: \.self) { option in
+                        Button {
+                            minutes = option
+                        } label: {
+                            Text("\(option) min")
+                                .font(.subheadline.weight(.black))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(minutes == option ? theme.primary.opacity(0.22) : panelFill)
+                                .foregroundStyle(minutes == option ? theme.primary : theme.text)
+                                .clipShape(Capsule())
+                                .overlay(Capsule().stroke(minutes == option ? theme.primary.opacity(0.58) : theme.secondaryText.opacity(0.16), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
@@ -1652,8 +1826,24 @@ struct NightActiveView: View {
             SleepBackdrop(theme: theme)
                 .ignoresSafeArea()
 
+            if session.lightLevel > 0 {
+                Color.white
+                    .opacity(0.10 + session.lightLevel * 0.82)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .animation(.easeInOut(duration: 1), value: session.lightLevel)
+            }
+
             VStack(spacing: 22) {
                 Spacer(minLength: 86)
+
+                Text(Self.currentTimeFormatter.string(from: session.now))
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(theme == .sunset ? Color.white.opacity(0.88) : Color.white.opacity(0.76))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 8)
+                    .background(theme == .sunset ? Color.black.opacity(0.12) : Color.white.opacity(0.08))
+                    .clipShape(Capsule())
 
                 if theme == .sunset {
                     Text("Buenas noches")
@@ -1708,6 +1898,12 @@ struct NightActiveView: View {
             }
         }
     }
+
+    private static let currentTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
 }
 
 struct RingView: View {
@@ -1821,6 +2017,216 @@ struct RingActionButton: View {
         .buttonStyle(.plain)
         .disabled(disabled)
         .opacity(disabled ? 0.72 : 1)
+    }
+}
+
+struct DreamJournalView: View {
+    @EnvironmentObject private var dreams: DreamStore
+    @State private var selectedDate = Calendar.current.startOfDay(for: Date())
+    @State private var draft = DreamEntry(day: Date())
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                SleepBackdrop(theme: .sunset)
+                    .ignoresSafeArea()
+                    .overlay(Color.white.opacity(0.52))
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        DatePicker("Dia", selection: $selectedDate, displayedComponents: .date)
+                            .datePickerStyle(.graphical)
+                            .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
+                            .padding(14)
+                            .background(Color.white.opacity(0.62))
+                            .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                        DreamScoreCard(entry: draft)
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Diario de suenos", systemImage: "book.closed.fill")
+                                .font(.headline.weight(.black))
+                            TextEditor(text: $draft.notes)
+                                .frame(minHeight: 170)
+                                .scrollContentBackground(.hidden)
+                                .padding(12)
+                                .background(Color.white.opacity(0.64))
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                        .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Seguimiento nocturno", systemImage: "waveform")
+                                .font(.headline.weight(.black))
+                            metricRow("Despertares estimados", value: "\(draft.awakeMinutes) min")
+                            metricRow("Ronquidos detectados", value: "\(draft.snoreEvents)")
+                            metricRow("Respiracion fuerte", value: "\(draft.strongBreathingEvents)")
+                            metricRow("Voz detectada", value: "\(draft.talkingEvents)")
+                        }
+                        .padding(16)
+                        .background(Color.white.opacity(0.58))
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+
+                        Button {
+                            dreams.upsert(draft)
+                        } label: {
+                            Label("Guardar dia", systemImage: "checkmark.circle.fill")
+                                .font(.headline.weight(.black))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(Color(red: 0.86, green: 0.34, blue: 0.20))
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(20)
+                    .padding(.bottom, 24)
+                }
+            }
+            .navigationTitle("Diario")
+            .onAppear { loadEntry() }
+            .onChange(of: selectedDate) { _ in loadEntry() }
+        }
+    }
+
+    private func loadEntry() {
+        draft = dreams.entry(for: selectedDate)
+        draft.day = selectedDate
+    }
+
+    private func metricRow(_ title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(value)
+                .font(.headline.weight(.black))
+        }
+        .font(.subheadline.weight(.bold))
+    }
+}
+
+struct DreamScoreCard: View {
+    let entry: DreamEntry
+
+    var body: some View {
+        HStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .stroke(Color.black.opacity(0.08), lineWidth: 10)
+                Circle()
+                    .trim(from: 0, to: CGFloat(max(0, min(100, entry.score))) / 100)
+                    .stroke(Color(red: 0.86, green: 0.34, blue: 0.20), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text("\(entry.score)")
+                    .font(.title.weight(.black))
+            }
+            .frame(width: 86, height: 86)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Puntuacion de sueno")
+                    .font(.headline.weight(.black))
+                Text("Estimacion orientativa basada en movimiento y audio cuando el seguimiento este activo.")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .background(Color.white.opacity(0.62))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+    }
+}
+
+struct SettingsView: View {
+    @State private var reportKind = "Bug"
+    @State private var reportText = ""
+    @State private var reportSaved = false
+    private let kinds = ["Bug", "Feedback"]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                SleepBackdrop(theme: .night)
+                    .ignoresSafeArea()
+                    .overlay(Color.black.opacity(0.20))
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Seguimiento de sonido", systemImage: "mic.fill")
+                                .font(.headline.weight(.black))
+                            Text("La deteccion de ronquidos, respiracion fuerte y voz necesita permiso de microfono y se tratara como estimacion local, no como diagnostico.")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Color.white.opacity(0.76))
+                        }
+                        .padding(16)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Reportes", systemImage: "paperplane.fill")
+                                .font(.headline.weight(.black))
+
+                            Picker("Tipo", selection: $reportKind) {
+                                ForEach(kinds, id: \.self) { kind in
+                                    Text(kind).tag(kind)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+
+                            TextEditor(text: $reportText)
+                                .frame(minHeight: 150)
+                                .scrollContentBackground(.hidden)
+                                .padding(12)
+                                .background(Color.white.opacity(0.10))
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                            Button {
+                                saveReport()
+                            } label: {
+                                Label("Guardar reporte", systemImage: "tray.and.arrow.down.fill")
+                                    .font(.headline.weight(.black))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 54)
+                                    .background(Color(red: 0.37, green: 0.83, blue: 0.88))
+                                    .foregroundStyle(Color(red: 0.01, green: 0.06, blue: 0.08))
+                                    .clipShape(Capsule())
+                            }
+                            .disabled(reportText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .opacity(reportText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
+
+                            if reportSaved {
+                                Text("Reporte guardado localmente.")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Color.white.opacity(0.76))
+                            }
+                        }
+                        .padding(16)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                    }
+                    .padding(20)
+                    .foregroundStyle(.white)
+                }
+            }
+            .navigationTitle("Ajustes")
+        }
+    }
+
+    private func saveReport() {
+        let text = reportText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        var reports = UserDefaults.standard.array(forKey: "alarma.native.reports.v1") as? [[String: String]] ?? []
+        reports.append([
+            "kind": reportKind,
+            "text": text,
+            "date": ISO8601DateFormatter().string(from: Date())
+        ])
+        UserDefaults.standard.set(reports, forKey: "alarma.native.reports.v1")
+        reportText = ""
+        reportSaved = true
     }
 }
 
