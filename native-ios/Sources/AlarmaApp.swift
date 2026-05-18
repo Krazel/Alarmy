@@ -2441,6 +2441,7 @@ struct DreamJournalView: View {
     @EnvironmentObject private var dreams: DreamStore
     @EnvironmentObject private var navigation: AppNavigation
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
+    @State private var displayedMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
     @State private var draft = DreamEntry(day: Date())
     @FocusState private var notesFocused: Bool
 
@@ -2453,14 +2454,7 @@ struct DreamJournalView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
-                        DatePicker("Día", selection: $selectedDate, displayedComponents: .date)
-                            .datePickerStyle(.graphical)
-                            .tint(store.sleepTheme.primary)
-                            .padding(14)
-                            .background(panelFill)
-                            .clipShape(RoundedRectangle(cornerRadius: 18))
-
-                        calendarPreview
+                        SleepCalendarGrid(selectedDate: $selectedDate, displayedMonth: $displayedMonth)
 
                         DreamScoreCard(entry: draft)
 
@@ -2505,10 +2499,14 @@ struct DreamJournalView: View {
             }
             .navigationTitle("Diario de sueño")
             .onAppear { loadEntry() }
-            .onChange(of: selectedDate) { _ in loadEntry() }
+            .onChange(of: selectedDate) { _ in
+                displayedMonth = Self.monthStart(for: selectedDate)
+                loadEntry()
+            }
             .onChange(of: navigation.requestedJournalDate) { date in
                 guard let date else { return }
                 selectedDate = Calendar.current.startOfDay(for: date)
+                displayedMonth = Self.monthStart(for: date)
                 loadEntry()
                 notesFocused = true
             }
@@ -2560,55 +2558,157 @@ struct DreamJournalView: View {
         store.sleepTheme == .sunset ? Color.white.opacity(0.64) : Color.white.opacity(0.10)
     }
 
-    private var calendarPreview: some View {
-        HStack(spacing: 8) {
-            ForEach(previewDates, id: \.self) { date in
-                let entry = dreams.entry(for: date)
+    private static func monthStart(for date: Date) -> Date {
+        Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? date
+    }
+}
+
+struct SleepCalendarGrid: View {
+    @EnvironmentObject private var store: AlarmStore
+    @EnvironmentObject private var dreams: DreamStore
+    @Binding var selectedDate: Date
+    @Binding var displayedMonth: Date
+
+    private let weekdays = ["L", "M", "X", "J", "V", "S", "D"]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack {
                 Button {
-                    selectedDate = Calendar.current.startOfDay(for: date)
+                    moveMonth(-1)
                 } label: {
-                    VStack(spacing: 6) {
-                        Text(Self.dayFormatter.string(from: date))
-                            .font(.caption2.weight(.black))
-                        Circle()
-                            .fill(previewColor(for: entry))
-                            .frame(width: 10, height: 10)
-                        Text(previewText(for: entry))
-                            .font(.caption2.weight(.bold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.72)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? store.sleepTheme.primary.opacity(0.18) : panelFill)
-                    .foregroundStyle(store.sleepTheme.text)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    Image(systemName: "chevron.left")
+                        .font(.headline.weight(.black))
+                        .frame(width: 36, height: 36)
                 }
-                .buttonStyle(.plain)
+
+                Spacer()
+
+                Text(Self.monthFormatter.string(from: displayedMonth))
+                    .font(.headline.weight(.black))
+
+                Spacer()
+
+                Button {
+                    moveMonth(1)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.headline.weight(.black))
+                        .frame(width: 36, height: 36)
+                }
+            }
+            .buttonStyle(.plain)
+
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(weekdays, id: \.self) { weekday in
+                    Text(weekday)
+                        .font(.caption.weight(.black))
+                        .foregroundStyle(store.sleepTheme.secondaryText)
+                        .frame(maxWidth: .infinity)
+                }
+
+                ForEach(calendarCells.indices, id: \.self) { index in
+                    if let date = calendarCells[index] {
+                        dayButton(for: date)
+                    } else {
+                        Color.clear
+                            .aspectRatio(1, contentMode: .fit)
+                    }
+                }
             }
         }
+        .padding(14)
+        .background(panelFill)
+        .foregroundStyle(store.sleepTheme.text)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
-    private var previewDates: [Date] {
-        (-3...3).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: selectedDate) }
+    private func dayButton(for date: Date) -> some View {
+        let entry = dreams.entry(for: date)
+        let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
+        let isToday = Calendar.current.isDateInToday(date)
+
+        return Button {
+            selectedDate = Calendar.current.startOfDay(for: date)
+        } label: {
+            VStack(spacing: 5) {
+                Text(Self.dayFormatter.string(from: date))
+                    .font(.subheadline.weight(.black))
+                    .lineLimit(1)
+
+                Circle()
+                    .fill(scoreColor(for: entry))
+                    .frame(width: 7, height: 7)
+                    .opacity(entry.hasSleepData ? 1 : 0)
+            }
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
+            .background(isSelected ? store.sleepTheme.primary.opacity(0.24) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isToday ? store.sleepTheme.primary.opacity(0.58) : Color.clear, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityText(for: entry, date: date))
     }
 
-    private func previewText(for entry: DreamEntry) -> String {
-        guard entry.hasSleepData, let score = entry.score else { return "Sin datos" }
-        if score >= 80 { return "Bien" }
-        if score >= 60 { return "Regular" }
-        return "Mal"
+    private var calendarCells: [Date?] {
+        let calendar = Calendar.current
+        guard let dayRange = calendar.range(of: .day, in: .month, for: displayedMonth),
+              let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) else {
+            return []
+        }
+
+        let weekday = calendar.component(.weekday, from: monthStart)
+        let leadingEmptyDays = (weekday + 5) % 7
+        let days = dayRange.compactMap { day -> Date? in
+            calendar.date(byAdding: .day, value: day - 1, to: monthStart)
+        }
+        return Array(repeating: nil, count: leadingEmptyDays) + days
     }
 
-    private func previewColor(for entry: DreamEntry) -> Color {
-        guard entry.hasSleepData, let score = entry.score else { return store.sleepTheme.secondaryText.opacity(0.35) }
+    private var panelFill: Color {
+        store.sleepTheme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08)
+    }
+
+    private func moveMonth(_ offset: Int) {
+        displayedMonth = Calendar.current.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
+    }
+
+    private func scoreColor(for entry: DreamEntry) -> Color {
+        guard entry.hasSleepData, let score = entry.score else { return .clear }
         if score >= 80 { return Color.green }
         if score >= 60 { return Color.orange }
-        return Color.red }
+        return Color.red
+    }
+
+    private func accessibilityText(for entry: DreamEntry, date: Date) -> String {
+        guard entry.hasSleepData, let score = entry.score else {
+            return "\(Self.fullDateFormatter.string(from: date)), sin datos"
+        }
+        return "\(Self.fullDateFormatter.string(from: date)), puntuacion \(score)"
+    }
+
+    private static let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_ES")
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter
+    }()
 
     private static let dayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "d"
+        return formatter
+    }()
+
+    private static let fullDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_ES")
+        formatter.dateStyle = .long
         return formatter
     }()
 }
