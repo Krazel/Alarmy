@@ -109,3 +109,13 @@ Con Apple ID gratuito, normalmente hay que refrescar o reinstalar la app cada 7 
 ## Regla practica
 
 Para iterar la UI nativa iOS, no usar `npm run build` como validacion principal. Ese comando prepara la parte web/Capacitor, pero la validacion real de SwiftUI ocurre en GitHub Actions con macOS y Xcode.
+
+## Regla UI: teclado
+
+En cualquier pantalla con `TextEditor` o campos largos, anadir siempre una forma explicita de cerrar el teclado:
+
+- usar `@FocusState` para controlar el foco;
+- anadir un boton `Listo` en `.toolbar(placement: .keyboard)`;
+- activar `.scrollDismissesKeyboard(.interactively)` en scrolls largos.
+
+No dejar formularios donde el teclado pueda tapar la accion principal o bloquear la navegacion.

@@ -14,6 +14,7 @@ struct AlarmaApp: App {
 
     init() {
         AlarmSoundPlayer.configurePlaybackSession()
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
     }
 
     var body: some Scene {
@@ -56,6 +57,18 @@ struct Alarm: Identifiable, Codable, Equatable {
         if weekdays.count == 7 { return "Todos los días" }
         if weekdays == [2, 3, 4, 5, 6] { return "Laborables" }
         return Weekday.all.filter { weekdays.contains($0.calendarValue) }.map(\.short).joined(separator: " ")
+    }
+}
+
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationDelegate()
+
+    func userNotificationCenter(
+        _: UNUserNotificationCenter,
+        willPresent _: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .badge])
     }
 }
 
@@ -114,6 +127,34 @@ enum SleepTheme: String, CaseIterable, Identifiable {
     }
 }
 
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case automatic
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .automatic: return "Auto"
+        case .light: return "Claro"
+        case .dark: return "Oscuro"
+        }
+    }
+
+    var resolvedTheme: SleepTheme {
+        switch self {
+        case .light:
+            return .sunset
+        case .dark:
+            return .night
+        case .automatic:
+            let hour = Calendar.current.component(.hour, from: Date())
+            return (hour >= 20 || hour < 8) ? .night : .sunset
+        }
+    }
+}
+
 struct AlarmSound: Identifiable, Hashable {
     let id: String
     let name: String
@@ -143,7 +184,7 @@ struct DreamEntry: Identifiable, Codable, Equatable {
     var id = UUID()
     var day: Date
     var notes = ""
-    var score = 72
+    var score: Int?
     var awakeMinutes = 0
     var snoreEvents = 0
     var strongBreathingEvents = 0
@@ -157,6 +198,10 @@ struct DreamEntry: Identifiable, Codable, Equatable {
 
     var dayKey: String {
         Self.key(for: day)
+    }
+
+    var hasSleepData: Bool {
+        sleepStartedAt != nil || sleepEndedAt != nil || !samples.isEmpty || audioClips > 0 || snoreEvents > 0 || strongBreathingEvents > 0 || talkingEvents > 0
     }
 
     static func key(for date: Date) -> String {
@@ -473,8 +518,8 @@ final class AlarmStore: ObservableObject {
     @Published var sleepAlarm = Alarm(label: "Noche", hour: 7, minute: 30, weekdays: [], soundIds: AlarmSound.defaultIds, randomSound: true, enabled: true) {
         didSet { saveSleepAlarm() }
     }
-    @Published var sleepTheme: SleepTheme = .sunset {
-        didSet { UserDefaults.standard.set(sleepTheme.rawValue, forKey: themeKey) }
+    @Published var appearance: AppAppearance = .automatic {
+        didSet { UserDefaults.standard.set(appearance.rawValue, forKey: appearanceKey) }
     }
     @Published var sleepRecordingEnabled = false {
         didSet { UserDefaults.standard.set(sleepRecordingEnabled, forKey: recordingEnabledKey) }
@@ -485,20 +530,26 @@ final class AlarmStore: ObservableObject {
 
     private let key = "alarma.native.alarms.v1"
     private let sleepKey = "alarma.native.sleepAlarm.v1"
-    private let themeKey = "alarma.native.sleepTheme.v1"
+    private let appearanceKey = "alarma.native.appearance.v1"
     private let recordingEnabledKey = "alarma.native.sleepRecordingEnabled.v2"
     private let customSoundsKey = "alarma.native.customSounds.v1"
+    private let alarmDefaultsMigrationKey = "alarma.native.alarmDefaults.v1"
 
     var notificationAlarms: [Alarm] {
         []
     }
 
+    var sleepTheme: SleepTheme {
+        appearance.resolvedTheme
+    }
+
     init() {
         load()
         loadSleepAlarm()
-        loadTheme()
+        loadAppearance()
         loadRecordingSettings()
         loadCustomSounds()
+        migrateAlarmDefaultsIfNeeded()
         if alarms.isEmpty {
             alarms = [
                 Alarm(),
@@ -592,18 +643,30 @@ final class AlarmStore: ObservableObject {
         UserDefaults.standard.set(data, forKey: sleepKey)
     }
 
-    private func loadTheme() {
-        guard let rawValue = UserDefaults.standard.string(forKey: themeKey),
-              let theme = SleepTheme(rawValue: rawValue) else {
+    private func loadAppearance() {
+        guard let rawValue = UserDefaults.standard.string(forKey: appearanceKey),
+              let appearance = AppAppearance(rawValue: rawValue) else {
             return
         }
-        sleepTheme = theme
+        self.appearance = appearance
     }
 
     private func loadRecordingSettings() {
         if UserDefaults.standard.object(forKey: recordingEnabledKey) != nil {
             sleepRecordingEnabled = UserDefaults.standard.bool(forKey: recordingEnabledKey)
         }
+    }
+
+    private func migrateAlarmDefaultsIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: alarmDefaultsMigrationKey) else { return }
+        sleepAlarm.motionSnooze = true
+        sleepAlarm.lightWakeEnabled = false
+        sleepAlarm.lightWakeMinutes = 5
+        sleepAlarm.fadeInEnabled = true
+        sleepAlarm.fadeDuration = 180
+        sleepAlarm.snoozeMinutes = 5
+        saveSleepAlarm()
+        UserDefaults.standard.set(true, forKey: alarmDefaultsMigrationKey)
     }
 
     private func loadCustomSounds() {
@@ -646,9 +709,32 @@ final class AlarmStore: ObservableObject {
 
 final class NotificationScheduler {
     static let shared = NotificationScheduler()
+    private let ringingNotificationId = "alarm-ringing-visible"
 
     func requestAuthorization() async {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .timeSensitive])
+    }
+
+    func showRingingNotification(for alarm: Alarm) async {
+        let center = UNUserNotificationCenter.current()
+        center.removeDeliveredNotifications(withIdentifiers: [ringingNotificationId])
+        center.removePendingNotificationRequests(withIdentifiers: [ringingNotificationId])
+
+        let content = UNMutableNotificationContent()
+        content.title = alarm.label.isEmpty ? "Alarma" : alarm.label
+        content.body = "La alarma está sonando."
+        content.sound = .default
+        content.interruptionLevel = .timeSensitive
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: ringingNotificationId, content: content, trigger: trigger)
+        try? await center.add(request)
+    }
+
+    func clearRingingNotification() {
+        let center = UNUserNotificationCenter.current()
+        center.removeDeliveredNotifications(withIdentifiers: [ringingNotificationId])
+        center.removePendingNotificationRequests(withIdentifiers: [ringingNotificationId])
     }
 
     func reschedule(alarms: [Alarm]) async {
@@ -718,6 +804,7 @@ final class NightSession: ObservableObject {
     private var dreamStore: DreamStore?
     private var audioEventsSinceLastSample = 0
     private var originalBrightness: CGFloat?
+    private var brightnessTimer: Timer?
     private var alarmMonitor: DispatchSourceTimer?
     private var firedRingKeys: Set<String> = []
     private var backgroundGuardActive = false
@@ -765,6 +852,7 @@ final class NightSession: ObservableObject {
 
     func stop() {
         endLockScreenActivity()
+        NotificationScheduler.shared.clearRingingNotification()
         activeAlarm = nil
         ringingAlarm = nil
         isSnoozing = false
@@ -794,9 +882,9 @@ final class NightSession: ObservableObject {
         UIApplication.shared.isIdleTimerDisabled = true
         sleepAnalysisTimer?.invalidate()
         if alarm.lightWakeEnabled {
-            originalBrightness = originalBrightness ?? UIScreen.main.brightness
-            UIScreen.main.brightness = 1
+            startBrightnessRamp(minutes: alarm.lightWakeMinutes)
         }
+        Task { await NotificationScheduler.shared.showRingingNotification(for: alarm) }
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
     }
@@ -808,6 +896,7 @@ final class NightSession: ObservableObject {
         motion.stopDeviceMotionUpdates()
         motionProgress = 0
         endLockScreenActivity()
+        NotificationScheduler.shared.clearRingingNotification()
         sound.stop()
         sound.startKeepAlive()
         restoreBrightness()
@@ -835,9 +924,9 @@ final class NightSession: ObservableObject {
         lightLevel = 0
         motionProgress = 0
         if alarm.lightWakeEnabled {
-            originalBrightness = originalBrightness ?? UIScreen.main.brightness
-            UIScreen.main.brightness = 1
+            startBrightnessRamp(minutes: alarm.lightWakeMinutes)
         }
+        Task { await NotificationScheduler.shared.showRingingNotification(for: alarm) }
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
     }
@@ -970,9 +1059,25 @@ final class NightSession: ObservableObject {
     }
 
     private func restoreBrightness() {
+        brightnessTimer?.invalidate()
+        brightnessTimer = nil
         guard let brightness = originalBrightness else { return }
         UIScreen.main.brightness = brightness
         originalBrightness = nil
+    }
+
+    private func startBrightnessRamp(minutes: Int) {
+        brightnessTimer?.invalidate()
+        let base = originalBrightness ?? UIScreen.main.brightness
+        originalBrightness = base
+        let duration = max(1, TimeInterval(minutes * 60))
+        let started = Date()
+        brightnessTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
+            let progress = min(1, Date().timeIntervalSince(started) / duration)
+            UIScreen.main.brightness = min(1, max(base, base + (1 - base) * progress))
+            if progress >= 1 { timer.invalidate() }
+        }
+        brightnessTimer?.fire()
     }
 }
 
@@ -1293,7 +1398,7 @@ struct ContentView: View {
 
             Button {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    store.sleepTheme = store.sleepTheme == .sunset ? .night : .sunset
+                    store.appearance = store.sleepTheme == .sunset ? .dark : .light
                 }
             } label: {
                 Image(systemName: store.sleepTheme == .sunset ? "moon.stars.fill" : "sun.max.fill")
@@ -2304,6 +2409,7 @@ struct DreamJournalView: View {
     @EnvironmentObject private var dreams: DreamStore
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var draft = DreamEntry(day: Date())
+    @FocusState private var notesFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -2321,6 +2427,8 @@ struct DreamJournalView: View {
                             .background(panelFill)
                             .clipShape(RoundedRectangle(cornerRadius: 18))
 
+                        calendarPreview
+
                         DreamScoreCard(entry: draft)
 
                         SleepStageChart(entry: draft)
@@ -2329,6 +2437,7 @@ struct DreamJournalView: View {
                             Label("Diario de sueños", systemImage: "book.closed.fill")
                                 .font(.headline.weight(.black))
                             TextEditor(text: $draft.notes)
+                                .focused($notesFocused)
                                 .frame(minHeight: 170)
                                 .scrollContentBackground(.hidden)
                                 .padding(12)
@@ -2354,27 +2463,23 @@ struct DreamJournalView: View {
                         .background(panelFill)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                         .foregroundStyle(store.sleepTheme.text)
-
-                        Button {
-                            dreams.upsert(draft)
-                        } label: {
-                            Label("Guardar día", systemImage: "checkmark.circle.fill")
-                                .font(.headline.weight(.black))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(store.sleepTheme.primary)
-                                .foregroundStyle(.white)
-                                .clipShape(Capsule())
-                        }
                     }
                     .padding(20)
                     .padding(.bottom, 24)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle("Diario de sueño")
             .onAppear { loadEntry() }
             .onChange(of: selectedDate) { _ in loadEntry() }
+            .onChange(of: draft.notes) { _ in dreams.upsert(draft) }
             .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Listo") { notesFocused = false }
+                }
+            }
         }
     }
 
@@ -2414,6 +2519,58 @@ struct DreamJournalView: View {
     private var editorFill: Color {
         store.sleepTheme == .sunset ? Color.white.opacity(0.64) : Color.white.opacity(0.10)
     }
+
+    private var calendarPreview: some View {
+        HStack(spacing: 8) {
+            ForEach(previewDates, id: \.self) { date in
+                let entry = dreams.entry(for: date)
+                Button {
+                    selectedDate = Calendar.current.startOfDay(for: date)
+                } label: {
+                    VStack(spacing: 6) {
+                        Text(Self.dayFormatter.string(from: date))
+                            .font(.caption2.weight(.black))
+                        Circle()
+                            .fill(previewColor(for: entry))
+                            .frame(width: 10, height: 10)
+                        Text(previewText(for: entry))
+                            .font(.caption2.weight(.bold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? store.sleepTheme.primary.opacity(0.18) : panelFill)
+                    .foregroundStyle(store.sleepTheme.text)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var previewDates: [Date] {
+        (-3...3).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: selectedDate) }
+    }
+
+    private func previewText(for entry: DreamEntry) -> String {
+        guard entry.hasSleepData, let score = entry.score else { return "Sin datos" }
+        if score >= 80 { return "Bien" }
+        if score >= 60 { return "Regular" }
+        return "Mal"
+    }
+
+    private func previewColor(for entry: DreamEntry) -> Color {
+        guard entry.hasSleepData, let score = entry.score else { return store.sleepTheme.secondaryText.opacity(0.35) }
+        if score >= 80 { return Color.green }
+        if score >= 60 { return Color.orange }
+        return Color.red }
+
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter
+    }()
 }
 
 struct DreamScoreCard: View {
@@ -2425,19 +2582,25 @@ struct DreamScoreCard: View {
             ZStack {
                 Circle()
                     .stroke(Color.black.opacity(0.08), lineWidth: 10)
-                Circle()
-                    .trim(from: 0, to: CGFloat(max(0, min(100, entry.score))) / 100)
-                    .stroke(Color(red: 0.86, green: 0.34, blue: 0.20), style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text("\(entry.score)")
-                    .font(.title.weight(.black))
+                if entry.hasSleepData, let score = entry.score {
+                    Circle()
+                        .trim(from: 0, to: CGFloat(max(0, min(100, score))) / 100)
+                        .stroke(Color(red: 0.86, green: 0.34, blue: 0.20), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Text("\(score)")
+                        .font(.title.weight(.black))
+                } else {
+                    Text("--")
+                        .font(.title.weight(.black))
+                        .foregroundStyle(store.sleepTheme.secondaryText)
+                }
             }
             .frame(width: 86, height: 86)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Puntuación de sueño")
                     .font(.headline.weight(.black))
-                Text("Estimación orientativa basada en movimiento y audio cuando el seguimiento esté activo.")
+                Text(entry.hasSleepData ? "Estimación orientativa basada en movimiento y audio cuando el seguimiento esté activo." : "Sin datos para este día. La puntuación aparecerá después de una noche registrada.")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(store.sleepTheme.secondaryText)
             }
@@ -2529,9 +2692,10 @@ struct SettingsView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
                         settingsGroup("Apariencia", systemImage: "circle.lefthalf.filled") {
-                            Picker("Tema", selection: $store.sleepTheme) {
-                                Text("Claro").tag(SleepTheme.sunset)
-                                Text("Oscuro").tag(SleepTheme.night)
+                            Picker("Tema", selection: $store.appearance) {
+                                ForEach(AppAppearance.allCases) { appearance in
+                                    Text(appearance.title).tag(appearance)
+                                }
                             }
                             .pickerStyle(.segmented)
                         }
@@ -2545,6 +2709,19 @@ struct SettingsView: View {
                         }
 
                         settingsGroup("Despertar", systemImage: "sunrise.fill") {
+                            settingToggle("Mover para posponer", isOn: Binding(
+                                get: { store.sleepAlarm.motionSnooze },
+                                set: { enabled in
+                                    var alarm = store.sleepAlarm
+                                    alarm.motionSnooze = enabled
+                                    store.updateSleepAlarm(alarm)
+                                }
+                            ))
+                            settingRow("Posponer", value: "\(store.sleepAlarm.snoozeMinutes) min")
+                            snoozeSelector
+
+                            Divider().opacity(0.28)
+
                             settingToggle("Luz progresiva", isOn: Binding(
                                 get: { store.sleepAlarm.lightWakeEnabled },
                                 set: { enabled in
@@ -2556,8 +2733,6 @@ struct SettingsView: View {
                             if store.sleepAlarm.lightWakeEnabled {
                                 lightWakeSelector
                             }
-                            settingRow("Posponer por movimiento", value: store.sleepAlarm.motionSnooze ? "Activado" : "Desactivado")
-                            settingRow("Posponer", value: "\(store.sleepAlarm.snoozeMinutes) min")
 
                             Button {
                                 editingSleepAlarm = true
@@ -2630,7 +2805,7 @@ struct SettingsView: View {
                 .font(.caption.weight(.bold))
                 .foregroundStyle(store.sleepTheme.secondaryText)
             HStack(spacing: 8) {
-                ForEach([5, 10, 15, 20], id: \.self) { minutes in
+                ForEach([5, 10], id: \.self) { minutes in
                     Button {
                         var alarm = store.sleepAlarm
                         alarm.lightWakeMinutes = minutes
@@ -2646,6 +2821,27 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
+        }
+    }
+
+    private var snoozeSelector: some View {
+        HStack(spacing: 8) {
+            ForEach([5, 10, 15], id: \.self) { minutes in
+                Button {
+                    var alarm = store.sleepAlarm
+                    alarm.snoozeMinutes = minutes
+                    store.updateSleepAlarm(alarm)
+                } label: {
+                    Text("\(minutes) min")
+                        .font(.caption.weight(.black))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 34)
+                        .background(store.sleepAlarm.snoozeMinutes == minutes ? store.sleepTheme.primary.opacity(0.22) : Color.white.opacity(store.sleepTheme == .sunset ? 0.30 : 0.07))
+                        .foregroundStyle(store.sleepAlarm.snoozeMinutes == minutes ? store.sleepTheme.primary : store.sleepTheme.text)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
         }
     }
