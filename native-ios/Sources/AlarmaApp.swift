@@ -327,6 +327,7 @@ final class SleepAudioRecorder: ObservableObject {
     private var currentURL: URL?
     private var writtenDuration: TimeInterval = 0
     private var didWrite = false
+    private var tapInstalled = false
     private var day = Date()
     private var onEvent: ((SleepAudioEvent) -> Void)?
     private var saveOnlyWhenSound = true
@@ -349,7 +350,10 @@ final class SleepAudioRecorder: ObservableObject {
     }
 
     func stop() {
-        engine.inputNode.removeTap(onBus: 0)
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
         engine.stop()
         completeSegment()
     }
@@ -385,6 +389,7 @@ final class SleepAudioRecorder: ObservableObject {
                 self?.handle(buffer)
             }
         }
+        tapInstalled = true
         engine.prepare()
         try engine.start()
     }
@@ -2668,7 +2673,17 @@ struct SettingsView: View {
                         }
 
                         settingsGroup("Despertar", systemImage: "sunrise.fill") {
-                            settingRow("Luz gradual", value: store.sleepAlarm.lightWakeEnabled ? "\(store.sleepAlarm.lightWakeMinutes) min" : "Desactivada")
+                            settingToggle("Luz progresiva", isOn: Binding(
+                                get: { store.sleepAlarm.lightWakeEnabled },
+                                set: { enabled in
+                                    var alarm = store.sleepAlarm
+                                    alarm.lightWakeEnabled = enabled
+                                    store.updateSleepAlarm(alarm)
+                                }
+                            ))
+                            if store.sleepAlarm.lightWakeEnabled {
+                                lightWakeSelector
+                            }
                             settingRow("Posponer por movimiento", value: store.sleepAlarm.motionSnooze ? "Activado" : "Desactivado")
                             settingRow("Posponer", value: "\(store.sleepAlarm.snoozeMinutes) min")
 
@@ -2735,6 +2750,32 @@ struct SettingsView: View {
                 .font(.subheadline.weight(.bold))
         }
         .tint(store.sleepTheme.primary)
+    }
+
+    private var lightWakeSelector: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Empieza antes de la alarma")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(store.sleepTheme.secondaryText)
+            HStack(spacing: 8) {
+                ForEach([5, 10, 15, 20], id: \.self) { minutes in
+                    Button {
+                        var alarm = store.sleepAlarm
+                        alarm.lightWakeMinutes = minutes
+                        store.updateSleepAlarm(alarm)
+                    } label: {
+                        Text("\(minutes) min")
+                            .font(.caption.weight(.black))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 34)
+                            .background(store.sleepAlarm.lightWakeMinutes == minutes ? store.sleepTheme.primary.opacity(0.22) : Color.white.opacity(store.sleepTheme == .sunset ? 0.30 : 0.07))
+                            .foregroundStyle(store.sleepAlarm.lightWakeMinutes == minutes ? store.sleepTheme.primary : store.sleepTheme.text)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 }
 
