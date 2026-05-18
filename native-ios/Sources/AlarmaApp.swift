@@ -11,6 +11,7 @@ struct AlarmaApp: App {
     @StateObject private var store = AlarmStore()
     @StateObject private var session = NightSession()
     @StateObject private var dreams = DreamStore()
+    @StateObject private var navigation = AppNavigation()
 
     init() {
         AlarmSoundPlayer.configurePlaybackSession()
@@ -23,6 +24,7 @@ struct AlarmaApp: App {
                 .environmentObject(store)
                 .environmentObject(session)
                 .environmentObject(dreams)
+                .environmentObject(navigation)
                 .task {
                     await NotificationScheduler.shared.requestAuthorization()
                     await NotificationScheduler.shared.reschedule(alarms: store.notificationAlarms)
@@ -178,6 +180,23 @@ struct CustomAlarmSound: Identifiable, Codable, Equatable, Hashable {
     var fileName: String
 
     var soundId: String { "custom:\(fileName)" }
+}
+
+enum AppTab: Hashable {
+    case alarm
+    case journal
+    case settings
+}
+
+@MainActor
+final class AppNavigation: ObservableObject {
+    @Published var selectedTab: AppTab = .alarm
+    @Published var requestedJournalDate: Date?
+
+    func openJournal(for date: Date = Date()) {
+        requestedJournalDate = date
+        selectedTab = .journal
+    }
 }
 
 struct DreamEntry: Identifiable, Codable, Equatable {
@@ -524,6 +543,9 @@ final class AlarmStore: ObservableObject {
     @Published var sleepRecordingEnabled = false {
         didSet { UserDefaults.standard.set(sleepRecordingEnabled, forKey: recordingEnabledKey) }
     }
+    @Published var openJournalAfterAlarm = true {
+        didSet { UserDefaults.standard.set(openJournalAfterAlarm, forKey: openJournalAfterAlarmKey) }
+    }
     @Published var customSounds: [CustomAlarmSound] = [] {
         didSet { saveCustomSounds() }
     }
@@ -532,6 +554,7 @@ final class AlarmStore: ObservableObject {
     private let sleepKey = "alarma.native.sleepAlarm.v1"
     private let appearanceKey = "alarma.native.appearance.v1"
     private let recordingEnabledKey = "alarma.native.sleepRecordingEnabled.v2"
+    private let openJournalAfterAlarmKey = "alarma.native.openJournalAfterAlarm.v1"
     private let customSoundsKey = "alarma.native.customSounds.v1"
     private let alarmDefaultsMigrationKey = "alarma.native.alarmDefaults.v2"
 
@@ -548,6 +571,7 @@ final class AlarmStore: ObservableObject {
         loadSleepAlarm()
         loadAppearance()
         loadRecordingSettings()
+        loadJournalSettings()
         loadCustomSounds()
         migrateAlarmDefaultsIfNeeded()
         if alarms.isEmpty {
@@ -654,6 +678,12 @@ final class AlarmStore: ObservableObject {
     private func loadRecordingSettings() {
         if UserDefaults.standard.object(forKey: recordingEnabledKey) != nil {
             sleepRecordingEnabled = UserDefaults.standard.bool(forKey: recordingEnabledKey)
+        }
+    }
+
+    private func loadJournalSettings() {
+        if UserDefaults.standard.object(forKey: openJournalAfterAlarmKey) != nil {
+            openJournalAfterAlarm = UserDefaults.standard.bool(forKey: openJournalAfterAlarmKey)
         }
     }
 
@@ -1276,22 +1306,27 @@ private extension FixedWidthInteger {
 }
 
 struct RootTabView: View {
+    @EnvironmentObject private var navigation: AppNavigation
+
     var body: some View {
-        TabView {
+        TabView(selection: $navigation.selectedTab) {
             ContentView()
                 .tabItem {
                     Label("Alarma", systemImage: "alarm.fill")
                 }
+                .tag(AppTab.alarm)
 
             DreamJournalView()
                 .tabItem {
                     Label("Diario", systemImage: "book.closed.fill")
                 }
+                .tag(AppTab.journal)
 
             SettingsView()
                 .tabItem {
                     Label("Ajustes", systemImage: "gearshape.fill")
                 }
+                .tag(AppTab.settings)
         }
         .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
     }
@@ -1301,17 +1336,9 @@ struct ContentView: View {
     @EnvironmentObject private var store: AlarmStore
     @EnvironmentObject private var session: NightSession
     @EnvironmentObject private var dreams: DreamStore
+    @EnvironmentObject private var navigation: AppNavigation
     @Environment(\.scenePhase) private var scenePhase
     @State private var editingSleepAlarm = false
-
-    private var appIdentityText: String {
-        let name = Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String
-            ?? Bundle.main.infoDictionary?["CFBundleName"] as? String
-            ?? "Alarma"
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "dev"
-        return "\(name) iPhone - v\(version) build \(build)"
-    }
 
     var body: some View {
         ZStack {
@@ -1360,7 +1387,7 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: Binding(get: { session.isActive || session.ringingAlarm != nil }, set: { if !$0 { session.stop() } })) {
             if let alarm = session.ringingAlarm {
-                RingView(alarm: alarm, theme: store.sleepTheme)
+                RingView(alarm: alarm, theme: store.sleepTheme, onFinish: finishAlarm)
             } else if let alarm = session.activeAlarm {
                 NightActiveView(alarm: alarm, theme: store.sleepTheme)
             }
@@ -1388,12 +1415,6 @@ struct ContentView: View {
                     .font(.system(size: 46, weight: .bold, design: .serif))
                     .foregroundStyle(store.sleepTheme.text)
                     .minimumScaleFactor(0.75)
-
-                Text(appIdentityText)
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(store.sleepTheme.secondaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.74)
             }
 
             Spacer()
@@ -1425,6 +1446,13 @@ struct ContentView: View {
             alarm.minute = (alarm.minute + amount + 60) % 60
         }
         store.updateSleepAlarm(alarm)
+    }
+
+    private func finishAlarm() {
+        session.stop()
+        if store.openJournalAfterAlarm {
+            navigation.openJournal(for: Date())
+        }
     }
 
 }
@@ -2259,14 +2287,15 @@ struct NightActiveView: View {
                     session.stop()
                 } label: {
                     Label("Terminar", systemImage: "stop.fill")
-                        .font(.title2.weight(.black))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 72)
-                        .background(theme == .sunset ? Color.white.opacity(0.88) : Color.white.opacity(0.10))
+                        .font(.headline.weight(.black))
+                        .padding(.horizontal, 22)
+                        .frame(height: 48)
+                        .background(theme == .sunset ? Color.white.opacity(0.36) : Color.white.opacity(0.08))
                         .foregroundStyle(theme == .sunset ? Color(red: 0.30, green: 0.17, blue: 0.10) : Color.white)
                         .clipShape(Capsule())
                         .overlay(Capsule().stroke(theme == .night ? Color.white.opacity(0.14) : Color.clear, lineWidth: 1))
                 }
+                .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.bottom, 30)
             }
             .padding(24)
@@ -2296,6 +2325,7 @@ struct RingView: View {
     @EnvironmentObject private var session: NightSession
     let alarm: Alarm
     let theme: SleepTheme
+    var onFinish: (() -> Void)?
 
     var body: some View {
         ZStack {
@@ -2345,7 +2375,7 @@ struct RingView: View {
                         icon: "stop.fill",
                         fill: theme == .sunset ? Color.white.opacity(0.90) : Color.white.opacity(0.18),
                         foreground: theme == .sunset ? Color(red: 0.30, green: 0.17, blue: 0.10) : .white,
-                        action: { session.stop() }
+                        action: { onFinish?() ?? session.stop() }
                     )
                 }
             }
@@ -2409,6 +2439,7 @@ struct RingActionButton: View {
 struct DreamJournalView: View {
     @EnvironmentObject private var store: AlarmStore
     @EnvironmentObject private var dreams: DreamStore
+    @EnvironmentObject private var navigation: AppNavigation
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var draft = DreamEntry(day: Date())
     @FocusState private var notesFocused: Bool
@@ -2470,10 +2501,17 @@ struct DreamJournalView: View {
                     .padding(.bottom, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
             }
             .navigationTitle("Diario de sueño")
             .onAppear { loadEntry() }
             .onChange(of: selectedDate) { _ in loadEntry() }
+            .onChange(of: navigation.requestedJournalDate) { date in
+                guard let date else { return }
+                selectedDate = Calendar.current.startOfDay(for: date)
+                loadEntry()
+                notesFocused = true
+            }
             .onChange(of: draft.notes) { _ in dreams.upsert(draft) }
             .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
             .toolbar {
@@ -2703,6 +2741,7 @@ struct SettingsView: View {
                         }
 
                         settingsGroup("Seguimiento nocturno", systemImage: "waveform") {
+                            settingToggle("Abrir diario al terminar alarma", isOn: $store.openJournalAfterAlarm)
                             settingToggle("Grabar sonidos nocturnos", isOn: $store.sleepRecordingEnabled)
                             Text("La detección de ronquidos, respiración fuerte y voz se guarda localmente como estimación.")
                                 .font(.caption.weight(.bold))
@@ -2749,10 +2788,11 @@ struct SettingsView: View {
                             }
                         }
 
-                        settingsGroup("Datos y privacidad", systemImage: "lock.shield.fill") {
-                            settingRow("Audio", value: store.sleepRecordingEnabled ? "Local" : "No se graba")
-                            settingRow("Diario de sueño", value: "En este iPhone")
-                        }
+                        Text(appIdentityText)
+                            .font(.caption.weight(.black))
+                            .foregroundStyle(store.sleepTheme.secondaryText)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.top, 6)
                     }
                     .padding(20)
                     .foregroundStyle(store.sleepTheme.text)
@@ -2799,6 +2839,15 @@ struct SettingsView: View {
                 .font(.subheadline.weight(.bold))
         }
         .tint(store.sleepTheme.primary)
+    }
+
+    private var appIdentityText: String {
+        let name = Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String
+            ?? Bundle.main.infoDictionary?["CFBundleName"] as? String
+            ?? "Alarma"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "dev"
+        return "\(name) iPhone - v\(version) build \(build)"
     }
 
     private var lightWakeSelector: some View {

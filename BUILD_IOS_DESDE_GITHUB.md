@@ -117,5 +117,6 @@ En cualquier pantalla con `TextEditor` o campos largos, anadir siempre una forma
 - usar `@FocusState` para controlar el foco;
 - anadir un boton `Listo` en `.toolbar(placement: .keyboard)`;
 - activar `.scrollDismissesKeyboard(.interactively)` en scrolls largos.
+- cerrar el foco tambien al tocar fuera del campo o editor, por ejemplo con un `TapGesture` que ponga el foco a `false`.
 
 No dejar formularios donde el teclado pueda tapar la accion principal o bloquear la navegacion.
