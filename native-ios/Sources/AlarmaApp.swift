@@ -476,7 +476,7 @@ final class AlarmStore: ObservableObject {
     @Published var sleepTheme: SleepTheme = .sunset {
         didSet { UserDefaults.standard.set(sleepTheme.rawValue, forKey: themeKey) }
     }
-    @Published var sleepRecordingEnabled = true {
+    @Published var sleepRecordingEnabled = false {
         didSet { UserDefaults.standard.set(sleepRecordingEnabled, forKey: recordingEnabledKey) }
     }
     @Published var customSounds: [CustomAlarmSound] = [] {
@@ -486,7 +486,7 @@ final class AlarmStore: ObservableObject {
     private let key = "alarma.native.alarms.v1"
     private let sleepKey = "alarma.native.sleepAlarm.v1"
     private let themeKey = "alarma.native.sleepTheme.v1"
-    private let recordingEnabledKey = "alarma.native.sleepRecordingEnabled.v1"
+    private let recordingEnabledKey = "alarma.native.sleepRecordingEnabled.v2"
     private let customSoundsKey = "alarma.native.customSounds.v1"
 
     var notificationAlarms: [Alarm] {
@@ -646,35 +646,9 @@ final class AlarmStore: ObservableObject {
 
 final class NotificationScheduler {
     static let shared = NotificationScheduler()
-    private let sessionAlarmId = "night-session-alarm"
 
     func requestAuthorization() async {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .timeSensitive])
-    }
-
-    func scheduleSessionAlarm(_ alarm: Alarm) async {
-        guard let date = nextDate(for: alarm, after: Date()) else { return }
-        await scheduleSessionAlarm(alarm, at: date)
-    }
-
-    func scheduleSessionAlarm(_ alarm: Alarm, at date: Date) async {
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [sessionAlarmId])
-
-        let content = UNMutableNotificationContent()
-        content.title = alarm.label.isEmpty ? "Alarma" : alarm.label
-        content.body = "La alarma está sonando."
-        content.sound = .default
-        content.interruptionLevel = .timeSensitive
-
-        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-        let request = UNNotificationRequest(identifier: sessionAlarmId, content: content, trigger: trigger)
-        try? await center.add(request)
-    }
-
-    func cancelSessionAlarm() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [sessionAlarmId])
     }
 
     func reschedule(alarms: [Alarm]) async {
@@ -718,26 +692,6 @@ final class NotificationScheduler {
     private func notificationIds(for alarm: Alarm) -> [String] {
         if alarm.weekdays.isEmpty { return ["alarm-\(alarm.id.uuidString)-once"] }
         return alarm.weekdays.map { "alarm-\(alarm.id.uuidString)-\($0)" }
-    }
-
-    private func nextDate(for alarm: Alarm, after date: Date) -> Date? {
-        let calendar = Calendar.current
-        let currentWeekday = calendar.component(.weekday, from: date)
-        for offset in 0...7 {
-            guard let candidateDay = calendar.date(byAdding: .day, value: offset, to: date) else { continue }
-            let candidateWeekday = calendar.component(.weekday, from: candidateDay)
-            if !alarm.weekdays.isEmpty, !alarm.weekdays.contains(candidateWeekday) { continue }
-
-            var components = calendar.dateComponents([.year, .month, .day], from: candidateDay)
-            components.hour = alarm.hour
-            components.minute = alarm.minute
-            components.second = 0
-            guard let candidate = calendar.date(from: components) else { continue }
-            if candidate > date || (offset > 0 && alarm.weekdays.contains(currentWeekday)) {
-                return candidate
-            }
-        }
-        return nil
     }
 }
 
@@ -809,7 +763,6 @@ final class NightSession: ObservableObject {
         backgroundGuardActive = true
         UIApplication.shared.isIdleTimerDisabled = true
         sound.startKeepAlive()
-        Task { await NotificationScheduler.shared.scheduleSessionAlarm(alarm) }
         startClock()
         startMotionIfNeeded(alarm, force: dreamStore != nil)
         startSleepAnalysisIfNeeded()
@@ -839,7 +792,6 @@ final class NightSession: ObservableObject {
         motionTimer?.invalidate()
         sleepAnalysisTimer?.invalidate()
         snoozeTimer?.invalidate()
-        NotificationScheduler.shared.cancelSessionAlarm()
         restoreBrightness()
         if sleepStartedAt != nil, let dreamStore {
             dreamStore.markSleepEnded(day: sleepDay, at: Date())
@@ -864,7 +816,6 @@ final class NightSession: ObservableObject {
         UIApplication.shared.isIdleTimerDisabled = true
         sleepRecorder.stop()
         sleepAnalysisTimer?.invalidate()
-        NotificationScheduler.shared.cancelSessionAlarm()
         if sleepStartedAt != nil, let dreamStore {
             dreamStore.markSleepEnded(day: sleepDay, at: Date())
             self.sleepStartedAt = nil
@@ -903,7 +854,6 @@ final class NightSession: ObservableObject {
                 self?.resumeSnoozedAlarm()
             }
         }
-        Task { await NotificationScheduler.shared.scheduleSessionAlarm(snoozed, at: date) }
     }
 
     private func resumeSnoozedAlarm() {
@@ -912,7 +862,6 @@ final class NightSession: ObservableObject {
         snoozedUntil = nil
         lightLevel = 0
         motionProgress = 0
-        NotificationScheduler.shared.cancelSessionAlarm()
         if alarm.lightWakeEnabled {
             UIScreen.main.brightness = 1
         }
@@ -1163,7 +1112,7 @@ final class AlarmSoundPlayer {
             return
         }
         let sound = AlarmSound.all.first { $0.id == soundId } ?? AlarmSound.all[0]
-        playBundledSound(sound, alarm: alarm)
+        playGeneratedSound(sound, alarm: alarm)
     }
 
     private func startPreview(sound: AlarmSound) {
@@ -1182,18 +1131,14 @@ final class AlarmSoundPlayer {
         playCustomFile(named: customSound.fileName, volume: 0.55, loop: false)
     }
 
-    private func playBundledSound(_ sound: AlarmSound, alarm: Alarm) {
-        let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 0.95
-        if !playBundledFile(named: sound.fileName, volume: initialVolume, loop: true) {
-            play(sound: sound, initialGain: alarm.fadeInEnabled ? 0.035 : 0.85)
-        }
+    private func playGeneratedSound(_ sound: AlarmSound, alarm: Alarm) {
+        play(sound: sound, initialGain: alarm.fadeInEnabled ? 0.035 : 0.85)
         if alarm.fadeInEnabled {
             let started = Date()
             rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
                 guard let self else { return }
                 let elapsed = Date().timeIntervalSince(started)
                 let progress = min(1, elapsed / max(1, alarm.fadeDuration))
-                self.audioPlayer?.volume = Float(0.04 + progress * 0.91)
                 self.gain = Float(0.035 + progress * 0.865)
                 if progress >= 1 { timer.invalidate() }
             }
