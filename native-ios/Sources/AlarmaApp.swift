@@ -148,6 +148,7 @@ struct DreamEntry: Identifiable, Codable, Equatable {
     var snoreEvents = 0
     var strongBreathingEvents = 0
     var talkingEvents = 0
+    var audioClips = 0
 
     var dayKey: String {
         Self.key(for: day)
@@ -185,6 +186,22 @@ final class DreamStore: ObservableObject {
         entries.sort { $0.day > $1.day }
     }
 
+    func addAudioEvent(day: Date, kind: SleepAudioEvent.Kind) {
+        var entry = entry(for: day)
+        entry.audioClips += 1
+        switch kind {
+        case .snore:
+            entry.snoreEvents += 1
+        case .strongBreathing:
+            entry.strongBreathingEvents += 1
+        case .talking:
+            entry.talkingEvents += 1
+        }
+        let penalty = entry.snoreEvents * 2 + entry.strongBreathingEvents + entry.talkingEvents * 2 + entry.awakeMinutes / 8
+        entry.score = max(35, min(95, 86 - penalty))
+        upsert(entry)
+    }
+
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: key),
               let decoded = try? JSONDecoder().decode([DreamEntry].self, from: data) else {
@@ -196,6 +213,187 @@ final class DreamStore: ObservableObject {
     private func save() {
         guard let data = try? JSONEncoder().encode(entries) else { return }
         UserDefaults.standard.set(data, forKey: key)
+    }
+}
+
+struct SleepAudioEvent {
+    enum Kind {
+        case snore
+        case strongBreathing
+        case talking
+    }
+
+    let day: Date
+    let kind: Kind
+    let fileURL: URL
+}
+
+final class SleepAudioAnalyzer {
+    private var lastEventAt = Date.distantPast
+
+    func rms(_ buffer: AVAudioPCMBuffer) -> Float {
+        let count = Int(buffer.frameLength)
+        guard count > 0, let channelData = buffer.floatChannelData else { return -120 }
+        var sum: Float = 0
+        let channels = Int(buffer.format.channelCount)
+        for channelIndex in 0..<max(channels, 1) {
+            let channel = channelData[channelIndex]
+            for frameIndex in 0..<count {
+                let sample = channel[frameIndex]
+                sum += sample * sample
+            }
+        }
+        let mean = sum / Float(count * max(channels, 1))
+        return 20 * log10(max(sqrt(mean), 0.000_001))
+    }
+
+    func classify(rms: Float) -> SleepAudioEvent.Kind? {
+        let now = Date()
+        guard now.timeIntervalSince(lastEventAt) > 8 else { return nil }
+        lastEventAt = now
+        if rms > -24 { return .talking }
+        if rms > -34 { return .snore }
+        if rms > -46 { return .strongBreathing }
+        return nil
+    }
+}
+
+@MainActor
+final class SleepAudioRecorder: ObservableObject {
+    private let engine = AVAudioEngine()
+    private let analyzer = SleepAudioAnalyzer()
+    private var currentFile: AVAudioFile?
+    private var currentURL: URL?
+    private var writtenDuration: TimeInterval = 0
+    private var didWrite = false
+    private var day = Date()
+    private var onEvent: ((SleepAudioEvent) -> Void)?
+    private let thresholdDB: Float = -50
+    private let maxSegmentDuration: TimeInterval = 120
+
+    func start(day: Date, onEvent: @escaping (SleepAudioEvent) -> Void) async {
+        guard !engine.isRunning else { return }
+        self.day = day
+        self.onEvent = onEvent
+        do {
+            try await requestMicrophonePermission()
+            try configureAudioSession()
+            try startNewSegment()
+            try startEngine()
+        } catch {
+            stop()
+        }
+    }
+
+    func stop() {
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        completeSegment()
+    }
+
+    private func requestMicrophonePermission() async throws {
+        let session = AVAudioSession.sharedInstance()
+        switch session.recordPermission {
+        case .granted:
+            return
+        case .denied:
+            throw RecorderError.microphoneDenied
+        case .undetermined:
+            let granted = await withCheckedContinuation { continuation in
+                session.requestRecordPermission { continuation.resume(returning: $0) }
+            }
+            if !granted { throw RecorderError.microphoneDenied }
+        @unknown default:
+            throw RecorderError.microphoneDenied
+        }
+    }
+
+    private func configureAudioSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker, .mixWithOthers])
+        try session.setActive(true)
+    }
+
+    private func startEngine() throws {
+        let input = engine.inputNode
+        let inputFormat = input.outputFormat(forBus: 0)
+        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
+            Task { @MainActor in
+                self?.handle(buffer)
+            }
+        }
+        engine.prepare()
+        try engine.start()
+    }
+
+    private func startNewSegment() throws {
+        completeSegment()
+        let url = try nextSegmentURL()
+        let format = engine.inputNode.outputFormat(forBus: 0)
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: format.sampleRate,
+            AVNumberOfChannelsKey: Int(format.channelCount),
+            AVEncoderBitRateKey: 64_000,
+            AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
+        ]
+        currentFile = try AVAudioFile(forWriting: url, settings: settings)
+        currentURL = url
+        writtenDuration = 0
+        didWrite = false
+    }
+
+    private func handle(_ buffer: AVAudioPCMBuffer) {
+        let level = analyzer.rms(buffer)
+        guard level >= thresholdDB else { return }
+        do {
+            try currentFile?.write(from: buffer)
+            didWrite = true
+            writtenDuration += Double(buffer.frameLength) / buffer.format.sampleRate
+            if let kind = analyzer.classify(rms: level), let url = currentURL {
+                onEvent?(SleepAudioEvent(day: day, kind: kind, fileURL: url))
+            }
+            if writtenDuration >= maxSegmentDuration {
+                try startNewSegment()
+            }
+        } catch {
+            stop()
+        }
+    }
+
+    private func completeSegment() {
+        guard let url = currentURL else {
+            currentFile = nil
+            return
+        }
+        currentFile = nil
+        if !didWrite || writtenDuration < 0.1 {
+            try? FileManager.default.removeItem(at: url)
+        }
+        currentURL = nil
+        writtenDuration = 0
+        didWrite = false
+    }
+
+    private func nextSegmentURL() throws -> URL {
+        let root = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("SleepAudio", isDirectory: true)
+            .appendingPathComponent(DreamEntry.key(for: day), isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HHmmss"
+        return root.appendingPathComponent("sleep-\(formatter.string(from: Date())).m4a")
+    }
+}
+
+enum RecorderError: LocalizedError {
+    case microphoneDenied
+
+    var errorDescription: String? {
+        switch self {
+        case .microphoneDenied:
+            return "No hay permiso para usar el microfono."
+        }
     }
 }
 
@@ -430,6 +628,7 @@ final class NightSession: ObservableObject {
 
     private let motion = CMMotionManager()
     private let sound = AlarmSoundPlayer()
+    private let sleepRecorder = SleepAudioRecorder()
     private var clockTimer: Timer?
     private var motionTimer: Timer?
     private var snoozeTimer: Timer?
@@ -464,7 +663,7 @@ final class NightSession: ObservableObject {
         }
     }
 
-    func start(alarm: Alarm) {
+    func start(alarm: Alarm, dreamStore: DreamStore? = nil) {
         isSnoozing = false
         snoozedUntil = nil
         snoozeTimer?.invalidate()
@@ -476,6 +675,15 @@ final class NightSession: ObservableObject {
         sound.startKeepAlive()
         startClock()
         startMotionIfNeeded(alarm)
+        if let dreamStore {
+            Task {
+                await sleepRecorder.start(day: Date()) { event in
+                    Task { @MainActor in
+                        dreamStore.addAudioEvent(day: event.day, kind: event.kind)
+                    }
+                }
+            }
+        }
         endLockScreenActivity()
     }
 
@@ -492,6 +700,7 @@ final class NightSession: ObservableObject {
         motionTimer?.invalidate()
         snoozeTimer?.invalidate()
         motion.stopDeviceMotionUpdates()
+        sleepRecorder.stop()
         sound.stop()
         UIApplication.shared.isIdleTimerDisabled = false
     }
@@ -506,6 +715,7 @@ final class NightSession: ObservableObject {
         activeAlarm = nil
         backgroundGuardActive = false
         UIApplication.shared.isIdleTimerDisabled = true
+        sleepRecorder.stop()
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
         startOrUpdateLockScreenActivity(for: alarm, isRinging: true)
@@ -906,6 +1116,7 @@ struct RootTabView: View {
 struct ContentView: View {
     @EnvironmentObject private var store: AlarmStore
     @EnvironmentObject private var session: NightSession
+    @EnvironmentObject private var dreams: DreamStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var editingSleepAlarm = false
 
@@ -938,7 +1149,7 @@ struct ContentView: View {
                 Spacer()
 
                 Button {
-                    session.start(alarm: store.sleepAlarm)
+                    session.start(alarm: store.sleepAlarm, dreamStore: dreams)
                 } label: {
                     Label("Empezar la noche", systemImage: "moon.stars.fill")
                         .font(.title3.weight(.black))
@@ -2062,6 +2273,7 @@ struct DreamJournalView: View {
                             metricRow("Ronquidos detectados", value: "\(draft.snoreEvents)")
                             metricRow("Respiracion fuerte", value: "\(draft.strongBreathingEvents)")
                             metricRow("Voz detectada", value: "\(draft.talkingEvents)")
+                            metricRow("Clips de audio guardados", value: "\(draft.audioClips)")
                         }
                         .padding(16)
                         .background(Color.white.opacity(0.58))
