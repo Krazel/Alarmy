@@ -157,6 +157,14 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     }
 }
 
+enum AppMonetizationConfig {
+    static let adsEnabled = true
+    static let supportPromptEnabled = true
+    static let supportPromptIntervalDays = 14
+    static let minimumMonthlySupport = "0,99 €"
+    static let monthlySupportOptions = ["0,99 €", "3 €", "5 €", "10 €", "15 €", "30 €"]
+}
+
 struct AlarmSound: Identifiable, Hashable {
     let id: String
     let name: String
@@ -546,6 +554,18 @@ final class AlarmStore: ObservableObject {
     @Published var openJournalAfterAlarm = true {
         didSet { UserDefaults.standard.set(openJournalAfterAlarm, forKey: openJournalAfterAlarmKey) }
     }
+    @Published var adsRemoved = false {
+        didSet { UserDefaults.standard.set(adsRemoved, forKey: adsRemovedKey) }
+    }
+    @Published var lastSupportPromptAt: Date? {
+        didSet {
+            if let lastSupportPromptAt {
+                UserDefaults.standard.set(lastSupportPromptAt, forKey: lastSupportPromptAtKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: lastSupportPromptAtKey)
+            }
+        }
+    }
     @Published var customSounds: [CustomAlarmSound] = [] {
         didSet { saveCustomSounds() }
     }
@@ -555,6 +575,8 @@ final class AlarmStore: ObservableObject {
     private let appearanceKey = "alarma.native.appearance.v1"
     private let recordingEnabledKey = "alarma.native.sleepRecordingEnabled.v2"
     private let openJournalAfterAlarmKey = "alarma.native.openJournalAfterAlarm.v1"
+    private let adsRemovedKey = "alarma.native.adsRemoved.v1"
+    private let lastSupportPromptAtKey = "alarma.native.lastSupportPromptAt.v1"
     private let customSoundsKey = "alarma.native.customSounds.v1"
     private let alarmDefaultsMigrationKey = "alarma.native.alarmDefaults.v2"
 
@@ -566,12 +588,28 @@ final class AlarmStore: ObservableObject {
         appearance.resolvedTheme
     }
 
+    var monetizationEnabled: Bool {
+        AppMonetizationConfig.adsEnabled
+    }
+
+    var shouldShowAds: Bool {
+        monetizationEnabled && !adsRemoved
+    }
+
+    var shouldShowSupportPrompt: Bool {
+        guard AppMonetizationConfig.supportPromptEnabled, shouldShowAds else { return false }
+        guard let lastSupportPromptAt else { return true }
+        let nextDate = Calendar.current.date(byAdding: .day, value: AppMonetizationConfig.supportPromptIntervalDays, to: lastSupportPromptAt) ?? lastSupportPromptAt
+        return Date() >= nextDate
+    }
+
     init() {
         load()
         loadSleepAlarm()
         loadAppearance()
         loadRecordingSettings()
         loadJournalSettings()
+        loadMonetizationSettings()
         loadCustomSounds()
         migrateAlarmDefaultsIfNeeded()
         if alarms.isEmpty {
@@ -685,6 +723,17 @@ final class AlarmStore: ObservableObject {
         if UserDefaults.standard.object(forKey: openJournalAfterAlarmKey) != nil {
             openJournalAfterAlarm = UserDefaults.standard.bool(forKey: openJournalAfterAlarmKey)
         }
+    }
+
+    private func loadMonetizationSettings() {
+        if UserDefaults.standard.object(forKey: adsRemovedKey) != nil {
+            adsRemoved = UserDefaults.standard.bool(forKey: adsRemovedKey)
+        }
+        lastSupportPromptAt = UserDefaults.standard.object(forKey: lastSupportPromptAtKey) as? Date
+    }
+
+    func markSupportPromptShown() {
+        lastSupportPromptAt = Date()
     }
 
     private func migrateAlarmDefaultsIfNeeded() {
@@ -1306,7 +1355,10 @@ private extension FixedWidthInteger {
 }
 
 struct RootTabView: View {
+    @EnvironmentObject private var store: AlarmStore
+    @EnvironmentObject private var session: NightSession
     @EnvironmentObject private var navigation: AppNavigation
+    @State private var showingSupportPrompt = false
 
     var body: some View {
         TabView(selection: $navigation.selectedTab) {
@@ -1329,6 +1381,21 @@ struct RootTabView: View {
                 .tag(AppTab.settings)
         }
         .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
+        .onAppear(perform: showSupportPromptIfNeeded)
+        .alert("Apoyar la app", isPresented: $showingSupportPrompt) {
+            Button("Ahora no", role: .cancel) {}
+            Button("Ver opciones") {
+                navigation.selectedTab = .settings
+            }
+        } message: {
+            Text("Usas esta app gratuitamente. La mantenemos con anuncios discretos y aportaciones mensuales. Si quieres aportar algo para que podamos seguir manteniendo esta app y crear nuevas, lo agradeceriamos.")
+        }
+    }
+
+    private func showSupportPromptIfNeeded() {
+        guard store.shouldShowSupportPrompt, !session.isActive, session.ringingAlarm == nil else { return }
+        store.markSupportPromptShown()
+        showingSupportPrompt = true
     }
 }
 
@@ -2821,6 +2888,7 @@ struct SleepStageChart: View {
 struct SettingsView: View {
     @EnvironmentObject private var store: AlarmStore
     @State private var editingSleepAlarm = false
+    @State private var showingSubscriptionSetup = false
 
     var body: some View {
         NavigationStack {
@@ -2888,6 +2956,10 @@ struct SettingsView: View {
                             }
                         }
 
+                        if store.monetizationEnabled {
+                            supportGroup
+                        }
+
                         Text(appIdentityText)
                             .font(.caption.weight(.black))
                             .foregroundStyle(store.sleepTheme.secondaryText)
@@ -2907,6 +2979,66 @@ struct SettingsView: View {
                     onSave: { updated in store.updateSleepAlarm(updated) },
                     onDelete: nil
                 )
+            }
+            .alert("Suscripción pendiente", isPresented: $showingSubscriptionSetup) {
+                Button("Entendido", role: .cancel) {}
+            } message: {
+                Text("La pantalla ya está preparada, pero falta conectar los productos de suscripción mensual en App Store Connect y StoreKit.")
+            }
+        }
+    }
+
+    private var supportGroup: some View {
+        settingsGroup("Apoyar la app", systemImage: "heart.fill") {
+            HStack(spacing: 12) {
+                Image(systemName: store.adsRemoved ? "checkmark.seal.fill" : "rectangle.badge.xmark")
+                    .font(.title3.weight(.black))
+                    .foregroundStyle(store.adsRemoved ? Color.green : store.sleepTheme.primary)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(store.adsRemoved ? "Sin anuncios activo" : "Con anuncios discretos")
+                        .font(.subheadline.weight(.black))
+                    Text("La app se mantiene gratis gracias a anuncios discretos y aportaciones mensuales.")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(store.sleepTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                ForEach(AppMonetizationConfig.monthlySupportOptions, id: \.self) { amount in
+                    Text(amount)
+                        .font(.caption.weight(.black))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 34)
+                        .background(Color.white.opacity(store.sleepTheme == .sunset ? 0.30 : 0.07))
+                        .foregroundStyle(store.sleepTheme.text)
+                        .clipShape(Capsule())
+                }
+            }
+
+            Button {
+                showingSubscriptionSetup = true
+            } label: {
+                Label("Quitar anuncios", systemImage: "sparkles")
+                    .font(.headline.weight(.black))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(store.sleepTheme.primary)
+                    .foregroundStyle(store.sleepTheme == .sunset ? .white : Color(red: 0.01, green: 0.06, blue: 0.08))
+                    .clipShape(Capsule())
+            }
+
+            Button {
+                showingSubscriptionSetup = true
+            } label: {
+                Text("Restaurar compras")
+                    .font(.subheadline.weight(.black))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                    .background(Color.white.opacity(store.sleepTheme == .sunset ? 0.30 : 0.07))
+                    .foregroundStyle(store.sleepTheme.text)
+                    .clipShape(Capsule())
             }
         }
     }
