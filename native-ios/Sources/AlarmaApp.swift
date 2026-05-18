@@ -53,7 +53,7 @@ struct Alarm: Identifiable, Codable, Equatable {
 
     var repeatText: String {
         if weekdays.isEmpty { return "Una vez" }
-        if weekdays.count == 7 { return "Todos los dias" }
+        if weekdays.count == 7 { return "Todos los días" }
         if weekdays == [2, 3, 4, 5, 6] { return "Laborables" }
         return Weekday.all.filter { weekdays.contains($0.calendarValue) }.map(\.short).joined(separator: " ")
     }
@@ -329,12 +329,14 @@ final class SleepAudioRecorder: ObservableObject {
     private var didWrite = false
     private var day = Date()
     private var onEvent: ((SleepAudioEvent) -> Void)?
+    private var saveOnlyWhenSound = true
     private let thresholdDB: Float = -50
     private let maxSegmentDuration: TimeInterval = 120
 
-    func start(day: Date, onEvent: @escaping (SleepAudioEvent) -> Void) async {
+    func start(day: Date, saveOnlyWhenSound: Bool, onEvent: @escaping (SleepAudioEvent) -> Void) async {
         guard !engine.isRunning else { return }
         self.day = day
+        self.saveOnlyWhenSound = saveOnlyWhenSound
         self.onEvent = onEvent
         do {
             try await requestMicrophonePermission()
@@ -406,12 +408,12 @@ final class SleepAudioRecorder: ObservableObject {
 
     private func handle(_ buffer: AVAudioPCMBuffer) {
         let level = analyzer.rms(buffer)
-        guard level >= thresholdDB else { return }
+        guard level >= thresholdDB || !saveOnlyWhenSound else { return }
         do {
             try currentFile?.write(from: buffer)
             didWrite = true
             writtenDuration += Double(buffer.frameLength) / buffer.format.sampleRate
-            if let kind = analyzer.classify(rms: level), let url = currentURL {
+            if level >= thresholdDB, let kind = analyzer.classify(rms: level), let url = currentURL {
                 onEvent?(SleepAudioEvent(day: day, kind: kind, fileURL: url))
             }
             if writtenDuration >= maxSegmentDuration {
@@ -453,7 +455,7 @@ enum RecorderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .microphoneDenied:
-            return "No hay permiso para usar el microfono."
+            return "No hay permiso para usar el micrófono."
         }
     }
 }
@@ -469,6 +471,12 @@ final class AlarmStore: ObservableObject {
     @Published var sleepTheme: SleepTheme = .sunset {
         didSet { UserDefaults.standard.set(sleepTheme.rawValue, forKey: themeKey) }
     }
+    @Published var sleepRecordingEnabled = true {
+        didSet { UserDefaults.standard.set(sleepRecordingEnabled, forKey: recordingEnabledKey) }
+    }
+    @Published var saveAudioOnlyWhenSound = true {
+        didSet { UserDefaults.standard.set(saveAudioOnlyWhenSound, forKey: saveOnlyWhenSoundKey) }
+    }
     @Published var customSounds: [CustomAlarmSound] = [] {
         didSet { saveCustomSounds() }
     }
@@ -476,6 +484,8 @@ final class AlarmStore: ObservableObject {
     private let key = "alarma.native.alarms.v1"
     private let sleepKey = "alarma.native.sleepAlarm.v1"
     private let themeKey = "alarma.native.sleepTheme.v1"
+    private let recordingEnabledKey = "alarma.native.sleepRecordingEnabled.v1"
+    private let saveOnlyWhenSoundKey = "alarma.native.saveAudioOnlyWhenSound.v1"
     private let customSoundsKey = "alarma.native.customSounds.v1"
 
     var notificationAlarms: [Alarm] {
@@ -486,6 +496,7 @@ final class AlarmStore: ObservableObject {
         load()
         loadSleepAlarm()
         loadTheme()
+        loadRecordingSettings()
         loadCustomSounds()
         if alarms.isEmpty {
             alarms = [
@@ -586,6 +597,15 @@ final class AlarmStore: ObservableObject {
             return
         }
         sleepTheme = theme
+    }
+
+    private func loadRecordingSettings() {
+        if UserDefaults.standard.object(forKey: recordingEnabledKey) != nil {
+            sleepRecordingEnabled = UserDefaults.standard.bool(forKey: recordingEnabledKey)
+        }
+        if UserDefaults.standard.object(forKey: saveOnlyWhenSoundKey) != nil {
+            saveAudioOnlyWhenSound = UserDefaults.standard.bool(forKey: saveOnlyWhenSoundKey)
+        }
     }
 
     private func loadCustomSounds() {
@@ -729,7 +749,7 @@ final class NightSession: ObservableObject {
         }
     }
 
-    func start(alarm: Alarm, dreamStore: DreamStore? = nil) {
+    func start(alarm: Alarm, dreamStore: DreamStore? = nil, recordSounds: Bool = true, saveOnlyWhenSound: Bool = true) {
         isSnoozing = false
         snoozedUntil = nil
         snoozeTimer?.invalidate()
@@ -746,9 +766,9 @@ final class NightSession: ObservableObject {
         startClock()
         startMotionIfNeeded(alarm, force: dreamStore != nil)
         startSleepAnalysisIfNeeded()
-        if let dreamStore {
+        if let dreamStore, recordSounds {
             Task {
-                await sleepRecorder.start(day: self.sleepDay) { [weak self] event in
+                await sleepRecorder.start(day: self.sleepDay, saveOnlyWhenSound: saveOnlyWhenSound) { [weak self] event in
                     Task { @MainActor in
                         self?.audioEventsSinceLastSample += 1
                         dreamStore.addAudioEvent(day: event.day, kind: event.kind)
@@ -1261,7 +1281,12 @@ struct ContentView: View {
                 Spacer()
 
                 Button {
-                    session.start(alarm: store.sleepAlarm, dreamStore: dreams)
+                    session.start(
+                        alarm: store.sleepAlarm,
+                        dreamStore: dreams,
+                        recordSounds: store.sleepRecordingEnabled,
+                        saveOnlyWhenSound: store.saveAudioOnlyWhenSound
+                    )
                 } label: {
                     Label("Empezar la noche", systemImage: "moon.stars.fill")
                         .font(.title3.weight(.black))
@@ -1630,7 +1655,7 @@ struct AlarmRow: View {
                     Text(alarm.label)
                         .font(.headline.weight(.bold))
                         .foregroundStyle(.orange)
-                    Text("\(alarm.repeatText) - aviso iOS, sin audio todo el dia")
+                    Text("\(alarm.repeatText) - aviso iOS, sin audio todo el día")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.secondary)
                 }
@@ -2183,7 +2208,7 @@ struct NightActiveView: View {
                     .foregroundStyle(theme == .sunset ? Color.white : theme.primary)
                     .opacity(showStartedTitle ? 1 : 0)
 
-                Label("Mueve el movil\npara posponer", systemImage: "iphone.radiowaves.left.and.right")
+                Label("Mueve el móvil\npara posponer", systemImage: "iphone.radiowaves.left.and.right")
                     .font(.title3.weight(.medium))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(theme == .sunset ? Color.white.opacity(0.92) : theme.primary)
@@ -2296,7 +2321,7 @@ struct RingView: View {
         if session.isSnoozing, let date = session.snoozedUntil {
             return "Pospuesta hasta \(Self.snoozeFormatter.string(from: date))"
         }
-        return displayedAlarm.motionSnooze ? "Mueve el movil\npara posponer" : "Alarma sonando"
+        return displayedAlarm.motionSnooze ? "Mueve el móvil\npara posponer" : "Alarma sonando"
     }
 
     private var displayedAlarm: Alarm {
@@ -2344,6 +2369,7 @@ struct RingActionButton: View {
 }
 
 struct DreamJournalView: View {
+    @EnvironmentObject private var store: AlarmStore
     @EnvironmentObject private var dreams: DreamStore
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var draft = DreamEntry(day: Date())
@@ -2351,17 +2377,17 @@ struct DreamJournalView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                SleepBackdrop(theme: .sunset)
+                SleepBackdrop(theme: store.sleepTheme)
                     .ignoresSafeArea()
-                    .overlay(Color.white.opacity(0.52))
+                    .overlay(store.sleepTheme == .sunset ? Color.white.opacity(0.52) : Color.black.opacity(0.20))
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
-                        DatePicker("Dia", selection: $selectedDate, displayedComponents: .date)
+                        DatePicker("Día", selection: $selectedDate, displayedComponents: .date)
                             .datePickerStyle(.graphical)
-                            .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
+                            .tint(store.sleepTheme.primary)
                             .padding(14)
-                            .background(Color.white.opacity(0.62))
+                            .background(panelFill)
                             .clipShape(RoundedRectangle(cornerRadius: 18))
 
                         DreamScoreCard(entry: draft)
@@ -2369,16 +2395,16 @@ struct DreamJournalView: View {
                         SleepStageChart(entry: draft)
 
                         VStack(alignment: .leading, spacing: 10) {
-                            Label("Diario de suenos", systemImage: "book.closed.fill")
+                            Label("Diario de sueños", systemImage: "book.closed.fill")
                                 .font(.headline.weight(.black))
                             TextEditor(text: $draft.notes)
                                 .frame(minHeight: 170)
                                 .scrollContentBackground(.hidden)
                                 .padding(12)
-                                .background(Color.white.opacity(0.64))
+                                .background(editorFill)
                                 .clipShape(RoundedRectangle(cornerRadius: 16))
                         }
-                        .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+                        .foregroundStyle(store.sleepTheme.text)
 
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Seguimiento nocturno", systemImage: "waveform")
@@ -2386,26 +2412,26 @@ struct DreamJournalView: View {
                             metricRow("Tiempo en cama", value: bedDurationText)
                             metricRow("Tiempo dormido estimado", value: sleepDurationText)
                             metricRow("Despertares estimados", value: "\(draft.awakeMinutes) min")
-                            metricRow("Sueno ligero", value: "\(draft.lightSleepMinutes) min")
-                            metricRow("Sueno profundo", value: "\(draft.deepSleepMinutes) min")
+                            metricRow("Sueño ligero", value: "\(draft.lightSleepMinutes) min")
+                            metricRow("Sueño profundo", value: "\(draft.deepSleepMinutes) min")
                             metricRow("Ronquidos detectados", value: "\(draft.snoreEvents)")
-                            metricRow("Respiracion fuerte", value: "\(draft.strongBreathingEvents)")
+                            metricRow("Respiración fuerte", value: "\(draft.strongBreathingEvents)")
                             metricRow("Voz detectada", value: "\(draft.talkingEvents)")
                             metricRow("Clips de audio guardados", value: "\(draft.audioClips)")
                         }
                         .padding(16)
-                        .background(Color.white.opacity(0.58))
+                        .background(panelFill)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
-                        .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+                        .foregroundStyle(store.sleepTheme.text)
 
                         Button {
                             dreams.upsert(draft)
                         } label: {
-                            Label("Guardar dia", systemImage: "checkmark.circle.fill")
+                            Label("Guardar día", systemImage: "checkmark.circle.fill")
                                 .font(.headline.weight(.black))
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 56)
-                                .background(Color(red: 0.86, green: 0.34, blue: 0.20))
+                                .background(store.sleepTheme.primary)
                                 .foregroundStyle(.white)
                                 .clipShape(Capsule())
                         }
@@ -2414,9 +2440,10 @@ struct DreamJournalView: View {
                     .padding(.bottom, 24)
                 }
             }
-            .navigationTitle("Diario")
+            .navigationTitle("Diario de sueño")
             .onAppear { loadEntry() }
             .onChange(of: selectedDate) { _ in loadEntry() }
+            .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
         }
     }
 
@@ -2448,9 +2475,18 @@ struct DreamJournalView: View {
         guard minutes > 0 else { return "Menos de 1 min" }
         return "\(minutes / 60) h \(minutes % 60) min"
     }
+
+    private var panelFill: Color {
+        store.sleepTheme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08)
+    }
+
+    private var editorFill: Color {
+        store.sleepTheme == .sunset ? Color.white.opacity(0.64) : Color.white.opacity(0.10)
+    }
 }
 
 struct DreamScoreCard: View {
+    @EnvironmentObject private var store: AlarmStore
     let entry: DreamEntry
 
     var body: some View {
@@ -2468,33 +2504,34 @@ struct DreamScoreCard: View {
             .frame(width: 86, height: 86)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Puntuacion de sueno")
+                Text("Puntuación de sueño")
                     .font(.headline.weight(.black))
-                Text("Estimacion orientativa basada en movimiento y audio cuando el seguimiento este activo.")
+                Text("Estimación orientativa basada en movimiento y audio cuando el seguimiento esté activo.")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(store.sleepTheme.secondaryText)
             }
             Spacer()
         }
         .padding(16)
-        .background(Color.white.opacity(0.62))
+        .background(store.sleepTheme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 18))
-        .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+        .foregroundStyle(store.sleepTheme.text)
     }
 }
 
 struct SleepStageChart: View {
+    @EnvironmentObject private var store: AlarmStore
     let entry: DreamEntry
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Grafica de sueno", systemImage: "chart.bar.fill")
+            Label("Gráfica de sueño", systemImage: "chart.bar.fill")
                 .font(.headline.weight(.black))
 
             if entry.samples.isEmpty {
-                Text("Sin muestras todavia. Se generaran al usar Empezar noche con el telefono cerca.")
+                Text("Sin muestras todavía. Se generarán al usar Empezar noche con el teléfono cerca.")
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(store.sleepTheme.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 18)
             } else {
@@ -2518,9 +2555,9 @@ struct SleepStageChart: View {
             }
         }
         .padding(16)
-        .background(Color.white.opacity(0.62))
+        .background(store.sleepTheme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 18))
-        .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+        .foregroundStyle(store.sleepTheme.text)
     }
 
     private func color(for stage: SleepStageSample.Stage) -> Color {
@@ -2548,93 +2585,105 @@ struct SleepStageChart: View {
 }
 
 struct SettingsView: View {
-    @State private var reportKind = "Bug"
-    @State private var reportText = ""
-    @State private var reportSaved = false
-    private let kinds = ["Bug", "Feedback"]
+    @EnvironmentObject private var store: AlarmStore
+    @State private var editingSleepAlarm = false
 
     var body: some View {
         NavigationStack {
             ZStack {
-                SleepBackdrop(theme: .night)
+                SleepBackdrop(theme: store.sleepTheme)
                     .ignoresSafeArea()
-                    .overlay(Color.black.opacity(0.20))
+                    .overlay(store.sleepTheme == .sunset ? Color.white.opacity(0.52) : Color.black.opacity(0.20))
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Label("Seguimiento de sonido", systemImage: "mic.fill")
-                                .font(.headline.weight(.black))
-                            Text("La deteccion de ronquidos, respiracion fuerte y voz necesita permiso de microfono y se tratara como estimacion local, no como diagnostico.")
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(Color.white.opacity(0.76))
-                        }
-                        .padding(16)
-                        .background(Color.white.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Reportes", systemImage: "paperplane.fill")
-                                .font(.headline.weight(.black))
-
-                            Picker("Tipo", selection: $reportKind) {
-                                ForEach(kinds, id: \.self) { kind in
-                                    Text(kind).tag(kind)
-                                }
+                        settingsGroup("Apariencia", systemImage: "circle.lefthalf.filled") {
+                            Picker("Tema", selection: $store.sleepTheme) {
+                                Text("Claro").tag(SleepTheme.sunset)
+                                Text("Oscuro").tag(SleepTheme.night)
                             }
                             .pickerStyle(.segmented)
+                        }
 
-                            TextEditor(text: $reportText)
-                                .frame(minHeight: 150)
-                                .scrollContentBackground(.hidden)
-                                .padding(12)
-                                .background(Color.white.opacity(0.10))
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                        settingsGroup("Seguimiento nocturno", systemImage: "waveform") {
+                            settingToggle("Grabar sonidos nocturnos", isOn: $store.sleepRecordingEnabled)
+                            settingToggle("Guardar solo si hay sonido", isOn: $store.saveAudioOnlyWhenSound)
+                                .disabled(!store.sleepRecordingEnabled)
+                                .opacity(store.sleepRecordingEnabled ? 1 : 0.55)
+                            Text("La detección de ronquidos, respiración fuerte y voz se guarda localmente como estimación.")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(store.sleepTheme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        settingsGroup("Despertar", systemImage: "sunrise.fill") {
+                            settingRow("Luz gradual", value: store.sleepAlarm.lightWakeEnabled ? "\(store.sleepAlarm.lightWakeMinutes) min" : "Desactivada")
+                            settingRow("Posponer por movimiento", value: store.sleepAlarm.motionSnooze ? "Activado" : "Desactivado")
+                            settingRow("Posponer", value: "\(store.sleepAlarm.snoozeMinutes) min")
 
                             Button {
-                                saveReport()
+                                editingSleepAlarm = true
                             } label: {
-                                Label("Guardar reporte", systemImage: "tray.and.arrow.down.fill")
+                                Label("Editar alarma", systemImage: "slider.horizontal.3")
                                     .font(.headline.weight(.black))
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 54)
-                                    .background(Color(red: 0.37, green: 0.83, blue: 0.88))
-                                    .foregroundStyle(Color(red: 0.01, green: 0.06, blue: 0.08))
+                                    .frame(height: 52)
+                                    .background(store.sleepTheme.primary)
+                                    .foregroundStyle(store.sleepTheme == .sunset ? .white : Color(red: 0.01, green: 0.06, blue: 0.08))
                                     .clipShape(Capsule())
                             }
-                            .disabled(reportText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .opacity(reportText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
-
-                            if reportSaved {
-                                Text("Reporte guardado localmente.")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(Color.white.opacity(0.76))
-                            }
                         }
-                        .padding(16)
-                        .background(Color.white.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                        settingsGroup("Datos y privacidad", systemImage: "lock.shield.fill") {
+                            settingRow("Audio", value: store.sleepRecordingEnabled ? "Local" : "No se graba")
+                            settingRow("Diario de sueño", value: "En este iPhone")
+                        }
                     }
                     .padding(20)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(store.sleepTheme.text)
                 }
             }
             .navigationTitle("Ajustes")
+            .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
+            .sheet(isPresented: $editingSleepAlarm) {
+                EditAlarmView(
+                    alarm: store.sleepAlarm,
+                    theme: store.sleepTheme,
+                    onSave: { updated in store.updateSleepAlarm(updated) },
+                    onDelete: nil
+                )
+            }
         }
     }
 
-    private func saveReport() {
-        let text = reportText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        var reports = UserDefaults.standard.array(forKey: "alarma.native.reports.v1") as? [[String: String]] ?? []
-        reports.append([
-            "kind": reportKind,
-            "text": text,
-            "date": ISO8601DateFormatter().string(from: Date())
-        ])
-        UserDefaults.standard.set(reports, forKey: "alarma.native.reports.v1")
-        reportText = ""
-        reportSaved = true
+    private func settingsGroup<Content: View>(_ title: String, systemImage: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: systemImage)
+                .font(.headline.weight(.black))
+            content()
+        }
+        .padding(16)
+        .background(store.sleepTheme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func settingRow(_ title: String, value: String) -> some View {
+        HStack(spacing: 12) {
+            Text(title)
+            Spacer()
+            Text(value)
+                .font(.subheadline.weight(.black))
+                .foregroundStyle(store.sleepTheme.secondaryText)
+        }
+        .font(.subheadline.weight(.bold))
+    }
+
+    private func settingToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(.subheadline.weight(.bold))
+        }
+        .tint(store.sleepTheme.primary)
     }
 }
 
