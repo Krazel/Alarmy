@@ -121,9 +121,13 @@ struct AlarmSound: Identifiable, Hashable {
     let baseFrequency: Double
     let color: Color
 
-    static let defaultIds = ["funny-alarm", "bosque-amanecer", "despertar-suave", "lo-fi-alarm"]
+    static let defaultIds = ["sunrise", "sunset", "piano", "rain"]
 
     static let all: [AlarmSound] = [
+        .init(id: "sunrise", name: "Amanecer", fileName: "funny-alarm", baseFrequency: 220, color: .orange),
+        .init(id: "sunset", name: "Atardecer", fileName: "funny-alarm", baseFrequency: 196, color: .pink),
+        .init(id: "piano", name: "Piano suave", fileName: "despertar-suave", baseFrequency: 262, color: .brown),
+        .init(id: "rain", name: "Lluvia lenta", fileName: "bosque-al-amanecer", baseFrequency: 174, color: .blue),
         .init(id: "funny-alarm", name: "Funny alarm", fileName: "funny-alarm", baseFrequency: 330, color: .orange),
         .init(id: "bosque-amanecer", name: "Bosque al amanecer", fileName: "bosque-al-amanecer", baseFrequency: 220, color: .green),
         .init(id: "despertar-suave", name: "Despertar suave", fileName: "despertar-suave", baseFrequency: 262, color: .mint),
@@ -502,7 +506,7 @@ final class AlarmStore: ObservableObject {
         if alarms.isEmpty {
             alarms = [
                 Alarm(),
-                Alarm(label: "Fin de semana", hour: 9, minute: 0, weekdays: [1, 7], soundIds: ["despertar-suave"], randomSound: false, enabled: false)
+                Alarm(label: "Fin de semana", hour: 9, minute: 0, weekdays: [1, 7], soundIds: ["rain"], randomSound: false, enabled: false)
             ]
         }
         normalizeStoredSounds()
