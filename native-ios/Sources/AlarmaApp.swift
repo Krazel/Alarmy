@@ -149,6 +149,11 @@ struct DreamEntry: Identifiable, Codable, Equatable {
     var strongBreathingEvents = 0
     var talkingEvents = 0
     var audioClips = 0
+    var sleepStartedAt: Date?
+    var sleepEndedAt: Date?
+    var lightSleepMinutes = 0
+    var deepSleepMinutes = 0
+    var samples: [SleepStageSample] = []
 
     var dayKey: String {
         Self.key(for: day)
@@ -158,6 +163,28 @@ struct DreamEntry: Identifiable, Codable, Equatable {
         let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0)
     }
+}
+
+struct SleepStageSample: Identifiable, Codable, Equatable {
+    enum Stage: String, Codable, Equatable {
+        case awake
+        case light
+        case deep
+
+        var title: String {
+            switch self {
+            case .awake: return "Despierto"
+            case .light: return "Ligero"
+            case .deep: return "Profundo"
+            }
+        }
+    }
+
+    var id = UUID()
+    var date: Date
+    var stage: Stage
+    var movement: Double
+    var soundEvents: Int
 }
 
 @MainActor
@@ -200,6 +227,40 @@ final class DreamStore: ObservableObject {
         let penalty = entry.snoreEvents * 2 + entry.strongBreathingEvents + entry.talkingEvents * 2 + entry.awakeMinutes / 8
         entry.score = max(35, min(95, 86 - penalty))
         upsert(entry)
+    }
+
+    func markSleepStarted(day: Date, at date: Date) {
+        var entry = entry(for: day)
+        entry.sleepStartedAt = entry.sleepStartedAt ?? date
+        entry.sleepEndedAt = nil
+        upsert(entry)
+    }
+
+    func markSleepEnded(day: Date, at date: Date) {
+        var entry = entry(for: day)
+        entry.sleepEndedAt = date
+        recalculate(entry: &entry)
+        upsert(entry)
+    }
+
+    func addSleepSample(day: Date, sample: SleepStageSample) {
+        var entry = entry(for: day)
+        entry.sleepStartedAt = entry.sleepStartedAt ?? sample.date
+        entry.samples.append(sample)
+        if entry.samples.count > 720 {
+            entry.samples.removeFirst(entry.samples.count - 720)
+        }
+        recalculate(entry: &entry)
+        upsert(entry)
+    }
+
+    private func recalculate(entry: inout DreamEntry) {
+        entry.awakeMinutes = entry.samples.filter { $0.stage == .awake }.count
+        entry.lightSleepMinutes = entry.samples.filter { $0.stage == .light }.count
+        entry.deepSleepMinutes = entry.samples.filter { $0.stage == .deep }.count
+        let penalty = entry.awakeMinutes * 2 + entry.snoreEvents * 2 + entry.strongBreathingEvents + entry.talkingEvents * 2
+        let depthBonus = min(14, entry.deepSleepMinutes / 18)
+        entry.score = max(35, min(96, 82 + depthBonus - penalty / 3))
     }
 
     private func load() {
@@ -632,7 +693,12 @@ final class NightSession: ObservableObject {
     private var clockTimer: Timer?
     private var motionTimer: Timer?
     private var snoozeTimer: Timer?
+    private var sleepAnalysisTimer: Timer?
     private var lightWakeStartedFor: UUID?
+    private var sleepStartedAt: Date?
+    private var sleepDay = Date()
+    private var dreamStore: DreamStore?
+    private var audioEventsSinceLastSample = 0
     private var alarmMonitor: DispatchSourceTimer?
     private var firedRingKeys: Set<String> = []
     private var backgroundGuardActive = false
@@ -670,15 +736,21 @@ final class NightSession: ObservableObject {
         lightLevel = 0
         lightWakeStartedFor = nil
         activeAlarm = alarm
+        self.dreamStore = dreamStore
+        sleepStartedAt = Date()
+        sleepDay = Date()
+        dreamStore?.markSleepStarted(day: sleepDay, at: sleepStartedAt ?? Date())
         backgroundGuardActive = true
         UIApplication.shared.isIdleTimerDisabled = true
         sound.startKeepAlive()
         startClock()
-        startMotionIfNeeded(alarm)
+        startMotionIfNeeded(alarm, force: dreamStore != nil)
+        startSleepAnalysisIfNeeded()
         if let dreamStore {
             Task {
-                await sleepRecorder.start(day: Date()) { event in
+                await sleepRecorder.start(day: self.sleepDay) { [weak self] event in
                     Task { @MainActor in
+                        self?.audioEventsSinceLastSample += 1
                         dreamStore.addAudioEvent(day: event.day, kind: event.kind)
                     }
                 }
@@ -698,7 +770,13 @@ final class NightSession: ObservableObject {
         motionProgress = 0
         clockTimer?.invalidate()
         motionTimer?.invalidate()
+        sleepAnalysisTimer?.invalidate()
         snoozeTimer?.invalidate()
+        if sleepStartedAt != nil, let dreamStore {
+            dreamStore.markSleepEnded(day: sleepDay, at: Date())
+            self.sleepStartedAt = nil
+        }
+        self.dreamStore = nil
         motion.stopDeviceMotionUpdates()
         sleepRecorder.stop()
         sound.stop()
@@ -716,6 +794,12 @@ final class NightSession: ObservableObject {
         backgroundGuardActive = false
         UIApplication.shared.isIdleTimerDisabled = true
         sleepRecorder.stop()
+        sleepAnalysisTimer?.invalidate()
+        if sleepStartedAt != nil, let dreamStore {
+            dreamStore.markSleepEnded(day: sleepDay, at: Date())
+            self.sleepStartedAt = nil
+        }
+        self.dreamStore = nil
         sound.start(for: alarm)
         startMotionIfNeeded(alarm)
         startOrUpdateLockScreenActivity(for: alarm, isRinging: true)
@@ -807,11 +891,11 @@ final class NightSession: ObservableObject {
         }
     }
 
-    private func startMotionIfNeeded(_ alarm: Alarm) {
+    private func startMotionIfNeeded(_ alarm: Alarm, force: Bool = false) {
         motionTimer?.invalidate()
         motion.stopDeviceMotionUpdates()
         motionProgress = 0
-        guard alarm.motionSnooze, motion.isDeviceMotionAvailable else { return }
+        guard (alarm.motionSnooze || force), motion.isDeviceMotionAvailable else { return }
         motion.deviceMotionUpdateInterval = 0.12
         motion.startDeviceMotionUpdates()
         motionTimer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { [weak self] _ in
@@ -824,6 +908,34 @@ final class NightSession: ObservableObject {
         let a = data.userAcceleration
         let magnitude = sqrt(a.x * a.x + a.y * a.y + a.z * a.z)
         motionProgress = max(0, min(1, motionProgress * 0.88 + magnitude * 0.24))
+    }
+
+    private func startSleepAnalysisIfNeeded() {
+        guard dreamStore != nil else { return }
+        sleepAnalysisTimer?.invalidate()
+        sleepAnalysisTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.recordSleepSample()
+            }
+        }
+    }
+
+    private func recordSleepSample() {
+        guard let dreamStore, activeAlarm != nil else { return }
+        let movement = motionProgress
+        let sounds = audioEventsSinceLastSample
+        audioEventsSinceLastSample = 0
+        let stage: SleepStageSample.Stage
+        if movement > 0.42 || sounds >= 3 {
+            stage = .awake
+        } else if movement > 0.16 || sounds > 0 {
+            stage = .light
+        } else {
+            stage = .deep
+        }
+        let sample = SleepStageSample(date: Date(), stage: stage, movement: movement, soundEvents: sounds)
+        dreamStore.addSleepSample(day: sleepDay, sample: sample)
+        motionProgress = max(0, motionProgress * 0.45)
     }
 
     private func checkDueAlarms(alarms: [Alarm]) {
@@ -2254,6 +2366,8 @@ struct DreamJournalView: View {
 
                         DreamScoreCard(entry: draft)
 
+                        SleepStageChart(entry: draft)
+
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Diario de suenos", systemImage: "book.closed.fill")
                                 .font(.headline.weight(.black))
@@ -2269,7 +2383,11 @@ struct DreamJournalView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Seguimiento nocturno", systemImage: "waveform")
                                 .font(.headline.weight(.black))
+                            metricRow("Tiempo en cama", value: bedDurationText)
+                            metricRow("Tiempo dormido estimado", value: sleepDurationText)
                             metricRow("Despertares estimados", value: "\(draft.awakeMinutes) min")
+                            metricRow("Sueno ligero", value: "\(draft.lightSleepMinutes) min")
+                            metricRow("Sueno profundo", value: "\(draft.deepSleepMinutes) min")
                             metricRow("Ronquidos detectados", value: "\(draft.snoreEvents)")
                             metricRow("Respiracion fuerte", value: "\(draft.strongBreathingEvents)")
                             metricRow("Voz detectada", value: "\(draft.talkingEvents)")
@@ -2316,6 +2434,20 @@ struct DreamJournalView: View {
         }
         .font(.subheadline.weight(.bold))
     }
+
+    private var sleepDurationText: String {
+        let minutes = draft.lightSleepMinutes + draft.deepSleepMinutes
+        guard minutes > 0 else { return "Sin datos" }
+        return "\(minutes / 60) h \(minutes % 60) min"
+    }
+
+    private var bedDurationText: String {
+        guard let started = draft.sleepStartedAt else { return "Sin datos" }
+        let ended = draft.sleepEndedAt ?? Date()
+        let minutes = max(0, Int(ended.timeIntervalSince(started) / 60))
+        guard minutes > 0 else { return "Menos de 1 min" }
+        return "\(minutes / 60) h \(minutes % 60) min"
+    }
 }
 
 struct DreamScoreCard: View {
@@ -2348,6 +2480,70 @@ struct DreamScoreCard: View {
         .background(Color.white.opacity(0.62))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+    }
+}
+
+struct SleepStageChart: View {
+    let entry: DreamEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Grafica de sueno", systemImage: "chart.bar.fill")
+                .font(.headline.weight(.black))
+
+            if entry.samples.isEmpty {
+                Text("Sin muestras todavia. Se generaran al usar Empezar noche con el telefono cerca.")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 18)
+            } else {
+                GeometryReader { proxy in
+                    HStack(alignment: .bottom, spacing: 2) {
+                        ForEach(entry.samples.suffix(120)) { sample in
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(color(for: sample.stage))
+                                .frame(width: max(2, proxy.size.width / CGFloat(min(entry.samples.count, 120)) - 2), height: height(for: sample.stage, total: proxy.size.height))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                }
+                .frame(height: 110)
+
+                HStack(spacing: 12) {
+                    legend("Profundo", color: Color(red: 0.15, green: 0.38, blue: 0.74))
+                    legend("Ligero", color: Color(red: 0.37, green: 0.83, blue: 0.88))
+                    legend("Despierto", color: Color(red: 0.86, green: 0.34, blue: 0.20))
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.white.opacity(0.62))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .foregroundStyle(Color(red: 0.30, green: 0.17, blue: 0.10))
+    }
+
+    private func color(for stage: SleepStageSample.Stage) -> Color {
+        switch stage {
+        case .deep: return Color(red: 0.15, green: 0.38, blue: 0.74)
+        case .light: return Color(red: 0.37, green: 0.83, blue: 0.88)
+        case .awake: return Color(red: 0.86, green: 0.34, blue: 0.20)
+        }
+    }
+
+    private func height(for stage: SleepStageSample.Stage, total: CGFloat) -> CGFloat {
+        switch stage {
+        case .deep: return total * 0.35
+        case .light: return total * 0.62
+        case .awake: return total * 0.95
+        }
+    }
+
+    private func legend(_ text: String, color: Color) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(text).font(.caption.weight(.bold))
+        }
     }
 }
 
