@@ -162,7 +162,7 @@ enum AppMonetizationConfig {
     static let supportPromptEnabled = true
     static let supportPromptIntervalDays = 14
     static let minimumMonthlySupport = "0,99 €"
-    static let monthlySupportOptions = ["0,99 €", "3 €", "5 €", "10 €", "15 €", "30 €"]
+    static let monthlySupportOptions = ["0,99 €", "3 €", "5 €", "10 €", "15 €", "30 €", "50 €", "100 €", "300 €"]
 }
 
 struct AlarmSound: Identifiable, Hashable {

@@ -54,6 +54,9 @@ Importes sugeridos:
 - 10 € mensual
 - 15 € mensual
 - 30 € mensual
+- 50 € mensual
+- 100 € mensual
+- 300 € mensual
 
 En iOS, estos importes deben ser productos de suscripcion configurados en App Store Connect y cargados con StoreKit. Apple muestra la hoja de pago del App Store y gestiona renovaciones, localizacion de precios y confirmacion de compra.
 
