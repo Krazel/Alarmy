@@ -1248,13 +1248,12 @@ struct ContentView: View {
                 onDelete: nil
             )
         }
-        .fullScreenCover(isPresented: Binding(get: { session.isActive }, set: { if !$0 { session.stop() } })) {
-            if let alarm = session.activeAlarm {
+        .fullScreenCover(isPresented: Binding(get: { session.isActive || session.ringingAlarm != nil }, set: { if !$0 { session.stop() } })) {
+            if let alarm = session.ringingAlarm {
+                RingView(alarm: alarm, theme: store.sleepTheme)
+            } else if let alarm = session.activeAlarm {
                 NightActiveView(alarm: alarm, theme: store.sleepTheme)
             }
-        }
-        .fullScreenCover(item: $session.ringingAlarm) { alarm in
-            RingView(alarm: alarm, theme: store.sleepTheme)
         }
         .onAppear {
             session.startAlarmMonitor { [] }
