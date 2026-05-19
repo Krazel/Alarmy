@@ -211,6 +211,7 @@ struct DreamEntry: Identifiable, Codable, Equatable {
     var id = UUID()
     var day: Date
     var notes = ""
+    var wakeMood: WakeMood?
     var score: Int?
     var awakeMinutes = 0
     var snoreEvents = 0
@@ -1399,6 +1400,46 @@ struct RootTabView: View {
     }
 }
 
+enum WakeMood: String, CaseIterable, Identifiable, Codable {
+    case exhausted
+    case tired
+    case neutral
+    case calm
+    case energized
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .exhausted: return "Agotado"
+        case .tired: return "Cansado"
+        case .neutral: return "Normal"
+        case .calm: return "Calmado"
+        case .energized: return "Con fuerza"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .exhausted: return "battery.0percent"
+        case .tired: return "moon.zzz.fill"
+        case .neutral: return "circle.fill"
+        case .calm: return "leaf.fill"
+        case .energized: return "bolt.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .exhausted: return Color(red: 0.76, green: 0.22, blue: 0.18)
+        case .tired: return Color.orange
+        case .neutral: return Color.gray
+        case .calm: return Color.mint
+        case .energized: return Color.green
+        }
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject private var store: AlarmStore
     @EnvironmentObject private var session: NightSession
@@ -1979,7 +2020,7 @@ struct TimeEditPanel: View {
 struct SnoozePresetSelector: View {
     @Binding var minutes: Int
     let theme: SleepTheme
-    private let options = [1, 3, 5, 10]
+    private let options = [1, 3, 5, 10, 15]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -2527,6 +2568,8 @@ struct DreamJournalView: View {
 
                         SleepStageChart(entry: draft)
 
+                        WakeMoodSelector(entry: $draft, theme: store.sleepTheme)
+
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Diario de sueños", systemImage: "book.closed.fill")
                                 .font(.headline.weight(.black))
@@ -2578,6 +2621,7 @@ struct DreamJournalView: View {
                 notesFocused = true
             }
             .onChange(of: draft.notes) { _ in dreams.upsert(draft) }
+            .onChange(of: draft.wakeMood) { _ in dreams.upsert(draft) }
             .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -2778,6 +2822,62 @@ struct SleepCalendarGrid: View {
         formatter.dateStyle = .long
         return formatter
     }()
+}
+
+struct WakeMoodSelector: View {
+    @Binding var entry: DreamEntry
+    let theme: SleepTheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Cómo te has despertado", systemImage: "sun.max.fill")
+                .font(.headline.weight(.black))
+
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(WakeMood.allCases) { mood in
+                    Button {
+                        entry.wakeMood = entry.wakeMood == mood ? nil : mood
+                    } label: {
+                        VStack(spacing: 7) {
+                            Image(systemName: mood.icon)
+                                .font(.headline.weight(.black))
+                                .frame(height: 20)
+                            Text(mood.title)
+                                .font(.caption.weight(.black))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.72)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 64)
+                        .background(entry.wakeMood == mood ? mood.color.opacity(0.24) : optionFill)
+                        .foregroundStyle(entry.wakeMood == mood ? mood.color : theme.text)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(entry.wakeMood == mood ? mood.color.opacity(0.72) : theme.secondaryText.opacity(0.14), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(16)
+        .background(panelFill)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .foregroundStyle(theme.text)
+    }
+
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 8), count: 2)
+    }
+
+    private var panelFill: Color {
+        theme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08)
+    }
+
+    private var optionFill: Color {
+        theme == .sunset ? Color.white.opacity(0.34) : Color.white.opacity(0.07)
+    }
 }
 
 struct DreamScoreCard: View {
@@ -3171,7 +3271,7 @@ struct SettingsView: View {
 
     private var snoozeSelector: some View {
         HStack(spacing: 8) {
-            ForEach([5, 10, 15], id: \.self) { minutes in
+                ForEach([1, 3, 5, 10, 15], id: \.self) { minutes in
                 Button {
                     var alarm = store.sleepAlarm
                     alarm.snoozeMinutes = minutes
