@@ -2737,10 +2737,14 @@ struct DreamJournalView: View {
                         .padding(.horizontal, 13)
                         .padding(.top, 4)
                         .padding(.bottom, 16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
+                    .frame(maxWidth: .infinity)
+                    .clipped()
                 }
+                .frame(maxWidth: .infinity)
             }
             .navigationTitle("")
             .toolbar(.hidden, for: .navigationBar)
@@ -2786,7 +2790,22 @@ struct DreamJournalView: View {
                 .foregroundStyle(store.sleepTheme.text)
 
             HStack {
+                Button {
+                    goToToday()
+                } label: {
+                    Text("Hoy")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(store.sleepTheme.primary)
+                        .frame(width: 54, height: 34)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(store.sleepTheme.primary.opacity(0.86), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+
                 Spacer()
+
                 Button {
                     showingFullCalendar = true
                 } label: {
@@ -2801,6 +2820,13 @@ struct DreamJournalView: View {
         .padding(.horizontal, 24)
         .padding(.top, 10)
         .padding(.bottom, 8)
+    }
+
+    private func goToToday() {
+        let today = Calendar.current.startOfDay(for: Date())
+        selectedDate = today
+        displayedMonth = Self.monthStart(for: today)
+        loadEntry()
     }
 
     private func loadEntry() {
@@ -2889,6 +2915,7 @@ struct SleepCalendarGrid: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
+        .frame(maxWidth: .infinity)
         .background(panelFill)
         .foregroundStyle(store.sleepTheme.text)
         .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -3193,6 +3220,7 @@ struct WakeMoodSelector: View {
             }
         }
         .padding(13)
+        .frame(maxWidth: .infinity)
         .background(panelFill)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
@@ -3325,6 +3353,7 @@ struct NightSoundsSummary: View {
         }
         .padding(13)
         .frame(height: 176)
+        .frame(maxWidth: .infinity)
         .background(panelFill)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
@@ -3477,6 +3506,7 @@ struct DreamNotesCard: View {
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(borderColor, lineWidth: 1))
         }
         .padding(13)
+        .frame(maxWidth: .infinity)
         .background(panelFill)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
@@ -3727,13 +3757,7 @@ struct SleepStageChart: View {
             HStack(spacing: 8) {
                 Text("Gráfica de sueño")
                     .font(.system(size: 19, weight: .bold))
-                Image(systemName: "info.circle")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(store.sleepTheme.secondaryText)
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(store.sleepTheme.secondaryText)
             }
 
             HStack(alignment: .center, spacing: 10) {
@@ -3760,6 +3784,8 @@ struct SleepStageChart: View {
                                 soundMarkers(samples: samples, size: proxy.size)
                             }
                         }
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
                     }
                     .frame(height: 94)
 
@@ -3767,17 +3793,21 @@ struct SleepStageChart: View {
                         let labels = timeLabels(for: chartSamples)
                         ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
                             Text(label)
-                            if index < labels.count - 1 {
-                                Spacer()
-                            }
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.82)
+                                .frame(maxWidth: .infinity, alignment: index == 0 ? .leading : index == labels.count - 1 ? .trailing : .center)
                         }
                     }
                     .font(.caption.weight(.medium))
                     .foregroundStyle(store.sleepTheme.secondaryText)
+                    .frame(maxWidth: .infinity)
                 }
+                .frame(maxWidth: .infinity)
+                .clipped()
             }
         }
         .padding(13)
+        .frame(maxWidth: .infinity)
         .background(panelFill)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
