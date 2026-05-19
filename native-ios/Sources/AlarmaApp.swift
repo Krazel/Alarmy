@@ -419,6 +419,12 @@ final class DreamStore: ObservableObject {
         entries = updatedEntries
     }
 
+    var soundStorageText: String {
+        let bytes = sleepAudioStorageBytes()
+        guard bytes > 0 else { return "0 KB" }
+        return Self.byteFormatter.string(fromByteCount: bytes)
+    }
+
     func markSleepStarted(day: Date, at date: Date) {
         var entry = entry(for: day)
         entry.sleepStartedAt = entry.sleepStartedAt ?? date
@@ -478,6 +484,28 @@ final class DreamStore: ObservableObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
             .appendingPathComponent("SleepAudio", isDirectory: true)
     }
+
+    private func sleepAudioStorageBytes() -> Int64 {
+        guard let root = Self.sleepAudioRoot else { return 0 }
+        let fileManager = FileManager.default
+        guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) else {
+            return 0
+        }
+        var total: Int64 = 0
+        for case let fileURL as URL in enumerator {
+            guard let values = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+                  values.isRegularFile == true else { continue }
+            total += Int64(values.fileSize ?? 0)
+        }
+        return total
+    }
+
+    private static let byteFormatter: ByteCountFormatter = {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB]
+        formatter.countStyle = .file
+        return formatter
+    }()
 
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: key),
@@ -2840,20 +2868,24 @@ struct DreamJournalView: View {
                                 SleepCalendarGrid(selectedDate: $selectedDate, displayedMonth: $displayedMonth)
                                     .frame(width: contentWidth)
                                     .clipped()
+                                    .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
 
                                 SleepStageChart(entry: draft)
                                     .frame(width: contentWidth)
                                     .clipped()
+                                    .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
 
                                 WakeMoodSelector(entry: $draft, theme: store.sleepTheme)
                                     .frame(width: contentWidth)
                                     .clipped()
+                                    .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
 
                                 NightSoundsSummary(entry: draft, theme: store.sleepTheme) {
                                     showingSoundClips = true
                                 }
                                 .frame(width: contentWidth)
                                 .clipped()
+                                .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
 
                                 DreamNotesCard(notes: $draft.notes, theme: store.sleepTheme, focused: $notesFocused)
                                     .frame(width: contentWidth)
@@ -2865,7 +2897,6 @@ struct DreamJournalView: View {
                             .padding(.bottom, 16)
                         }
                         .scrollDismissesKeyboard(.interactively)
-                        .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
                         .frame(width: proxy.size.width)
                         .clipped()
                     }
@@ -2877,20 +2908,22 @@ struct DreamJournalView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onAppear { loadEntry() }
             .onChange(of: selectedDate) { _ in
+                if selectedDate > Self.today {
+                    selectedDate = Self.today
+                    return
+                }
                 displayedMonth = Self.monthStart(for: selectedDate)
                 loadEntry()
             }
             .onChange(of: navigation.requestedJournalDate) { date in
                 guard let date else { return }
-                selectedDate = Calendar.current.startOfDay(for: date)
-                displayedMonth = Self.monthStart(for: date)
+                let safeDate = min(Calendar.current.startOfDay(for: date), Self.today)
+                selectedDate = safeDate
+                displayedMonth = Self.monthStart(for: safeDate)
                 loadEntry()
                 notesFocused = true
             }
             .onChange(of: draft.notes) { _ in
-                if draft.notes.count > 1000 {
-                    draft.notes = String(draft.notes.prefix(1000))
-                }
                 dreams.upsert(draft)
             }
             .onChange(of: draft.wakeMood) { _ in dreams.upsert(draft) }
@@ -2992,6 +3025,10 @@ struct DreamJournalView: View {
     private static func monthStart(for date: Date) -> Date {
         Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? date
     }
+
+    private static var today: Date {
+        Calendar.current.startOfDay(for: Date())
+    }
 }
 
 struct SleepCalendarGrid: View {
@@ -3062,8 +3099,10 @@ struct SleepCalendarGrid: View {
         let entry = dreams.entry(for: date)
         let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
         let isToday = Calendar.current.isDateInToday(date)
+        let isFuture = date > Self.today
 
         return Button {
+            guard !isFuture else { return }
             selectedDate = Calendar.current.startOfDay(for: date)
         } label: {
             VStack(spacing: 4) {
@@ -3086,14 +3125,17 @@ struct SleepCalendarGrid: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 64)
-            .background(isSelected ? store.sleepTheme.primary.opacity(0.10) : Color.clear)
+            .background(isSelected && !isFuture ? store.sleepTheme.primary.opacity(0.10) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? store.sleepTheme.primary.opacity(0.92) : isToday ? store.sleepTheme.primary.opacity(0.34) : Color.clear, lineWidth: 1.3)
+                    .stroke(isSelected && !isFuture ? store.sleepTheme.primary.opacity(0.92) : isToday ? store.sleepTheme.primary.opacity(0.34) : Color.clear, lineWidth: 1.3)
             )
+            .opacity(isFuture ? 0.34 : 1)
+            .grayscale(isFuture ? 0.75 : 0)
         }
         .buttonStyle(.plain)
+        .disabled(isFuture)
         .accessibilityLabel(accessibilityText(for: entry, date: date))
     }
 
@@ -3117,7 +3159,7 @@ struct SleepCalendarGrid: View {
 
     private func moveWeek(_ offset: Int) {
         let nextDate = Calendar.current.date(byAdding: .day, value: offset * 7, to: selectedDate) ?? selectedDate
-        selectedDate = Calendar.current.startOfDay(for: nextDate)
+        selectedDate = min(Calendar.current.startOfDay(for: nextDate), Self.today)
         displayedMonth = Self.monthStart(for: selectedDate)
     }
 
@@ -3157,6 +3199,10 @@ struct SleepCalendarGrid: View {
 
     private static func monthStart(for date: Date) -> Date {
         Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    private static var today: Date {
+        Calendar.current.startOfDay(for: Date())
     }
 }
 
@@ -3234,8 +3280,10 @@ struct MonthSelectionSheet: View {
     private func monthButton(_ month: Int) -> some View {
         let monthDate = Calendar.current.date(from: DateComponents(year: pickerYear, month: month, day: 1)) ?? displayedMonth
         let isSelected = Calendar.current.isDate(monthDate, equalTo: displayedMonth, toGranularity: .month)
+        let isFuture = monthDate > Self.currentMonth
 
         return Button {
+            guard !isFuture else { return }
             let start = Self.monthStart(for: monthDate)
             selectedDate = start
             displayedMonth = start
@@ -3247,15 +3295,17 @@ struct MonthSelectionSheet: View {
                 .minimumScaleFactor(0.78)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(isSelected ? store.sleepTheme.primary.opacity(0.16) : Color.black.opacity(store.sleepTheme == .sunset ? 0.03 : 0.10))
-                .foregroundStyle(isSelected ? store.sleepTheme.primary : store.sleepTheme.text)
+                .background(isSelected && !isFuture ? store.sleepTheme.primary.opacity(0.16) : Color.black.opacity(store.sleepTheme == .sunset ? 0.03 : 0.10))
+                .foregroundStyle(isFuture ? store.sleepTheme.secondaryText.opacity(0.45) : isSelected ? store.sleepTheme.primary : store.sleepTheme.text)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(isSelected ? store.sleepTheme.primary.opacity(0.88) : borderColor, lineWidth: 1)
+                        .stroke(isSelected && !isFuture ? store.sleepTheme.primary.opacity(0.88) : borderColor, lineWidth: 1)
                 )
+                .opacity(isFuture ? 0.45 : 1)
         }
         .buttonStyle(.plain)
+        .disabled(isFuture)
     }
 
     private var borderColor: Color {
@@ -3264,6 +3314,10 @@ struct MonthSelectionSheet: View {
 
     private static func monthStart(for date: Date) -> Date {
         Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    private static var currentMonth: Date {
+        monthStart(for: Date())
     }
 
     private static let monthNameFormatter: DateFormatter = {
@@ -3354,6 +3408,8 @@ struct FullSleepCalendarSheet: View {
                     .frame(width: 40, height: 40)
             }
             .buttonStyle(.plain)
+            .disabled(displayedMonth >= Self.currentMonth)
+            .opacity(displayedMonth >= Self.currentMonth ? 0.35 : 1)
         }
         .foregroundStyle(store.sleepTheme.primary)
     }
@@ -3362,8 +3418,10 @@ struct FullSleepCalendarSheet: View {
         let entry = dreams.entry(for: date)
         let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
         let isToday = Calendar.current.isDateInToday(date)
+        let isFuture = date > Self.today
 
         return Button {
+            guard !isFuture else { return }
             selectedDate = Calendar.current.startOfDay(for: date)
             displayedMonth = Self.monthStart(for: date)
             dismiss()
@@ -3383,15 +3441,18 @@ struct FullSleepCalendarSheet: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 54)
-            .background(isSelected ? store.sleepTheme.primary.opacity(0.12) : Color.black.opacity(store.sleepTheme == .sunset ? 0.03 : 0.10))
-            .foregroundStyle(store.sleepTheme.text)
+            .background(isSelected && !isFuture ? store.sleepTheme.primary.opacity(0.12) : Color.black.opacity(store.sleepTheme == .sunset ? 0.03 : 0.10))
+            .foregroundStyle(isFuture ? store.sleepTheme.secondaryText.opacity(0.45) : store.sleepTheme.text)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? store.sleepTheme.primary.opacity(0.92) : isToday ? store.sleepTheme.primary.opacity(0.34) : borderColor, lineWidth: 1)
+                    .stroke(isSelected && !isFuture ? store.sleepTheme.primary.opacity(0.92) : isToday ? store.sleepTheme.primary.opacity(0.34) : borderColor, lineWidth: 1)
             )
+            .opacity(isFuture ? 0.45 : 1)
+            .grayscale(isFuture ? 0.75 : 0)
         }
         .buttonStyle(.plain)
+        .disabled(isFuture)
     }
 
     private var monthCells: [Date?] {
@@ -3407,7 +3468,8 @@ struct FullSleepCalendarSheet: View {
     }
 
     private func moveMonth(_ offset: Int) {
-        displayedMonth = Calendar.current.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
+        let nextMonth = Calendar.current.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
+        displayedMonth = min(Self.monthStart(for: nextMonth), Self.currentMonth)
     }
 
     private func scoreColor(for entry: DreamEntry) -> Color {
@@ -3423,6 +3485,14 @@ struct FullSleepCalendarSheet: View {
 
     private static func monthStart(for date: Date) -> Date {
         Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    private static var today: Date {
+        Calendar.current.startOfDay(for: Date())
+    }
+
+    private static var currentMonth: Date {
+        monthStart(for: Date())
     }
 
     private static let monthFormatter: DateFormatter = {
@@ -3749,7 +3819,7 @@ struct DreamNotesCard: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        Text("\(notes.count)/1000")
+                        Text("\(notes.count)")
                             .font(.caption.weight(.medium))
                             .foregroundStyle(theme.secondaryText)
                             .padding(10)
@@ -4300,6 +4370,9 @@ struct SettingsView: View {
                 Text("Eliminar sonidos")
                     .font(.subheadline.weight(.bold))
                 Spacer()
+                Text(dreams.soundStorageText)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(store.sleepTheme.secondaryText)
                 Picker("Eliminar sonidos", selection: Binding(
                     get: { store.nightSoundRetention },
                     set: { retention in
