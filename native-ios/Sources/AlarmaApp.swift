@@ -2888,6 +2888,7 @@ struct SleepCalendarGrid: View {
     @EnvironmentObject private var dreams: DreamStore
     @Binding var selectedDate: Date
     @Binding var displayedMonth: Date
+    @State private var showingMonthPicker = false
 
     private let weekdays = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
@@ -2895,18 +2896,23 @@ struct SleepCalendarGrid: View {
     var body: some View {
         VStack(spacing: 9) {
             HStack {
-                HStack(spacing: 6) {
-                    Text(Self.monthFormatter.string(from: displayedMonth))
-                        .font(.system(size: 18, weight: .medium))
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(store.sleepTheme.secondaryText)
+                Button {
+                    showingMonthPicker = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(Self.monthFormatter.string(from: displayedMonth))
+                            .font(.system(size: 18, weight: .medium))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(store.sleepTheme.secondaryText)
+                    }
                 }
+                .buttonStyle(.plain)
 
                 Spacer()
 
                 Button {
-                    moveMonth(-1)
+                    moveWeek(-1)
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 20, weight: .bold))
@@ -2914,7 +2920,7 @@ struct SleepCalendarGrid: View {
                 }
 
                 Button {
-                    moveMonth(1)
+                    moveWeek(1)
                 } label: {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 20, weight: .bold))
@@ -2936,6 +2942,9 @@ struct SleepCalendarGrid: View {
         .foregroundStyle(store.sleepTheme.text)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
+        .sheet(isPresented: $showingMonthPicker) {
+            MonthSelectionSheet(selectedDate: $selectedDate, displayedMonth: $displayedMonth)
+        }
     }
 
     private func dayButton(for date: Date, weekday: String) -> some View {
@@ -2995,8 +3004,10 @@ struct SleepCalendarGrid: View {
         store.sleepTheme == .sunset ? Color.white.opacity(0.34) : Color.white.opacity(0.13)
     }
 
-    private func moveMonth(_ offset: Int) {
-        displayedMonth = Calendar.current.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
+    private func moveWeek(_ offset: Int) {
+        let nextDate = Calendar.current.date(byAdding: .day, value: offset * 7, to: selectedDate) ?? selectedDate
+        selectedDate = Calendar.current.startOfDay(for: nextDate)
+        displayedMonth = Self.monthStart(for: selectedDate)
     }
 
     private func scoreColor(for entry: DreamEntry) -> Color {
@@ -3030,6 +3041,124 @@ struct SleepCalendarGrid: View {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "es_ES")
         formatter.dateStyle = .long
+        return formatter
+    }()
+
+    private static func monthStart(for date: Date) -> Date {
+        Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? date
+    }
+}
+
+struct MonthSelectionSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var store: AlarmStore
+    @Binding var selectedDate: Date
+    @Binding var displayedMonth: Date
+    @State private var pickerYear: Int
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
+
+    init(selectedDate: Binding<Date>, displayedMonth: Binding<Date>) {
+        _selectedDate = selectedDate
+        _displayedMonth = displayedMonth
+        _pickerYear = State(initialValue: Calendar.current.component(.year, from: displayedMonth.wrappedValue))
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                SleepBackdrop(theme: store.sleepTheme)
+                    .ignoresSafeArea()
+                    .overlay(store.sleepTheme == .sunset ? Color.white.opacity(0.52) : Color.black.opacity(0.22))
+
+                VStack(spacing: 18) {
+                    HStack {
+                        Button { pickerYear -= 1 } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 20, weight: .bold))
+                                .frame(width: 42, height: 42)
+                        }
+
+                        Spacer()
+
+                        Text(String(pickerYear))
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(store.sleepTheme.text)
+
+                        Spacer()
+
+                        Button { pickerYear += 1 } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 20, weight: .bold))
+                                .frame(width: 42, height: 42)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(store.sleepTheme.primary)
+
+                    LazyVGrid(columns: columns, spacing: 10) {
+                        ForEach(1...12, id: \.self) { month in
+                            monthButton(month)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(18)
+            }
+            .navigationTitle("Escoger mes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cerrar") { dismiss() }
+                        .font(.headline.weight(.bold))
+                }
+            }
+            .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func monthButton(_ month: Int) -> some View {
+        let monthDate = Calendar.current.date(from: DateComponents(year: pickerYear, month: month, day: 1)) ?? displayedMonth
+        let isSelected = Calendar.current.isDate(monthDate, equalTo: displayedMonth, toGranularity: .month)
+
+        return Button {
+            let start = Self.monthStart(for: monthDate)
+            selectedDate = start
+            displayedMonth = start
+            dismiss()
+        } label: {
+            Text(Self.monthNameFormatter.string(from: monthDate).capitalized)
+                .font(.system(size: 15, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(isSelected ? store.sleepTheme.primary.opacity(0.16) : Color.black.opacity(store.sleepTheme == .sunset ? 0.03 : 0.10))
+                .foregroundStyle(isSelected ? store.sleepTheme.primary : store.sleepTheme.text)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(isSelected ? store.sleepTheme.primary.opacity(0.88) : borderColor, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var borderColor: Color {
+        store.sleepTheme == .sunset ? Color.white.opacity(0.28) : Color.white.opacity(0.12)
+    }
+
+    private static func monthStart(for date: Date) -> Date {
+        Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    private static let monthNameFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_ES")
+        formatter.dateFormat = "LLLL"
         return formatter
     }()
 }
