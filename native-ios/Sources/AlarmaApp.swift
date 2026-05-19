@@ -2691,29 +2691,33 @@ struct DreamJournalView: View {
                     .ignoresSafeArea()
                     .overlay(store.sleepTheme == .sunset ? Color.white.opacity(0.52) : Color.black.opacity(0.20))
 
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        SleepCalendarGrid(selectedDate: $selectedDate, displayedMonth: $displayedMonth)
+                VStack(spacing: 0) {
+                    journalHeader
 
-                        SleepStageChart(entry: draft)
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            SleepCalendarGrid(selectedDate: $selectedDate, displayedMonth: $displayedMonth)
 
-                        WakeMoodSelector(entry: $draft, theme: store.sleepTheme)
+                            SleepStageChart(entry: draft)
 
-                        NightSoundsSummary(entry: draft, theme: store.sleepTheme) {
-                            showingSoundClips = true
+                            WakeMoodSelector(entry: $draft, theme: store.sleepTheme)
+
+                            NightSoundsSummary(entry: draft, theme: store.sleepTheme) {
+                                showingSoundClips = true
+                            }
+
+                            DreamNotesCard(notes: $draft.notes, theme: store.sleepTheme, focused: $notesFocused)
                         }
-
-                        DreamNotesCard(notes: $draft.notes, theme: store.sleepTheme, focused: $notesFocused)
-
+                        .padding(.horizontal, 13)
+                        .padding(.top, 4)
+                        .padding(.bottom, 16)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 24)
+                    .scrollDismissesKeyboard(.interactively)
+                    .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
                 }
-                .scrollDismissesKeyboard(.interactively)
-                .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
             }
-            .navigationTitle("Diario de sueño")
+            .navigationTitle("")
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear { loadEntry() }
             .onChange(of: selectedDate) { _ in
                 displayedMonth = Self.monthStart(for: selectedDate)
@@ -2744,6 +2748,31 @@ struct DreamJournalView: View {
                 NightSoundsSheet(entry: draft, theme: store.sleepTheme)
             }
         }
+    }
+
+    private var journalHeader: some View {
+        ZStack {
+            Text("Diario de sueño")
+                .font(.system(size: 25, weight: .bold, design: .default))
+                .foregroundStyle(store.sleepTheme.text)
+
+            HStack {
+                Spacer()
+                Button {
+                    selectedDate = Calendar.current.startOfDay(for: Date())
+                    displayedMonth = Self.monthStart(for: Date())
+                } label: {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(store.sleepTheme.primary)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
     }
 
     private func loadEntry() {
@@ -2794,13 +2823,13 @@ struct SleepCalendarGrid: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 9) {
             HStack {
                 HStack(spacing: 6) {
                     Text(Self.monthFormatter.string(from: displayedMonth))
-                        .font(.title3.weight(.medium))
+                        .font(.system(size: 18, weight: .medium))
                     Image(systemName: "chevron.down")
-                        .font(.caption.weight(.black))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(store.sleepTheme.secondaryText)
                 }
 
@@ -2810,28 +2839,28 @@ struct SleepCalendarGrid: View {
                     moveMonth(-1)
                 } label: {
                     Image(systemName: "chevron.left")
-                        .font(.headline.weight(.black))
-                        .frame(width: 36, height: 36)
+                        .font(.system(size: 20, weight: .bold))
+                        .frame(width: 34, height: 32)
                 }
 
                 Button {
                     moveMonth(1)
                 } label: {
                     Image(systemName: "chevron.right")
-                        .font(.headline.weight(.black))
-                        .frame(width: 36, height: 36)
+                        .font(.system(size: 20, weight: .bold))
+                        .frame(width: 34, height: 32)
                 }
             }
             .buttonStyle(.plain)
 
-            LazyVGrid(columns: columns, spacing: 8) {
+            LazyVGrid(columns: columns, spacing: 5) {
                 ForEach(Array(weekDates.enumerated()), id: \.element) { index, date in
                     dayButton(for: date, weekday: weekdays[index])
                 }
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.vertical, 11)
         .background(panelFill)
         .foregroundStyle(store.sleepTheme.text)
         .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -2846,31 +2875,31 @@ struct SleepCalendarGrid: View {
         return Button {
             selectedDate = Calendar.current.startOfDay(for: date)
         } label: {
-            VStack(spacing: 7) {
+            VStack(spacing: 4) {
                 Text(weekday)
-                    .font(.caption2.weight(.black))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(store.sleepTheme.secondaryText)
                 Text(Self.dayFormatter.string(from: date))
-                    .font(.title3.weight(.black))
+                    .font(.system(size: 18, weight: .bold))
                     .lineLimit(1)
 
                 if let mood = entry.wakeMood {
                     DiaryAssetImage(name: mood.face)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 24, height: 24)
                 } else {
                     Circle()
                         .fill(scoreColor(for: entry))
-                        .frame(width: 7, height: 7)
+                        .frame(width: 6, height: 6)
                         .opacity(entry.hasSleepData ? 1 : 0)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 90)
-            .background(isSelected ? store.sleepTheme.primary.opacity(0.24) : Color.clear)
+            .frame(height: 64)
+            .background(isSelected ? store.sleepTheme.primary.opacity(0.10) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isToday ? store.sleepTheme.primary.opacity(0.58) : Color.clear, lineWidth: 1.5)
+                    .stroke(isSelected ? store.sleepTheme.primary.opacity(0.92) : isToday ? store.sleepTheme.primary.opacity(0.34) : Color.clear, lineWidth: 1.3)
             )
         }
         .buttonStyle(.plain)
@@ -2939,38 +2968,38 @@ struct WakeMoodSelector: View {
     let theme: SleepTheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Cómo te has despertado")
-                .font(.title3.weight(.bold))
+                .font(.system(size: 19, weight: .bold))
 
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
                 ForEach(WakeMood.allCases) { mood in
                     Button {
                         entry.wakeMood = entry.wakeMood == mood ? nil : mood
                     } label: {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 5) {
                             DiaryAssetImage(name: mood.face)
-                                .frame(width: 48, height: 48)
+                                .frame(width: 46, height: 46)
                             Text(mood.title)
-                                .font(.caption.weight(.medium))
+                                .font(.system(size: 12, weight: .medium))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.58)
                         }
                         .frame(maxWidth: .infinity)
-                        .frame(height: 92)
-                        .background(entry.wakeMood == mood ? mood.color.opacity(0.24) : optionFill)
-                        .foregroundStyle(entry.wakeMood == mood ? mood.color : theme.text)
+                        .frame(height: 76)
+                        .background(entry.wakeMood == mood ? theme.primary.opacity(0.10) : optionFill)
+                        .foregroundStyle(entry.wakeMood == mood ? theme.primary : theme.text)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(entry.wakeMood == mood ? mood.color.opacity(0.72) : theme.secondaryText.opacity(0.14), lineWidth: 1)
+                                .stroke(entry.wakeMood == mood ? theme.primary.opacity(0.92) : theme.secondaryText.opacity(0.14), lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
-        .padding(14)
+        .padding(13)
         .background(panelFill)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
@@ -2996,18 +3025,18 @@ struct NightSoundsSummary: View {
     let onOpen: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 DiaryAssetImage(name: "sound-wave")
-                    .frame(width: 28, height: 28)
+                    .frame(width: 27, height: 27)
                 Text("Ruidos nocturnos")
-                    .font(.title3.weight(.bold))
+                    .font(.system(size: 19, weight: .bold))
                 Spacer()
                 Text("\(clipCount) clips")
-                    .font(.headline.weight(.medium))
-                        .foregroundStyle(theme.primary)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(theme.primary)
                 Image(systemName: "chevron.right")
-                    .font(.title3.weight(.bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(theme.secondaryText)
             }
             .contentShape(Rectangle())
@@ -3015,43 +3044,62 @@ struct NightSoundsSummary: View {
 
             HStack(spacing: 8) {
                 soundPill("Ronquidos", count: entry.snoreEvents, kind: .snore)
+                Divider().background(theme.secondaryText.opacity(0.18)).frame(height: 30)
                 soundPill("Respiración", count: entry.strongBreathingEvents, kind: .strongBreathing)
+                Divider().background(theme.secondaryText.opacity(0.18)).frame(height: 30)
                 soundPill("Voz", count: entry.talkingEvents, kind: .talking)
+
+                if clipCount > 0 {
+                    Button(action: onOpen) {
+                        Text("Ver \(clipCount) clips")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(theme.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                            .frame(width: 110, height: 34)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(theme.primary.opacity(0.88), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: 9) {
                 if let latest = entry.soundClips.sorted(by: { $0.date > $1.date }).first {
                     ZStack {
                         Circle()
                             .stroke(Color.white.opacity(0.76), lineWidth: 2)
                         Image(systemName: "play.fill")
-                            .font(.title3.weight(.black))
+                            .font(.system(size: 17, weight: .black))
                     }
-                    .frame(width: 52, height: 52)
+                    .frame(width: 44, height: 44)
                     .foregroundStyle(.white)
 
                     Circle()
                         .fill(latest.kind.color)
-                        .frame(width: 9, height: 9)
+                        .frame(width: 8, height: 8)
 
                     Text(Self.timeFormatter.string(from: latest.date))
-                        .font(.subheadline.weight(.medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(theme.secondaryText)
 
                     waveform(color: latest.kind.color)
                         .frame(maxWidth: .infinity)
 
                     Text(durationText(for: latest))
-                        .font(.subheadline.weight(.medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(theme.secondaryText)
 
                     Text(latest.kind.title)
-                        .font(.subheadline.weight(.medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(latest.kind.color)
+                        .lineLimit(1)
 
                     Image(systemName: "ellipsis")
                         .rotationEffect(.degrees(90))
-                        .font(.headline.weight(.bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(theme.secondaryText)
                 } else {
                     Text(clipCount > 0 ? "Clips guardados durante la noche." : "Sin ruidos guardados esta noche.")
@@ -3060,12 +3108,12 @@ struct NightSoundsSummary: View {
                     Spacer()
                 }
             }
-            .padding(10)
+            .padding(8)
             .background(Color.black.opacity(theme == .sunset ? 0.05 : 0.12))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .onTapGesture(perform: onOpen)
         }
-        .padding(14)
+        .padding(13)
         .background(panelFill)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
@@ -3074,13 +3122,13 @@ struct NightSoundsSummary: View {
 
     private func waveform(color: Color) -> some View {
         HStack(alignment: .center, spacing: 2) {
-            ForEach(0..<28, id: \.self) { index in
+            ForEach(0..<24, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(color.opacity(index % 4 == 0 ? 0.92 : 0.62))
-                    .frame(width: 2.5, height: CGFloat(6 + (index * 7) % 22))
+                    .frame(width: 2, height: CGFloat(5 + (index * 7) % 20))
             }
         }
-        .frame(height: 30)
+        .frame(height: 26)
     }
 
     private func durationText(for clip: SleepSoundClip) -> String {
@@ -3094,19 +3142,21 @@ struct NightSoundsSummary: View {
     }
 
     private func soundPill(_ title: String, count: Int, kind: SleepAudioEvent.Kind) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             DiaryAssetImage(name: kind.assetName)
                 .frame(width: 26, height: 26)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.caption.weight(.medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(theme.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
                 Text("\(count)")
-                    .font(.headline.weight(.bold))
+                    .font(.system(size: 16, weight: .bold))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 44)
+        .frame(height: 38)
     }
 
     private var panelFill: Color {
@@ -3130,27 +3180,27 @@ struct DreamNotesCard: View {
     var focused: FocusState<Bool>.Binding
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Image(systemName: "book.closed")
-                    .font(.title2.weight(.bold))
+                    .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(theme.primary)
                 Text("Diario de sueños")
-                    .font(.title3.weight(.bold))
+                    .font(.system(size: 19, weight: .bold))
             }
 
             ZStack(alignment: .topLeading) {
                 if notes.isEmpty {
                     Text("Escribe aquí tus sueños, pensamientos o cómo\nha sido tu noche...")
-                        .font(.body.weight(.medium))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(theme.secondaryText.opacity(0.78))
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 12)
                 }
 
                 TextEditor(text: $notes)
                     .focused(focused)
-                    .frame(minHeight: 120)
+                    .frame(minHeight: 92)
                     .scrollContentBackground(.hidden)
                     .padding(8)
                     .foregroundStyle(theme.text)
@@ -3163,16 +3213,16 @@ struct DreamNotesCard: View {
                         Text("\(notes.count)/1000")
                             .font(.caption.weight(.medium))
                             .foregroundStyle(theme.secondaryText)
-                            .padding(12)
+                            .padding(10)
                     }
                 }
             }
-            .frame(minHeight: 124)
+            .frame(minHeight: 96)
             .background(Color.black.opacity(theme == .sunset ? 0.04 : 0.12))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(borderColor, lineWidth: 1))
         }
-        .padding(14)
+        .padding(13)
         .background(panelFill)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
@@ -3416,57 +3466,77 @@ struct SleepStageChart: View {
     let entry: DreamEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Text("Gráfica de sueño")
-                    .font(.title3.weight(.bold))
+                    .font(.system(size: 19, weight: .bold))
                 Image(systemName: "info.circle")
-                    .font(.headline.weight(.medium))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(store.sleepTheme.secondaryText)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.title3.weight(.bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(store.sleepTheme.secondaryText)
             }
 
-            HStack(alignment: .center, spacing: 14) {
-                VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 10) {
                     legend("Despierto", color: Color(red: 0.94, green: 0.45, blue: 0.17))
                     legend("Ligero", color: Color(red: 0.19, green: 0.55, blue: 0.92))
                     legend("Profundo", color: Color(red: 0.45, green: 0.25, blue: 0.90))
                     legend("REM", color: Color(red: 0.20, green: 0.78, blue: 0.78))
                 }
-                .frame(width: 104, alignment: .leading)
+                .frame(width: 80, alignment: .leading)
 
                 VStack(spacing: 6) {
                     GeometryReader { proxy in
-                        let samples = entry.samples.isEmpty ? demoSamples : Array(entry.samples.suffix(120))
+                        let samples = chartSamples
                         ZStack(alignment: .bottomLeading) {
-                            chartArea(samples: samples, size: proxy.size)
-                            soundMarkers(samples: samples, size: proxy.size)
+                            chartBase(size: proxy.size)
+                            if samples.isEmpty {
+                                Text("Sin datos")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(store.sleepTheme.secondaryText.opacity(0.82))
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            } else {
+                                chartArea(samples: samples, size: proxy.size)
+                                soundMarkers(samples: samples, size: proxy.size)
+                            }
                         }
                     }
-                    .frame(height: 148)
+                    .frame(height: 94)
 
                     HStack {
-                        Text("23:12")
-                        Spacer()
-                        Text("02:00")
-                        Spacer()
-                        Text("05:00")
-                        Spacer()
-                        Text("06:44")
+                        let labels = timeLabels(for: chartSamples)
+                        ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
+                            Text(label)
+                            if index < labels.count - 1 {
+                                Spacer()
+                            }
+                        }
                     }
                     .font(.caption.weight(.medium))
                     .foregroundStyle(store.sleepTheme.secondaryText)
                 }
             }
         }
-        .padding(14)
+        .padding(13)
         .background(panelFill)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
         .foregroundStyle(store.sleepTheme.text)
+    }
+
+    private var chartSamples: [SleepStageSample] {
+        Array(entry.samples.suffix(120))
+    }
+
+    private func chartBase(size: CGSize) -> some View {
+        Path { path in
+            path.move(to: CGPoint(x: 0, y: size.height - 1))
+            path.addLine(to: CGPoint(x: size.width, y: size.height - 1))
+        }
+        .stroke(store.sleepTheme.secondaryText.opacity(0.20), lineWidth: 1)
     }
 
     private func chartArea(samples: [SleepStageSample], size: CGSize) -> some View {
@@ -3511,7 +3581,7 @@ struct SleepStageChart: View {
                             .frame(width: 28, height: 28)
                         Rectangle()
                             .fill(Color.white.opacity(0.42))
-                            .frame(width: 1, height: size.height - 28)
+                            .frame(width: 1, height: max(0, size.height - 28))
                     }
                     .offset(x: min(max(0, x - 14), max(0, size.width - 28)), y: 4)
                 }
@@ -3529,24 +3599,29 @@ struct SleepStageChart: View {
 
     private func legend(_ text: String, color: Color) -> some View {
         HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 8, height: 8)
-            Text(text).font(.caption.weight(.medium))
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text(text)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
         }
     }
 
-    private var demoSamples: [SleepStageSample] {
-        (0..<72).map { index in
-            let stage: SleepStageSample.Stage
-            if index < 4 || index > 67 || [12, 38, 55].contains(index) {
-                stage = .awake
-            } else if (18...27).contains(index) || (40...48).contains(index) || (56...61).contains(index) {
-                stage = .deep
-            } else {
-                stage = .light
-            }
-            return SleepStageSample(date: Date(), stage: stage, movement: 0, soundEvents: [14, 22, 34, 44, 52, 59].contains(index) ? 1 : 0)
+    private func timeLabels(for samples: [SleepStageSample]) -> [String] {
+        guard let first = samples.first?.date, let last = samples.last?.date, last > first else {
+            return ["--:--", "--:--", "--:--", "--:--"]
+        }
+        let interval = last.timeIntervalSince(first)
+        return [0, 1, 2, 3].map { index in
+            let date = first.addingTimeInterval(interval * Double(index) / 3.0)
+            return Self.timeFormatter.string(from: date)
         }
     }
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
 
     private var panelFill: Color {
         store.sleepTheme == .sunset ? Color.white.opacity(0.50) : Color(red: 0.02, green: 0.11, blue: 0.16).opacity(0.74)
