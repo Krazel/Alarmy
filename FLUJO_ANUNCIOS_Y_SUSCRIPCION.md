@@ -75,7 +75,7 @@ Titulo: `Apoyar la app`
 
 Contenido:
 - Estado: con anuncios / sin anuncios.
-- Texto breve: `Nos mantenemos gracias a aportaciones mensuales. Si quieres aportar algo para ayudarnos a mantener la app y crear nuevas, te lo agradeceriamos.`
+- Texto breve: `Con una aportacion mensual ayudas a mantener la app y el equipo. Ademas, mientras este activa, se quitan los anuncios.`
 - Boton principal: `Quitar anuncios`
 - Boton secundario: `Restaurar compras`
 
@@ -97,11 +97,11 @@ Si `supportPromptEnabled = true`, `adsEnabled = true` y el usuario no tiene susc
 
 Texto base:
 
-> Usas esta app gratuitamente. La mantenemos con anuncios discretos y aportaciones mensuales. Si quieres aportar algo para que podamos seguir manteniendo esta app y crear nuevas, lo agradeceriamos.
+> Esta app se mantiene gracias a aportaciones mensuales. Con tu apoyo ayudas a mantener la app y el equipo, y ademas se quitan los anuncios.
 
 Texto alternativo mas suave:
 
-> Esta app se mantiene gracias a aportaciones mensuales. Si quieres aportar algo para ayudarnos a mantenerla y crear nuevas apps, te lo agradeceriamos.
+> Con una aportacion mensual ayudas a mantener la app y el equipo. Ademas, mientras este activa, se quitan los anuncios.
 
 ## Implementacion StoreKit pendiente
 

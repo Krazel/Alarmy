@@ -1388,7 +1388,7 @@ struct RootTabView: View {
                 navigation.selectedTab = .settings
             }
         } message: {
-            Text("Esta app se mantiene gracias a aportaciones mensuales. Si quieres aportar algo para ayudarnos a mantenerla y crear nuevas apps, te lo agradeceriamos.")
+            Text("Esta app se mantiene gracias a aportaciones mensuales. Con tu apoyo ayudas a mantener la app y el equipo, y además se quitan los anuncios.")
         }
     }
 
@@ -3028,7 +3028,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(store.adsRemoved ? "Sin anuncios activo" : "Con anuncios discretos")
                             .font(.subheadline.weight(.black))
-                        Text("Nos mantenemos gracias a aportaciones mensuales. Si quieres aportar algo para ayudarnos a mantener la app y crear nuevas, te lo agradeceriamos.")
+                        Text("Con una aportación mensual ayudas a mantener la app y el equipo. Además, mientras esté activa, se quitan los anuncios.")
                             .font(.caption.weight(.bold))
                             .foregroundStyle(store.sleepTheme.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
