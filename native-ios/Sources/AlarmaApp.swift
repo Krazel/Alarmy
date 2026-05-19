@@ -1388,7 +1388,7 @@ struct RootTabView: View {
                 navigation.selectedTab = .settings
             }
         } message: {
-            Text("Usas esta app gratuitamente. La mantenemos con anuncios discretos y aportaciones mensuales. Si quieres aportar algo para que podamos seguir manteniendo esta app y crear nuevas, lo agradeceriamos.")
+            Text("Esta app se mantiene gracias a aportaciones mensuales. Si quieres aportar algo para ayudarnos a mantenerla y crear nuevas apps, te lo agradeceriamos.")
         }
     }
 
@@ -2889,6 +2889,7 @@ struct SettingsView: View {
     @EnvironmentObject private var store: AlarmStore
     @State private var editingSleepAlarm = false
     @State private var showingSubscriptionSetup = false
+    @State private var supportExpanded = false
 
     var body: some View {
         NavigationStack {
@@ -2960,6 +2961,10 @@ struct SettingsView: View {
                             supportGroup
                         }
 
+                        if store.shouldShowAds {
+                            settingsAdBanner
+                        }
+
                         Text(appIdentityText)
                             .font(.caption.weight(.black))
                             .foregroundStyle(store.sleepTheme.secondaryText)
@@ -2989,58 +2994,114 @@ struct SettingsView: View {
     }
 
     private var supportGroup: some View {
-        settingsGroup("Apoyar la app", systemImage: "heart.fill") {
-            HStack(spacing: 12) {
-                Image(systemName: store.adsRemoved ? "checkmark.seal.fill" : "rectangle.badge.xmark")
-                    .font(.title3.weight(.black))
-                    .foregroundStyle(store.adsRemoved ? Color.green : store.sleepTheme.primary)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.adsRemoved ? "Sin anuncios activo" : "Con anuncios discretos")
-                        .font(.subheadline.weight(.black))
-                    Text("La app se mantiene gratis gracias a anuncios discretos y aportaciones mensuales.")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(store.sleepTheme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    supportExpanded.toggle()
                 }
-            }
+            } label: {
+                HStack(spacing: 10) {
+                    Label("Apoyar la app", systemImage: "heart.fill")
+                        .font(.headline.weight(.black))
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                ForEach(AppMonetizationConfig.monthlySupportOptions, id: \.self) { amount in
-                    Text(amount)
+                    Spacer()
+
+                    Text(store.adsRemoved ? "Activo" : "Opcional")
                         .font(.caption.weight(.black))
+                        .foregroundStyle(store.sleepTheme.secondaryText)
+
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.black))
+                        .rotationEffect(.degrees(supportExpanded ? 180 : 0))
+                        .foregroundStyle(store.sleepTheme.secondaryText)
+                }
+                .foregroundStyle(store.sleepTheme.text)
+            }
+            .buttonStyle(.plain)
+
+            if supportExpanded {
+                HStack(spacing: 12) {
+                    Image(systemName: store.adsRemoved ? "checkmark.seal.fill" : "rectangle.badge.xmark")
+                        .font(.title3.weight(.black))
+                        .foregroundStyle(store.adsRemoved ? Color.green : store.sleepTheme.primary)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(store.adsRemoved ? "Sin anuncios activo" : "Con anuncios discretos")
+                            .font(.subheadline.weight(.black))
+                        Text("Nos mantenemos gracias a aportaciones mensuales. Si quieres aportar algo para ayudarnos a mantener la app y crear nuevas, te lo agradeceriamos.")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(store.sleepTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                    ForEach(AppMonetizationConfig.monthlySupportOptions, id: \.self) { amount in
+                        Text(amount)
+                            .font(.caption.weight(.black))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 34)
+                            .background(Color.white.opacity(store.sleepTheme == .sunset ? 0.30 : 0.07))
+                            .foregroundStyle(store.sleepTheme.text)
+                            .clipShape(Capsule())
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+
+                Button {
+                    showingSubscriptionSetup = true
+                } label: {
+                    Label("Quitar anuncios", systemImage: "sparkles")
+                        .font(.headline.weight(.black))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 34)
+                        .frame(height: 50)
+                        .background(store.sleepTheme.primary)
+                        .foregroundStyle(store.sleepTheme == .sunset ? .white : Color(red: 0.01, green: 0.06, blue: 0.08))
+                        .clipShape(Capsule())
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+
+                Button {
+                    showingSubscriptionSetup = true
+                } label: {
+                    Text("Restaurar compras")
+                        .font(.subheadline.weight(.black))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
                         .background(Color.white.opacity(store.sleepTheme == .sunset ? 0.30 : 0.07))
                         .foregroundStyle(store.sleepTheme.text)
                         .clipShape(Capsule())
                 }
-            }
-
-            Button {
-                showingSubscriptionSetup = true
-            } label: {
-                Label("Quitar anuncios", systemImage: "sparkles")
-                    .font(.headline.weight(.black))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(store.sleepTheme.primary)
-                    .foregroundStyle(store.sleepTheme == .sunset ? .white : Color(red: 0.01, green: 0.06, blue: 0.08))
-                    .clipShape(Capsule())
-            }
-
-            Button {
-                showingSubscriptionSetup = true
-            } label: {
-                Text("Restaurar compras")
-                    .font(.subheadline.weight(.black))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 42)
-                    .background(Color.white.opacity(store.sleepTheme == .sunset ? 0.30 : 0.07))
-                    .foregroundStyle(store.sleepTheme.text)
-                    .clipShape(Capsule())
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+        .padding(16)
+        .background(store.sleepTheme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    private var settingsAdBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "megaphone.fill")
+                .font(.subheadline.weight(.black))
+                .foregroundStyle(store.sleepTheme.secondaryText)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Anuncio")
+                    .font(.caption.weight(.black))
+                Text("Espacio reservado para un anuncio discreto.")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(store.sleepTheme.secondaryText)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 58)
+        .background(store.sleepTheme == .sunset ? Color.white.opacity(0.40) : Color.white.opacity(0.06))
+        .foregroundStyle(store.sleepTheme.text)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     private func settingsGroup<Content: View>(_ title: String, systemImage: String, @ViewBuilder content: () -> Content) -> some View {

@@ -43,6 +43,11 @@ Ubicaciones aceptables:
 - Despues de contenido, nunca antes de completar una accion.
 - En pantallas informativas no criticas.
 
+Primer placement recomendado:
+- Ajustes, abajo del todo, antes de la version de la app.
+- Formato de franja pequena y estable.
+- No debe empujar controles criticos ni aparecer durante la alarma.
+
 ## Suscripcion de apoyo
 
 La suscripcion mensual quita anuncios mientras este activa. El texto debe explicar que es una forma de apoyar el mantenimiento y la creacion de nuevas apps, sin bloquear funciones basicas.
@@ -70,9 +75,11 @@ Titulo: `Apoyar la app`
 
 Contenido:
 - Estado: con anuncios / sin anuncios.
-- Texto breve: `La app se mantiene gratis gracias a anuncios discretos y aportaciones mensuales.`
+- Texto breve: `Nos mantenemos gracias a aportaciones mensuales. Si quieres aportar algo para ayudarnos a mantener la app y crear nuevas, te lo agradeceriamos.`
 - Boton principal: `Quitar anuncios`
 - Boton secundario: `Restaurar compras`
+
+La seccion debe poder ir plegada por defecto. Al tocar `Apoyar la app`, se despliegan el texto, los importes y los botones.
 
 Si la suscripcion esta activa:
 - Mostrar `Sin anuncios activo`.
@@ -91,6 +98,10 @@ Si `supportPromptEnabled = true`, `adsEnabled = true` y el usuario no tiene susc
 Texto base:
 
 > Usas esta app gratuitamente. La mantenemos con anuncios discretos y aportaciones mensuales. Si quieres aportar algo para que podamos seguir manteniendo esta app y crear nuevas, lo agradeceriamos.
+
+Texto alternativo mas suave:
+
+> Esta app se mantiene gracias a aportaciones mensuales. Si quieres aportar algo para ayudarnos a mantenerla y crear nuevas apps, te lo agradeceriamos.
 
 ## Implementacion StoreKit pendiente
 
