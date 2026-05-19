@@ -218,6 +218,7 @@ struct DreamEntry: Identifiable, Codable, Equatable {
     var snoreEvents = 0
     var strongBreathingEvents = 0
     var talkingEvents = 0
+    var coughEvents = 0
     var audioClips = 0
     var sleepStartedAt: Date?
     var sleepEndedAt: Date?
@@ -240,6 +241,7 @@ struct DreamEntry: Identifiable, Codable, Equatable {
         case snoreEvents
         case strongBreathingEvents
         case talkingEvents
+        case coughEvents
         case audioClips
         case sleepStartedAt
         case sleepEndedAt
@@ -260,6 +262,7 @@ struct DreamEntry: Identifiable, Codable, Equatable {
         snoreEvents = try container.decodeIfPresent(Int.self, forKey: .snoreEvents) ?? 0
         strongBreathingEvents = try container.decodeIfPresent(Int.self, forKey: .strongBreathingEvents) ?? 0
         talkingEvents = try container.decodeIfPresent(Int.self, forKey: .talkingEvents) ?? 0
+        coughEvents = try container.decodeIfPresent(Int.self, forKey: .coughEvents) ?? 0
         audioClips = try container.decodeIfPresent(Int.self, forKey: .audioClips) ?? soundClips.count
         sleepStartedAt = try container.decodeIfPresent(Date.self, forKey: .sleepStartedAt)
         sleepEndedAt = try container.decodeIfPresent(Date.self, forKey: .sleepEndedAt)
@@ -273,7 +276,7 @@ struct DreamEntry: Identifiable, Codable, Equatable {
     }
 
     var hasSleepData: Bool {
-        sleepStartedAt != nil || sleepEndedAt != nil || !samples.isEmpty || audioClips > 0 || !soundClips.isEmpty || snoreEvents > 0 || strongBreathingEvents > 0 || talkingEvents > 0
+        sleepStartedAt != nil || sleepEndedAt != nil || !samples.isEmpty || audioClips > 0 || !soundClips.isEmpty || snoreEvents > 0 || strongBreathingEvents > 0 || talkingEvents > 0 || coughEvents > 0
     }
 
     static func key(for date: Date) -> String {
@@ -344,8 +347,10 @@ final class DreamStore: ObservableObject {
             entry.strongBreathingEvents += 1
         case .talking:
             entry.talkingEvents += 1
+        case .cough:
+            entry.coughEvents += 1
         }
-        let penalty = entry.snoreEvents * 2 + entry.strongBreathingEvents + entry.talkingEvents * 2 + entry.awakeMinutes / 8
+        let penalty = entry.snoreEvents * 2 + entry.strongBreathingEvents + entry.talkingEvents * 2 + entry.coughEvents * 2 + entry.awakeMinutes / 8
         entry.score = max(35, min(95, 86 - penalty))
         upsert(entry)
     }
@@ -379,7 +384,7 @@ final class DreamStore: ObservableObject {
         entry.awakeMinutes = entry.samples.filter { $0.stage == .awake }.count
         entry.lightSleepMinutes = entry.samples.filter { $0.stage == .light }.count
         entry.deepSleepMinutes = entry.samples.filter { $0.stage == .deep }.count
-        let penalty = entry.awakeMinutes * 2 + entry.snoreEvents * 2 + entry.strongBreathingEvents + entry.talkingEvents * 2
+        let penalty = entry.awakeMinutes * 2 + entry.snoreEvents * 2 + entry.strongBreathingEvents + entry.talkingEvents * 2 + entry.coughEvents * 2
         let depthBonus = min(14, entry.deepSleepMinutes / 18)
         entry.score = max(35, min(96, 82 + depthBonus - penalty / 3))
     }
@@ -403,12 +408,14 @@ struct SleepAudioEvent {
         case snore
         case strongBreathing
         case talking
+        case cough
 
         var title: String {
             switch self {
             case .snore: return "Ronquido"
             case .strongBreathing: return "Respiración"
             case .talking: return "Voz"
+            case .cough: return "Tos"
             }
         }
 
@@ -417,6 +424,7 @@ struct SleepAudioEvent {
             case .snore: return Color(red: 0.94, green: 0.45, blue: 0.17)
             case .strongBreathing: return Color(red: 0.30, green: 0.78, blue: 0.74)
             case .talking: return Color(red: 0.62, green: 0.42, blue: 0.92)
+            case .cough: return Color(red: 0.96, green: 0.68, blue: 0.18)
             }
         }
 
@@ -425,6 +433,7 @@ struct SleepAudioEvent {
             case .snore: return "sound-snore"
             case .strongBreathing: return "sound-breathing"
             case .talking: return "sound-voice"
+            case .cough: return "sound-cough"
             }
         }
     }
@@ -453,10 +462,25 @@ final class SleepAudioAnalyzer {
         return 20 * log10(max(sqrt(mean), 0.000_001))
     }
 
-    func classify(rms: Float) -> SleepAudioEvent.Kind? {
+    func peak(_ buffer: AVAudioPCMBuffer) -> Float {
+        let count = Int(buffer.frameLength)
+        guard count > 0, let channelData = buffer.floatChannelData else { return -120 }
+        var peak: Float = 0
+        let channels = Int(buffer.format.channelCount)
+        for channelIndex in 0..<max(channels, 1) {
+            let channel = channelData[channelIndex]
+            for frameIndex in 0..<count {
+                peak = max(peak, abs(channel[frameIndex]))
+            }
+        }
+        return 20 * log10(max(peak, 0.000_001))
+    }
+
+    func classify(rms: Float, peak: Float) -> SleepAudioEvent.Kind? {
         let now = Date()
         guard now.timeIntervalSince(lastEventAt) > 8 else { return nil }
         lastEventAt = now
+        if peak > -9, rms > -32 { return .cough }
         if rms > -24 { return .talking }
         if rms > -34 { return .snore }
         if rms > -46 { return .strongBreathing }
@@ -558,12 +582,13 @@ final class SleepAudioRecorder: ObservableObject {
 
     private func handle(_ buffer: AVAudioPCMBuffer) {
         let level = analyzer.rms(buffer)
+        let peak = analyzer.peak(buffer)
         guard level >= thresholdDB || !saveOnlyWhenSound else { return }
         do {
             try currentFile?.write(from: buffer)
             didWrite = true
             writtenDuration += Double(buffer.frameLength) / buffer.format.sampleRate
-            if level >= thresholdDB, let kind = analyzer.classify(rms: level), let url = currentURL {
+            if level >= thresholdDB, let kind = analyzer.classify(rms: level, peak: peak), let url = currentURL {
                 onEvent?(SleepAudioEvent(day: day, kind: kind, fileURL: url))
             }
             if writtenDuration >= maxSegmentDuration {
@@ -2682,6 +2707,7 @@ struct DreamJournalView: View {
     @State private var displayedMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
     @State private var draft = DreamEntry(day: Date())
     @State private var showingSoundClips = false
+    @State private var showingFullCalendar = false
     @FocusState private var notesFocused: Bool
 
     var body: some View {
@@ -2747,6 +2773,9 @@ struct DreamJournalView: View {
             .sheet(isPresented: $showingSoundClips) {
                 NightSoundsSheet(entry: draft, theme: store.sleepTheme)
             }
+            .sheet(isPresented: $showingFullCalendar) {
+                FullSleepCalendarSheet(selectedDate: $selectedDate, displayedMonth: $displayedMonth)
+            }
         }
     }
 
@@ -2759,8 +2788,7 @@ struct DreamJournalView: View {
             HStack {
                 Spacer()
                 Button {
-                    selectedDate = Calendar.current.startOfDay(for: Date())
-                    displayedMonth = Self.monthStart(for: Date())
+                    showingFullCalendar = true
                 } label: {
                     Image(systemName: "calendar")
                         .font(.system(size: 24, weight: .semibold))
@@ -2963,6 +2991,171 @@ struct SleepCalendarGrid: View {
     }()
 }
 
+struct FullSleepCalendarSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var store: AlarmStore
+    @EnvironmentObject private var dreams: DreamStore
+    @Binding var selectedDate: Date
+    @Binding var displayedMonth: Date
+
+    private let weekdays = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                SleepBackdrop(theme: store.sleepTheme)
+                    .ignoresSafeArea()
+                    .overlay(store.sleepTheme == .sunset ? Color.white.opacity(0.52) : Color.black.opacity(0.22))
+
+                VStack(alignment: .leading, spacing: 14) {
+                    monthHeader
+
+                    HStack {
+                        ForEach(weekdays, id: \.self) { day in
+                            Text(day)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(store.sleepTheme.secondaryText)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+
+                    LazyVGrid(columns: columns, spacing: 8) {
+                        ForEach(Array(monthCells.enumerated()), id: \.offset) { _, date in
+                            if let date {
+                                fullDayButton(for: date)
+                            } else {
+                                Color.clear.frame(height: 54)
+                            }
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(18)
+            }
+            .navigationTitle("Calendario")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cerrar") { dismiss() }
+                        .font(.headline.weight(.bold))
+                }
+            }
+            .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var monthHeader: some View {
+        HStack {
+            Button { moveMonth(-1) } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .bold))
+                    .frame(width: 40, height: 40)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Text(Self.monthFormatter.string(from: displayedMonth))
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(store.sleepTheme.text)
+
+            Spacer()
+
+            Button { moveMonth(1) } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 20, weight: .bold))
+                    .frame(width: 40, height: 40)
+            }
+            .buttonStyle(.plain)
+        }
+        .foregroundStyle(store.sleepTheme.primary)
+    }
+
+    private func fullDayButton(for date: Date) -> some View {
+        let entry = dreams.entry(for: date)
+        let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
+        let isToday = Calendar.current.isDateInToday(date)
+
+        return Button {
+            selectedDate = Calendar.current.startOfDay(for: date)
+            displayedMonth = Self.monthStart(for: date)
+            dismiss()
+        } label: {
+            VStack(spacing: 4) {
+                Text(Self.dayFormatter.string(from: date))
+                    .font(.system(size: 17, weight: .bold))
+                if let mood = entry.wakeMood {
+                    DiaryAssetImage(name: mood.face)
+                        .frame(width: 24, height: 24)
+                } else {
+                    Circle()
+                        .fill(scoreColor(for: entry))
+                        .frame(width: 6, height: 6)
+                        .opacity(entry.hasSleepData ? 1 : 0)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(isSelected ? store.sleepTheme.primary.opacity(0.12) : Color.black.opacity(store.sleepTheme == .sunset ? 0.03 : 0.10))
+            .foregroundStyle(store.sleepTheme.text)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? store.sleepTheme.primary.opacity(0.92) : isToday ? store.sleepTheme.primary.opacity(0.34) : borderColor, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var monthCells: [Date?] {
+        let calendar = Calendar.current
+        let start = Self.monthStart(for: displayedMonth)
+        let range = calendar.range(of: .day, in: .month, for: start) ?? 1..<1
+        let weekday = calendar.component(.weekday, from: start)
+        let leadingBlanks = (weekday + 5) % 7
+        let days = range.compactMap { day -> Date? in
+            calendar.date(byAdding: .day, value: day - 1, to: start)
+        }
+        return Array(repeating: nil, count: leadingBlanks) + days
+    }
+
+    private func moveMonth(_ offset: Int) {
+        displayedMonth = Calendar.current.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
+    }
+
+    private func scoreColor(for entry: DreamEntry) -> Color {
+        guard entry.hasSleepData, let score = entry.score else { return .clear }
+        if score >= 80 { return Color.green }
+        if score >= 60 { return Color.orange }
+        return Color.red
+    }
+
+    private var borderColor: Color {
+        store.sleepTheme == .sunset ? Color.white.opacity(0.28) : Color.white.opacity(0.12)
+    }
+
+    private static func monthStart(for date: Date) -> Date {
+        Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    private static let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_ES")
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter
+    }()
+
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter
+    }()
+}
+
 struct WakeMoodSelector: View {
     @Binding var entry: DreamEntry
     let theme: SleepTheme
@@ -3023,6 +3216,8 @@ struct NightSoundsSummary: View {
     let entry: DreamEntry
     let theme: SleepTheme
     let onOpen: () -> Void
+    @State private var player: AVAudioPlayer?
+    @State private var playingClipId: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -3035,6 +3230,19 @@ struct NightSoundsSummary: View {
                 Text("\(clipCount) clips")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(theme.primary)
+                Button(action: onOpen) {
+                    Text("Ver clips")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(theme.primary)
+                        .frame(width: 76, height: 30)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9)
+                                .stroke(theme.primary.opacity(0.86), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(clipCount == 0)
+                .opacity(clipCount == 0 ? 0.45 : 1)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(theme.secondaryText)
@@ -3042,40 +3250,28 @@ struct NightSoundsSummary: View {
             .contentShape(Rectangle())
             .onTapGesture(perform: onOpen)
 
-            HStack(spacing: 8) {
-                soundPill("Ronquidos", count: entry.snoreEvents, kind: .snore)
-                Divider().background(theme.secondaryText.opacity(0.18)).frame(height: 30)
-                soundPill("Respiración", count: entry.strongBreathingEvents, kind: .strongBreathing)
-                Divider().background(theme.secondaryText.opacity(0.18)).frame(height: 30)
-                soundPill("Voz", count: entry.talkingEvents, kind: .talking)
-
-                if clipCount > 0 {
-                    Button(action: onOpen) {
-                        Text("Ver \(clipCount) clips")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(theme.primary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.72)
-                            .frame(width: 110, height: 34)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(theme.primary.opacity(0.88), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
+            LazyVGrid(columns: soundColumns, spacing: 6) {
+                ForEach(soundSummaryItems, id: \.title) { item in
+                    soundPill(item.title, count: item.count, kind: item.kind)
                 }
             }
+            .frame(height: 42)
 
             HStack(spacing: 9) {
-                if let latest = entry.soundClips.sorted(by: { $0.date > $1.date }).first {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.white.opacity(0.76), lineWidth: 2)
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 17, weight: .black))
+                if let latest = latestClip {
+                    Button {
+                        play(latest)
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .stroke(Color.white.opacity(0.76), lineWidth: 2)
+                            Image(systemName: playingClipId == latest.id ? "pause.fill" : "play.fill")
+                                .font(.system(size: 17, weight: .black))
+                        }
+                        .frame(width: 44, height: 44)
+                        .foregroundStyle(.white)
                     }
-                    .frame(width: 44, height: 44)
-                    .foregroundStyle(.white)
+                    .buttonStyle(.plain)
 
                     Circle()
                         .fill(latest.kind.color)
@@ -3096,28 +3292,48 @@ struct NightSoundsSummary: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(latest.kind.color)
                         .lineLimit(1)
+                        .frame(width: 58, alignment: .leading)
 
-                    Image(systemName: "ellipsis")
-                        .rotationEffect(.degrees(90))
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(theme.secondaryText)
+                    Button(action: onOpen) {
+                        Image(systemName: "ellipsis")
+                            .rotationEffect(.degrees(90))
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(theme.secondaryText)
+                            .frame(width: 20, height: 36)
+                    }
+                    .buttonStyle(.plain)
                 } else {
-                    Text(clipCount > 0 ? "Clips guardados durante la noche." : "Sin ruidos guardados esta noche.")
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white.opacity(0.30), lineWidth: 2)
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 17, weight: .black))
+                    }
+                    .frame(width: 44, height: 44)
+                    .foregroundStyle(theme.secondaryText.opacity(0.55))
+
+                    Text("Sin clips guardados esta noche.")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(theme.secondaryText)
                     Spacer()
                 }
             }
             .padding(8)
+            .frame(height: 52)
             .background(Color.black.opacity(theme == .sunset ? 0.05 : 0.12))
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .onTapGesture(perform: onOpen)
         }
         .padding(13)
+        .frame(height: 176)
         .background(panelFill)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
         .foregroundStyle(theme.text)
+        .onDisappear {
+            player?.stop()
+            player = nil
+            playingClipId = nil
+        }
     }
 
     private func waveform(color: Color) -> some View {
@@ -3141,6 +3357,23 @@ struct NightSoundsSummary: View {
         max(entry.audioClips, entry.soundClips.count)
     }
 
+    private var latestClip: SleepSoundClip? {
+        entry.soundClips.sorted(by: { $0.date > $1.date }).first
+    }
+
+    private var soundColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    }
+
+    private var soundSummaryItems: [(title: String, count: Int, kind: SleepAudioEvent.Kind)] {
+        [
+            ("Ronq.", entry.snoreEvents, .snore),
+            ("Resp.", entry.strongBreathingEvents, .strongBreathing),
+            ("Tos", entry.coughEvents, .cough),
+            ("Voz", entry.talkingEvents, .talking)
+        ]
+    }
+
     private func soundPill(_ title: String, count: Int, kind: SleepAudioEvent.Kind) -> some View {
         HStack(spacing: 6) {
             DiaryAssetImage(name: kind.assetName)
@@ -3157,6 +3390,27 @@ struct NightSoundsSummary: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 38)
+    }
+
+    private func play(_ clip: SleepSoundClip) {
+        if playingClipId == clip.id {
+            player?.stop()
+            player = nil
+            playingClipId = nil
+            return
+        }
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+            let nextPlayer = try AVAudioPlayer(contentsOf: clip.fileURL)
+            nextPlayer.prepareToPlay()
+            nextPlayer.play()
+            player = nextPlayer
+            playingClipId = clip.id
+        } catch {
+            player = nil
+            playingClipId = nil
+        }
     }
 
     private var panelFill: Color {
@@ -3303,6 +3557,7 @@ struct NightSoundsSheet: View {
                 filterButton("Todos", kind: nil)
                 filterButton("Ronquidos", kind: .snore)
                 filterButton("Respiración", kind: .strongBreathing)
+                filterButton("Tos", kind: .cough)
                 filterButton("Voz", kind: .talking)
             }
         }
@@ -3397,6 +3652,8 @@ struct NightSoundsSheet: View {
             return
         }
         do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
             let nextPlayer = try AVAudioPlayer(contentsOf: clip.fileURL)
             nextPlayer.prepareToPlay()
             nextPlayer.play()
