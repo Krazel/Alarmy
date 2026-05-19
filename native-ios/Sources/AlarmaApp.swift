@@ -157,6 +157,30 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     }
 }
 
+enum NightSoundRetention: Int, CaseIterable, Identifiable {
+    case never = 0
+    case oneDay = 1
+    case oneWeek = 7
+    case oneMonth = 30
+    case threeMonths = 90
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .never: return "Nunca"
+        case .oneDay: return "1 día"
+        case .oneWeek: return "7 días"
+        case .oneMonth: return "30 días"
+        case .threeMonths: return "90 días"
+        }
+    }
+
+    var days: Int? {
+        rawValue == 0 ? nil : rawValue
+    }
+}
+
 enum AppMonetizationConfig {
     static let adsEnabled = true
     static let supportPromptEnabled = true
@@ -355,6 +379,46 @@ final class DreamStore: ObservableObject {
         upsert(entry)
     }
 
+    func pruneSoundClips(olderThanDays days: Int?) {
+        guard let days else { return }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date.distantPast
+        var updatedEntries = entries
+
+        for index in updatedEntries.indices {
+            let removedClips = updatedEntries[index].soundClips.filter { $0.date < cutoff }
+            guard !removedClips.isEmpty else { continue }
+            removedClips.forEach { try? FileManager.default.removeItem(at: $0.fileURL) }
+            updatedEntries[index].soundClips.removeAll { $0.date < cutoff }
+            recalculateSoundCounts(entry: &updatedEntries[index])
+        }
+
+        entries = updatedEntries
+        removeEmptySleepAudioFolders()
+    }
+
+    func deleteAllSoundClips() {
+        let fileManager = FileManager.default
+        if let root = Self.sleepAudioRoot {
+            try? fileManager.removeItem(at: root)
+        }
+
+        var updatedEntries = entries
+        for index in updatedEntries.indices {
+            updatedEntries[index].soundClips.removeAll()
+            updatedEntries[index].audioClips = 0
+            updatedEntries[index].snoreEvents = 0
+            updatedEntries[index].strongBreathingEvents = 0
+            updatedEntries[index].talkingEvents = 0
+            updatedEntries[index].coughEvents = 0
+            updatedEntries[index].samples = updatedEntries[index].samples.map { sample in
+                var updatedSample = sample
+                updatedSample.soundEvents = 0
+                return updatedSample
+            }
+        }
+        entries = updatedEntries
+    }
+
     func markSleepStarted(day: Date, at date: Date) {
         var entry = entry(for: day)
         entry.sleepStartedAt = entry.sleepStartedAt ?? date
@@ -387,6 +451,32 @@ final class DreamStore: ObservableObject {
         let penalty = entry.awakeMinutes * 2 + entry.snoreEvents * 2 + entry.strongBreathingEvents + entry.talkingEvents * 2 + entry.coughEvents * 2
         let depthBonus = min(14, entry.deepSleepMinutes / 18)
         entry.score = max(35, min(96, 82 + depthBonus - penalty / 3))
+    }
+
+    private func recalculateSoundCounts(entry: inout DreamEntry) {
+        entry.audioClips = entry.soundClips.count
+        entry.snoreEvents = entry.soundClips.filter { $0.kind == .snore }.count
+        entry.strongBreathingEvents = entry.soundClips.filter { $0.kind == .strongBreathing }.count
+        entry.talkingEvents = entry.soundClips.filter { $0.kind == .talking }.count
+        entry.coughEvents = entry.soundClips.filter { $0.kind == .cough }.count
+        recalculate(entry: &entry)
+    }
+
+    private func removeEmptySleepAudioFolders() {
+        guard let root = Self.sleepAudioRoot else { return }
+        let fileManager = FileManager.default
+        guard let children = try? fileManager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) else { return }
+        for child in children {
+            if let contents = try? fileManager.contentsOfDirectory(at: child, includingPropertiesForKeys: nil),
+               contents.isEmpty {
+                try? fileManager.removeItem(at: child)
+            }
+        }
+    }
+
+    private static var sleepAudioRoot: URL? {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("SleepAudio", isDirectory: true)
     }
 
     private func load() {
@@ -649,6 +739,9 @@ final class AlarmStore: ObservableObject {
     @Published var sleepRecordingEnabled = false {
         didSet { UserDefaults.standard.set(sleepRecordingEnabled, forKey: recordingEnabledKey) }
     }
+    @Published var nightSoundRetention: NightSoundRetention = .oneMonth {
+        didSet { UserDefaults.standard.set(nightSoundRetention.rawValue, forKey: nightSoundRetentionKey) }
+    }
     @Published var openJournalAfterAlarm = true {
         didSet { UserDefaults.standard.set(openJournalAfterAlarm, forKey: openJournalAfterAlarmKey) }
     }
@@ -672,6 +765,7 @@ final class AlarmStore: ObservableObject {
     private let sleepKey = "alarma.native.sleepAlarm.v1"
     private let appearanceKey = "alarma.native.appearance.v1"
     private let recordingEnabledKey = "alarma.native.sleepRecordingEnabled.v2"
+    private let nightSoundRetentionKey = "alarma.native.nightSoundRetention.v1"
     private let openJournalAfterAlarmKey = "alarma.native.openJournalAfterAlarm.v1"
     private let adsRemovedKey = "alarma.native.adsRemoved.v1"
     private let lastSupportPromptAtKey = "alarma.native.lastSupportPromptAt.v1"
@@ -814,6 +908,10 @@ final class AlarmStore: ObservableObject {
     private func loadRecordingSettings() {
         if UserDefaults.standard.object(forKey: recordingEnabledKey) != nil {
             sleepRecordingEnabled = UserDefaults.standard.bool(forKey: recordingEnabledKey)
+        }
+        if UserDefaults.standard.object(forKey: nightSoundRetentionKey) != nil {
+            let rawValue = UserDefaults.standard.integer(forKey: nightSoundRetentionKey)
+            nightSoundRetention = NightSoundRetention(rawValue: rawValue) ?? .oneMonth
         }
     }
 
@@ -981,6 +1079,7 @@ final class NightSession: ObservableObject {
     private var sleepStartedAt: Date?
     private var sleepDay = Date()
     private var dreamStore: DreamStore?
+    private var soundRetentionDays: Int?
     private var audioEventsSinceLastSample = 0
     private var originalBrightness: CGFloat?
     private var brightnessTimer: Timer?
@@ -1014,7 +1113,7 @@ final class NightSession: ObservableObject {
         }
     }
 
-    func start(alarm: Alarm, dreamStore: DreamStore? = nil, recordAudio: Bool = false) {
+    func start(alarm: Alarm, dreamStore: DreamStore? = nil, recordAudio: Bool = false, soundRetentionDays: Int? = nil) {
         isSnoozing = false
         snoozedUntil = nil
         snoozeTimer?.invalidate()
@@ -1022,6 +1121,7 @@ final class NightSession: ObservableObject {
         lightWakeStartedFor = nil
         activeAlarm = alarm
         self.dreamStore = dreamStore
+        self.soundRetentionDays = soundRetentionDays
         sleepDay = Date()
         sleepStartedAt = Date()
         dreamStore?.markSleepStarted(day: sleepDay, at: sleepStartedAt ?? Date())
@@ -1034,8 +1134,10 @@ final class NightSession: ObservableObject {
         if recordAudio {
             Task {
                 await sleepRecorder.start(day: sleepDay, saveOnlyWhenSound: true) { [weak self] event in
-                    self?.audioEventsSinceLastSample += 1
-                    self?.dreamStore?.addAudioEvent(day: event.day, kind: event.kind, fileURL: event.fileURL)
+                    guard let self else { return }
+                    self.audioEventsSinceLastSample += 1
+                    self.dreamStore?.addAudioEvent(day: event.day, kind: event.kind, fileURL: event.fileURL)
+                    self.dreamStore?.pruneSoundClips(olderThanDays: self.soundRetentionDays)
                 }
             }
         }
@@ -1060,6 +1162,8 @@ final class NightSession: ObservableObject {
         if let sleepStartedAt {
             dreamStore?.markSleepEnded(day: sleepDay, at: Date())
         }
+        dreamStore?.pruneSoundClips(olderThanDays: soundRetentionDays)
+        soundRetentionDays = nil
         sleepStartedAt = nil
         restoreBrightness()
         motion.stopDeviceMotionUpdates()
@@ -1082,6 +1186,8 @@ final class NightSession: ObservableObject {
         if let sleepStartedAt {
             dreamStore?.markSleepEnded(day: sleepDay, at: Date())
         }
+        dreamStore?.pruneSoundClips(olderThanDays: soundRetentionDays)
+        soundRetentionDays = nil
         sleepStartedAt = nil
         if alarm.lightWakeEnabled {
             startBrightnessRamp(minutes: alarm.lightWakeMinutes)
@@ -1623,7 +1729,12 @@ struct ContentView: View {
                 Spacer()
 
                 Button {
-                    session.start(alarm: store.sleepAlarm, dreamStore: dreams, recordAudio: store.sleepRecordingEnabled)
+                    session.start(
+                        alarm: store.sleepAlarm,
+                        dreamStore: dreams,
+                        recordAudio: store.sleepRecordingEnabled,
+                        soundRetentionDays: store.nightSoundRetention.days
+                    )
                 } label: {
                     Label("Empezar la noche", systemImage: "moon.stars.fill")
                         .font(.title3.weight(.black))
@@ -4066,9 +4177,11 @@ struct SleepStageChart: View {
 
 struct SettingsView: View {
     @EnvironmentObject private var store: AlarmStore
+    @EnvironmentObject private var dreams: DreamStore
     @State private var editingSleepAlarm = false
     @State private var showingSubscriptionSetup = false
     @State private var supportExpanded = false
+    @State private var confirmingDeleteSounds = false
 
     var body: some View {
         NavigationStack {
@@ -4091,7 +4204,8 @@ struct SettingsView: View {
                         settingsGroup("Seguimiento nocturno", systemImage: "waveform") {
                             settingToggle("Abrir diario al terminar alarma", isOn: $store.openJournalAfterAlarm)
                             settingToggle("Grabar sonidos nocturnos", isOn: $store.sleepRecordingEnabled)
-                            Text("La detección de ronquidos, respiración fuerte y voz se guarda localmente como estimación.")
+                            nightSoundRetentionControls
+                            Text("La detección de ronquidos, respiración fuerte, tos y voz se guarda localmente como estimación.")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(store.sleepTheme.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -4169,6 +4283,50 @@ struct SettingsView: View {
             } message: {
                 Text("La pantalla ya está preparada, pero falta conectar los productos de suscripción mensual en App Store Connect y StoreKit.")
             }
+            .alert("Eliminar sonidos nocturnos", isPresented: $confirmingDeleteSounds) {
+                Button("Eliminar todos", role: .destructive) {
+                    dreams.deleteAllSoundClips()
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Se borrarán los clips de audio guardados y los contadores de ruidos del diario.")
+            }
+        }
+    }
+
+    private var nightSoundRetentionControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Eliminar sonidos")
+                    .font(.subheadline.weight(.bold))
+                Spacer()
+                Picker("Eliminar sonidos", selection: Binding(
+                    get: { store.nightSoundRetention },
+                    set: { retention in
+                        store.nightSoundRetention = retention
+                        dreams.pruneSoundClips(olderThanDays: retention.days)
+                    }
+                )) {
+                    ForEach(NightSoundRetention.allCases) { retention in
+                        Text(retention.title).tag(retention)
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(store.sleepTheme.primary)
+            }
+
+            Button {
+                confirmingDeleteSounds = true
+            } label: {
+                Label("Eliminar todos los sonidos", systemImage: "trash")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                    .background(Color.red.opacity(store.sleepTheme == .sunset ? 0.12 : 0.18))
+                    .foregroundStyle(Color.red)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
         }
     }
 
