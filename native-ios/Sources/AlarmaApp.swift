@@ -2717,34 +2717,50 @@ struct DreamJournalView: View {
                     .ignoresSafeArea()
                     .overlay(store.sleepTheme == .sunset ? Color.white.opacity(0.52) : Color.black.opacity(0.20))
 
-                VStack(spacing: 0) {
-                    journalHeader
+                GeometryReader { proxy in
+                    let contentWidth = max(0, proxy.size.width - 26)
 
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            SleepCalendarGrid(selectedDate: $selectedDate, displayedMonth: $displayedMonth)
+                    VStack(spacing: 0) {
+                        journalHeader
+                            .frame(width: proxy.size.width)
 
-                            SleepStageChart(entry: draft)
+                        ScrollView(showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                SleepCalendarGrid(selectedDate: $selectedDate, displayedMonth: $displayedMonth)
+                                    .frame(width: contentWidth)
+                                    .clipped()
 
-                            WakeMoodSelector(entry: $draft, theme: store.sleepTheme)
+                                SleepStageChart(entry: draft)
+                                    .frame(width: contentWidth)
+                                    .clipped()
 
-                            NightSoundsSummary(entry: draft, theme: store.sleepTheme) {
-                                showingSoundClips = true
+                                WakeMoodSelector(entry: $draft, theme: store.sleepTheme)
+                                    .frame(width: contentWidth)
+                                    .clipped()
+
+                                NightSoundsSummary(entry: draft, theme: store.sleepTheme) {
+                                    showingSoundClips = true
+                                }
+                                .frame(width: contentWidth)
+                                .clipped()
+
+                                DreamNotesCard(notes: $draft.notes, theme: store.sleepTheme, focused: $notesFocused)
+                                    .frame(width: contentWidth)
+                                    .clipped()
                             }
-
-                            DreamNotesCard(notes: $draft.notes, theme: store.sleepTheme, focused: $notesFocused)
+                            .frame(width: contentWidth, alignment: .leading)
+                            .padding(.horizontal, 13)
+                            .padding(.top, 4)
+                            .padding(.bottom, 16)
                         }
-                        .padding(.horizontal, 13)
-                        .padding(.top, 4)
-                        .padding(.bottom, 16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .scrollDismissesKeyboard(.interactively)
+                        .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
+                        .frame(width: proxy.size.width)
+                        .clipped()
                     }
-                    .scrollDismissesKeyboard(.interactively)
-                    .simultaneousGesture(TapGesture().onEnded { notesFocused = false })
-                    .frame(maxWidth: .infinity)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipped()
                 }
-                .frame(maxWidth: .infinity)
             }
             .navigationTitle("")
             .toolbar(.hidden, for: .navigationBar)
