@@ -212,6 +212,7 @@ struct DreamEntry: Identifiable, Codable, Equatable {
     var day: Date
     var notes = ""
     var wakeMood: WakeMood?
+    var soundClips: [SleepSoundClip] = []
     var score: Int?
     var awakeMinutes = 0
     var snoreEvents = 0
@@ -224,12 +225,55 @@ struct DreamEntry: Identifiable, Codable, Equatable {
     var deepSleepMinutes = 0
     var samples: [SleepStageSample] = []
 
+    init(day: Date) {
+        self.day = day
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case day
+        case notes
+        case wakeMood
+        case soundClips
+        case score
+        case awakeMinutes
+        case snoreEvents
+        case strongBreathingEvents
+        case talkingEvents
+        case audioClips
+        case sleepStartedAt
+        case sleepEndedAt
+        case lightSleepMinutes
+        case deepSleepMinutes
+        case samples
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        day = try container.decode(Date.self, forKey: .day)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        wakeMood = try container.decodeIfPresent(WakeMood.self, forKey: .wakeMood)
+        soundClips = try container.decodeIfPresent([SleepSoundClip].self, forKey: .soundClips) ?? []
+        score = try container.decodeIfPresent(Int.self, forKey: .score)
+        awakeMinutes = try container.decodeIfPresent(Int.self, forKey: .awakeMinutes) ?? 0
+        snoreEvents = try container.decodeIfPresent(Int.self, forKey: .snoreEvents) ?? 0
+        strongBreathingEvents = try container.decodeIfPresent(Int.self, forKey: .strongBreathingEvents) ?? 0
+        talkingEvents = try container.decodeIfPresent(Int.self, forKey: .talkingEvents) ?? 0
+        audioClips = try container.decodeIfPresent(Int.self, forKey: .audioClips) ?? soundClips.count
+        sleepStartedAt = try container.decodeIfPresent(Date.self, forKey: .sleepStartedAt)
+        sleepEndedAt = try container.decodeIfPresent(Date.self, forKey: .sleepEndedAt)
+        lightSleepMinutes = try container.decodeIfPresent(Int.self, forKey: .lightSleepMinutes) ?? 0
+        deepSleepMinutes = try container.decodeIfPresent(Int.self, forKey: .deepSleepMinutes) ?? 0
+        samples = try container.decodeIfPresent([SleepStageSample].self, forKey: .samples) ?? []
+    }
+
     var dayKey: String {
         Self.key(for: day)
     }
 
     var hasSleepData: Bool {
-        sleepStartedAt != nil || sleepEndedAt != nil || !samples.isEmpty || audioClips > 0 || snoreEvents > 0 || strongBreathingEvents > 0 || talkingEvents > 0
+        sleepStartedAt != nil || sleepEndedAt != nil || !samples.isEmpty || audioClips > 0 || !soundClips.isEmpty || snoreEvents > 0 || strongBreathingEvents > 0 || talkingEvents > 0
     }
 
     static func key(for date: Date) -> String {
@@ -286,9 +330,13 @@ final class DreamStore: ObservableObject {
         entries.sort { $0.day > $1.day }
     }
 
-    func addAudioEvent(day: Date, kind: SleepAudioEvent.Kind) {
+    func addAudioEvent(day: Date, kind: SleepAudioEvent.Kind, fileURL: URL) {
         var entry = entry(for: day)
         entry.audioClips += 1
+        entry.soundClips.append(SleepSoundClip(date: Date(), kind: kind, filePath: fileURL.path))
+        if entry.soundClips.count > 160 {
+            entry.soundClips.removeFirst(entry.soundClips.count - 160)
+        }
         switch kind {
         case .snore:
             entry.snoreEvents += 1
@@ -351,10 +399,26 @@ final class DreamStore: ObservableObject {
 }
 
 struct SleepAudioEvent {
-    enum Kind {
+    enum Kind: String, CaseIterable, Codable {
         case snore
         case strongBreathing
         case talking
+
+        var title: String {
+            switch self {
+            case .snore: return "Ronquido"
+            case .strongBreathing: return "Respiración"
+            case .talking: return "Voz"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .snore: return Color(red: 0.94, green: 0.45, blue: 0.17)
+            case .strongBreathing: return Color(red: 0.30, green: 0.78, blue: 0.74)
+            case .talking: return Color(red: 0.62, green: 0.42, blue: 0.92)
+            }
+        }
     }
 
     let day: Date
@@ -917,18 +981,31 @@ final class NightSession: ObservableObject {
         }
     }
 
-    func start(alarm: Alarm) {
+    func start(alarm: Alarm, dreamStore: DreamStore? = nil, recordAudio: Bool = false) {
         isSnoozing = false
         snoozedUntil = nil
         snoozeTimer?.invalidate()
         lightLevel = 0
         lightWakeStartedFor = nil
         activeAlarm = alarm
+        self.dreamStore = dreamStore
+        sleepDay = Date()
+        sleepStartedAt = Date()
+        dreamStore?.markSleepStarted(day: sleepDay, at: sleepStartedAt ?? Date())
         backgroundGuardActive = true
         UIApplication.shared.isIdleTimerDisabled = true
         sound.startKeepAlive()
         startClock()
         startMotionIfNeeded(alarm)
+        startSleepAnalysisIfNeeded()
+        if recordAudio {
+            Task {
+                await sleepRecorder.start(day: sleepDay, saveOnlyWhenSound: true) { [weak self] event in
+                    self?.audioEventsSinceLastSample += 1
+                    self?.dreamStore?.addAudioEvent(day: event.day, kind: event.kind, fileURL: event.fileURL)
+                }
+            }
+        }
         endLockScreenActivity()
     }
 
@@ -946,6 +1023,11 @@ final class NightSession: ObservableObject {
         motionTimer?.invalidate()
         sleepAnalysisTimer?.invalidate()
         snoozeTimer?.invalidate()
+        sleepRecorder.stop()
+        if let sleepStartedAt {
+            dreamStore?.markSleepEnded(day: sleepDay, at: Date())
+        }
+        sleepStartedAt = nil
         restoreBrightness()
         motion.stopDeviceMotionUpdates()
         sound.stop()
@@ -963,6 +1045,11 @@ final class NightSession: ObservableObject {
         backgroundGuardActive = false
         UIApplication.shared.isIdleTimerDisabled = true
         sleepAnalysisTimer?.invalidate()
+        sleepRecorder.stop()
+        if let sleepStartedAt {
+            dreamStore?.markSleepEnded(day: sleepDay, at: Date())
+        }
+        sleepStartedAt = nil
         if alarm.lightWakeEnabled {
             startBrightnessRamp(minutes: alarm.lightWakeMinutes)
         }
@@ -1400,6 +1487,17 @@ struct RootTabView: View {
     }
 }
 
+struct SleepSoundClip: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var date: Date
+    var kind: SleepAudioEvent.Kind
+    var filePath: String
+
+    var fileURL: URL {
+        URL(fileURLWithPath: filePath)
+    }
+}
+
 enum WakeMood: String, CaseIterable, Identifiable, Codable {
     case exhausted
     case tired
@@ -1419,13 +1517,13 @@ enum WakeMood: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    var icon: String {
+    var face: String {
         switch self {
-        case .exhausted: return "battery.0percent"
-        case .tired: return "moon.zzz.fill"
-        case .neutral: return "circle.fill"
-        case .calm: return "leaf.fill"
-        case .energized: return "bolt.fill"
+        case .exhausted: return "😵"
+        case .tired: return "😴"
+        case .neutral: return "😐"
+        case .calm: return "🙂"
+        case .energized: return "😄"
         }
     }
 
@@ -1468,7 +1566,7 @@ struct ContentView: View {
                 Spacer()
 
                 Button {
-                    session.start(alarm: store.sleepAlarm)
+                    session.start(alarm: store.sleepAlarm, dreamStore: dreams, recordAudio: store.sleepRecordingEnabled)
                 } label: {
                     Label("Empezar la noche", systemImage: "moon.stars.fill")
                         .font(.title3.weight(.black))
@@ -2551,6 +2649,7 @@ struct DreamJournalView: View {
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
     @State private var draft = DreamEntry(day: Date())
+    @State private var showingSoundClips = false
     @FocusState private var notesFocused: Bool
 
     var body: some View {
@@ -2569,6 +2668,10 @@ struct DreamJournalView: View {
                         SleepStageChart(entry: draft)
 
                         WakeMoodSelector(entry: $draft, theme: store.sleepTheme)
+
+                        NightSoundsSummary(entry: draft, theme: store.sleepTheme) {
+                            showingSoundClips = true
+                        }
 
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Diario de sueños", systemImage: "book.closed.fill")
@@ -2628,6 +2731,9 @@ struct DreamJournalView: View {
                     Spacer()
                     Button("Listo") { notesFocused = false }
                 }
+            }
+            .sheet(isPresented: $showingSoundClips) {
+                NightSoundsSheet(entry: draft, theme: store.sleepTheme)
             }
         }
     }
@@ -2748,10 +2854,16 @@ struct SleepCalendarGrid: View {
                     .font(.subheadline.weight(.black))
                     .lineLimit(1)
 
-                Circle()
-                    .fill(scoreColor(for: entry))
-                    .frame(width: 7, height: 7)
-                    .opacity(entry.hasSleepData ? 1 : 0)
+                if let mood = entry.wakeMood {
+                    Text(mood.face)
+                        .font(.caption2)
+                        .frame(height: 12)
+                } else {
+                    Circle()
+                        .fill(scoreColor(for: entry))
+                        .frame(width: 7, height: 7)
+                        .opacity(entry.hasSleepData ? 1 : 0)
+                }
             }
             .frame(maxWidth: .infinity)
             .aspectRatio(1, contentMode: .fit)
@@ -2829,31 +2941,31 @@ struct WakeMoodSelector: View {
     let theme: SleepTheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             Label("Cómo te has despertado", systemImage: "sun.max.fill")
                 .font(.headline.weight(.black))
 
-            LazyVGrid(columns: columns, spacing: 8) {
+            HStack(spacing: 7) {
                 ForEach(WakeMood.allCases) { mood in
                     Button {
                         entry.wakeMood = entry.wakeMood == mood ? nil : mood
                     } label: {
-                        VStack(spacing: 7) {
-                            Image(systemName: mood.icon)
-                                .font(.headline.weight(.black))
-                                .frame(height: 20)
+                        VStack(spacing: 4) {
+                            Text(mood.face)
+                                .font(.title3)
+                                .frame(height: 24)
                             Text(mood.title)
-                                .font(.caption.weight(.black))
+                                .font(.caption2.weight(.black))
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.72)
+                                .minimumScaleFactor(0.58)
                         }
                         .frame(maxWidth: .infinity)
-                        .frame(height: 64)
+                        .frame(height: 52)
                         .background(entry.wakeMood == mood ? mood.color.opacity(0.24) : optionFill)
                         .foregroundStyle(entry.wakeMood == mood ? mood.color : theme.text)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
+                            RoundedRectangle(cornerRadius: 12)
                                 .stroke(entry.wakeMood == mood ? mood.color.opacity(0.72) : theme.secondaryText.opacity(0.14), lineWidth: 1)
                         )
                     }
@@ -2867,10 +2979,6 @@ struct WakeMoodSelector: View {
         .foregroundStyle(theme.text)
     }
 
-    private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 8), count: 2)
-    }
-
     private var panelFill: Color {
         theme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08)
     }
@@ -2878,6 +2986,285 @@ struct WakeMoodSelector: View {
     private var optionFill: Color {
         theme == .sunset ? Color.white.opacity(0.34) : Color.white.opacity(0.07)
     }
+}
+
+struct NightSoundsSummary: View {
+    let entry: DreamEntry
+    let theme: SleepTheme
+    let onOpen: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Ruidos nocturnos", systemImage: "waveform")
+                    .font(.headline.weight(.black))
+                Spacer()
+                Text("\(clipCount) clips")
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(theme.secondaryText)
+            }
+
+            HStack(spacing: 8) {
+                soundPill("Ronquidos", count: entry.snoreEvents, color: SleepAudioEvent.Kind.snore.color)
+                soundPill("Respiración", count: entry.strongBreathingEvents, color: SleepAudioEvent.Kind.strongBreathing.color)
+                soundPill("Voz", count: entry.talkingEvents, color: SleepAudioEvent.Kind.talking.color)
+            }
+
+            HStack(spacing: 10) {
+                if let latest = entry.soundClips.sorted(by: { $0.date > $1.date }).first {
+                    Image(systemName: "play.fill")
+                        .font(.caption.weight(.black))
+                        .frame(width: 30, height: 30)
+                        .background(latest.kind.color.opacity(0.20))
+                        .foregroundStyle(latest.kind.color)
+                        .clipShape(Circle())
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Último: \(latest.kind.title)")
+                            .font(.caption.weight(.black))
+                        Text(Self.timeFormatter.string(from: latest.date))
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(theme.secondaryText)
+                    }
+                } else {
+                    Text(clipCount > 0 ? "Clips guardados durante la noche." : "Sin ruidos guardados esta noche.")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(theme.secondaryText)
+                }
+
+                Spacer()
+
+                Button(action: onOpen) {
+                    Label("Ver \(clipCount) clips", systemImage: "chevron.up")
+                        .font(.caption.weight(.black))
+                        .padding(.horizontal, 12)
+                        .frame(height: 32)
+                        .background(theme.primary.opacity(0.18))
+                        .foregroundStyle(theme.primary)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(clipCount == 0)
+                .opacity(clipCount == 0 ? 0.55 : 1)
+            }
+        }
+        .padding(14)
+        .background(panelFill)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .foregroundStyle(theme.text)
+    }
+
+    private var clipCount: Int {
+        max(entry.audioClips, entry.soundClips.count)
+    }
+
+    private func soundPill(_ title: String, count: Int, color: Color) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+            Text("\(title) \(count)")
+                .font(.caption2.weight(.black))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 28)
+        .background(color.opacity(0.13))
+        .foregroundStyle(theme.text)
+        .clipShape(Capsule())
+    }
+
+    private var panelFill: Color {
+        theme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08)
+    }
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+}
+
+struct NightSoundsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let entry: DreamEntry
+    let theme: SleepTheme
+    @State private var selectedKind: SleepAudioEvent.Kind?
+    @State private var player: AVAudioPlayer?
+    @State private var playingClipId: UUID?
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                SleepBackdrop(theme: theme)
+                    .ignoresSafeArea()
+                    .overlay(theme == .sunset ? Color.white.opacity(0.54) : Color.black.opacity(0.22))
+
+                VStack(alignment: .leading, spacing: 14) {
+                    filterRow
+
+                    if filteredClips.isEmpty {
+                        Text("No hay clips de este tipo.")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(theme.secondaryText)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 32)
+                    } else {
+                        ScrollView(showsIndicators: false) {
+                            VStack(spacing: 10) {
+                                ForEach(filteredClips) { clip in
+                                    clipRow(clip)
+                                }
+                            }
+                            .padding(.bottom, 18)
+                        }
+                    }
+                }
+                .padding(20)
+            }
+            .navigationTitle("Ruidos nocturnos")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Text("\(filteredClips.count) clips")
+                        .font(.caption.weight(.black))
+                        .foregroundStyle(theme.secondaryText)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cerrar") {
+                        player?.stop()
+                        dismiss()
+                    }
+                    .font(.headline.weight(.bold))
+                }
+            }
+            .preferredColorScheme(theme == .night ? .dark : .light)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var filterRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                filterButton("Todos", kind: nil)
+                filterButton("Ronquidos", kind: .snore)
+                filterButton("Respiración", kind: .strongBreathing)
+                filterButton("Voz", kind: .talking)
+            }
+        }
+    }
+
+    private func filterButton(_ title: String, kind: SleepAudioEvent.Kind?) -> some View {
+        Button {
+            selectedKind = kind
+        } label: {
+            Text(title)
+                .font(.caption.weight(.black))
+                .padding(.horizontal, 12)
+                .frame(height: 32)
+                .background(selectedKind == kind ? theme.primary.opacity(0.24) : optionFill)
+                .foregroundStyle(selectedKind == kind ? theme.primary : theme.text)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func clipRow(_ clip: SleepSoundClip) -> some View {
+        Button {
+            play(clip)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: playingClipId == clip.id ? "pause.fill" : "play.fill")
+                    .font(.subheadline.weight(.black))
+                    .frame(width: 36, height: 36)
+                    .background(clip.kind.color.opacity(0.20))
+                    .foregroundStyle(clip.kind.color)
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text(Self.timeFormatter.string(from: clip.date))
+                            .font(.subheadline.weight(.black))
+                        Text(clip.kind.title)
+                            .font(.caption.weight(.black))
+                            .padding(.horizontal, 8)
+                            .frame(height: 22)
+                            .background(clip.kind.color.opacity(0.16))
+                            .foregroundStyle(clip.kind.color)
+                            .clipShape(Capsule())
+                        Spacer()
+                        Text(durationText(for: clip))
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(theme.secondaryText)
+                    }
+                    waveform(color: clip.kind.color)
+                }
+            }
+            .padding(12)
+            .background(panelFill)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(theme.text)
+    }
+
+    private func waveform(color: Color) -> some View {
+        HStack(alignment: .center, spacing: 2) {
+            ForEach(0..<22, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(color.opacity(index % 3 == 0 ? 0.80 : 0.42))
+                    .frame(width: 3, height: CGFloat(7 + (index * 5) % 18))
+            }
+        }
+        .frame(height: 26, alignment: .center)
+    }
+
+    private var filteredClips: [SleepSoundClip] {
+        entry.soundClips
+            .filter { selectedKind == nil || $0.kind == selectedKind }
+            .sorted { $0.date > $1.date }
+    }
+
+    private var panelFill: Color {
+        theme == .sunset ? Color.white.opacity(0.66) : Color.white.opacity(0.09)
+    }
+
+    private var optionFill: Color {
+        theme == .sunset ? Color.white.opacity(0.34) : Color.white.opacity(0.07)
+    }
+
+    private func play(_ clip: SleepSoundClip) {
+        if playingClipId == clip.id {
+            player?.stop()
+            player = nil
+            playingClipId = nil
+            return
+        }
+        do {
+            let nextPlayer = try AVAudioPlayer(contentsOf: clip.fileURL)
+            nextPlayer.prepareToPlay()
+            nextPlayer.play()
+            player = nextPlayer
+            playingClipId = clip.id
+        } catch {
+            player = nil
+            playingClipId = nil
+        }
+    }
+
+    private func durationText(for clip: SleepSoundClip) -> String {
+        guard let player = try? AVAudioPlayer(contentsOf: clip.fileURL) else { return "--" }
+        let seconds = max(1, Int(player.duration.rounded()))
+        return String(format: "0:%02d", min(seconds, 59))
+    }
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
 }
 
 struct DreamScoreCard: View {
@@ -2937,14 +3324,31 @@ struct SleepStageChart: View {
                     .padding(.vertical, 18)
             } else {
                 GeometryReader { proxy in
-                    HStack(alignment: .bottom, spacing: 2) {
-                        ForEach(entry.samples.suffix(120)) { sample in
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(color(for: sample.stage))
-                                .frame(width: max(2, proxy.size.width / CGFloat(min(entry.samples.count, 120)) - 2), height: height(for: sample.stage, total: proxy.size.height))
+                    let visibleSamples = Array(entry.samples.suffix(120))
+                    ZStack(alignment: .bottomLeading) {
+                        HStack(alignment: .bottom, spacing: 2) {
+                            ForEach(visibleSamples) { sample in
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(color(for: sample.stage))
+                                    .frame(width: max(2, proxy.size.width / CGFloat(max(visibleSamples.count, 1)) - 2), height: height(for: sample.stage, total: proxy.size.height))
+                            }
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+
+                        HStack(alignment: .top, spacing: 2) {
+                            ForEach(visibleSamples) { sample in
+                                ZStack {
+                                    if sample.soundEvents > 0 {
+                                        Circle()
+                                            .fill(Color(red: 0.94, green: 0.45, blue: 0.17))
+                                            .frame(width: min(12, 5 + CGFloat(sample.soundEvents * 2)), height: min(12, 5 + CGFloat(sample.soundEvents * 2)))
+                                    }
+                                }
+                                .frame(width: max(2, proxy.size.width / CGFloat(max(visibleSamples.count, 1)) - 2), height: 14)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                 }
                 .frame(height: 110)
 
