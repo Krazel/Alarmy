@@ -1618,10 +1618,25 @@ struct RootTabView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            activeTab
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    Color.clear.frame(height: bottomReservedHeight)
-                }
+            TabView(selection: $navigation.selectedTab) {
+                ContentView()
+                    .tabItem {
+                        Label("Alarmas", systemImage: "alarm.fill")
+                    }
+                    .tag(AppTab.alarm)
+
+                DreamJournalView()
+                    .tabItem {
+                        Label("Diario", systemImage: "book.closed.fill")
+                    }
+                    .tag(AppTab.journal)
+
+                SettingsView()
+                    .tabItem {
+                        Label("Ajustes", systemImage: "gearshape.fill")
+                    }
+                    .tag(AppTab.settings)
+            }
 
             if showsBottomAd {
                 VStack(spacing: 0) {
@@ -1633,11 +1648,6 @@ struct RootTabView: View {
                 .allowsHitTesting(false)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
-
-            RootBottomTabBar()
-                .frame(height: 92)
-                .padding(.bottom, showsBottomAd ? 40 : 0)
-                .ignoresSafeArea(.container, edges: .bottom)
         }
         .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
         .onAppear(perform: showSupportPromptIfNeeded)
@@ -1651,85 +1661,14 @@ struct RootTabView: View {
         }
     }
 
-    @ViewBuilder
-    private var activeTab: some View {
-        switch navigation.selectedTab {
-        case .alarm:
-            ContentView()
-        case .journal:
-            DreamJournalView()
-        case .settings:
-            SettingsView()
-        }
-    }
-
     private var showsBottomAd: Bool {
         store.shouldShowAds && !session.isActive && session.ringingAlarm == nil
-    }
-
-    private var bottomReservedHeight: CGFloat {
-        showsBottomAd ? 132 : 92
     }
 
     private func showSupportPromptIfNeeded() {
         guard store.shouldShowSupportPrompt, !session.isActive, session.ringingAlarm == nil else { return }
         store.markSupportPromptShown()
         showingSupportPrompt = true
-    }
-}
-
-private struct RootBottomTabBar: View {
-    @EnvironmentObject private var store: AlarmStore
-    @EnvironmentObject private var navigation: AppNavigation
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Divider()
-                .overlay(borderColor)
-
-            HStack(spacing: 0) {
-                tabButton(.alarm, title: "Alarmas", systemImage: "alarm.fill")
-                tabButton(.journal, title: "Diario", systemImage: "book.closed.fill")
-                tabButton(.settings, title: "Ajustes", systemImage: "gearshape.fill")
-            }
-            .padding(.top, 10)
-
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(backgroundColor)
-    }
-
-    private func tabButton(_ tab: AppTab, title: String, systemImage: String) -> some View {
-        let isSelected = navigation.selectedTab == tab
-        return Button {
-            navigation.selectedTab = tab
-        } label: {
-            VStack(spacing: 5) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 25, weight: .heavy))
-                    .symbolRenderingMode(.hierarchical)
-
-                Text(title)
-                    .font(.system(size: 13, weight: .heavy))
-            }
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(isSelected ? store.sleepTheme.primary : inactiveColor)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var backgroundColor: Color {
-        store.sleepTheme == .sunset ? Color.white.opacity(0.94) : Color(red: 0.04, green: 0.06, blue: 0.10).opacity(0.97)
-    }
-
-    private var borderColor: Color {
-        store.sleepTheme == .sunset ? Color.black.opacity(0.12) : Color.white.opacity(0.10)
-    }
-
-    private var inactiveColor: Color {
-        store.sleepTheme == .sunset ? Color.black.opacity(0.42) : Color.white.opacity(0.48)
     }
 }
 
