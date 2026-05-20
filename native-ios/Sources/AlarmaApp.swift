@@ -15,7 +15,6 @@ struct AlarmaApp: App {
 
     init() {
         AlarmSoundPlayer.configurePlaybackSession()
-        Self.configureTabBarItemPosition()
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
     }
 
@@ -33,11 +32,6 @@ struct AlarmaApp: App {
         }
     }
 
-    private static func configureTabBarItemPosition() {
-        let itemAppearance = UITabBarItem.appearance()
-        itemAppearance.titlePositionAdjustment = UIOffset(horizontal: 0, vertical: -2)
-        itemAppearance.imageInsets = UIEdgeInsets(top: -2, left: 0, bottom: 2, right: 0)
-    }
 }
 
 struct Alarm: Identifiable, Codable, Equatable {
@@ -1644,6 +1638,9 @@ struct RootTabView: View {
                     .tag(AppTab.settings)
             }
 
+            TabBarVisualExtension(theme: store.sleepTheme)
+                .allowsHitTesting(false)
+
             if showsBottomAd {
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
@@ -1675,6 +1672,26 @@ struct RootTabView: View {
         guard store.shouldShowSupportPrompt, !session.isActive, session.ringingAlarm == nil else { return }
         store.markSupportPromptShown()
         showingSupportPrompt = true
+    }
+}
+
+private struct TabBarVisualExtension: View {
+    let theme: SleepTheme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            Rectangle()
+                .fill(fill)
+                .frame(height: 8)
+                .offset(y: -82)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(.container, edges: .bottom)
+    }
+
+    private var fill: Color {
+        theme == .sunset ? Color.white.opacity(0.90) : Color(red: 0.04, green: 0.06, blue: 0.10).opacity(0.96)
     }
 }
 
