@@ -1638,10 +1638,14 @@ struct RootTabView: View {
             }
 
             if showsBottomAd {
-                BottomAdBanner()
-                    .offset(y: 50)
-                    .allowsHitTesting(false)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    BottomAdBanner()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea(.container, edges: .bottom)
+                .allowsHitTesting(false)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
         .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
