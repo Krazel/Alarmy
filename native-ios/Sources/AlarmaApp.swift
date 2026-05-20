@@ -1717,8 +1717,8 @@ private struct HeightAdjustedTabView: UIViewControllerRepresentable {
     private func hostingController(title: String, systemImage: String, view: AnyView) -> UIHostingController<AnyView> {
         let controller = UIHostingController(rootView: view)
         let item = UITabBarItem(title: title, image: UIImage(systemName: systemImage), selectedImage: UIImage(systemName: systemImage))
-        item.titlePositionAdjustment = UIOffset(horizontal: 0, vertical: -5)
-        item.imageInsets = UIEdgeInsets(top: -5, left: 0, bottom: 5, right: 0)
+        item.titlePositionAdjustment = UIOffset(horizontal: 0, vertical: -10)
+        item.imageInsets = UIEdgeInsets(top: -10, left: 0, bottom: 10, right: 0)
         controller.tabBarItem = item
         return controller
     }
