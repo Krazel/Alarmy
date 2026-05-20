@@ -1682,6 +1682,7 @@ private struct RootBottomChrome: View {
 
             if showsAd {
                 BottomAdBanner()
+                    .offset(y: 46)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
@@ -1764,7 +1765,7 @@ private struct BottomAdBanner: View {
             .frame(width: 24, height: 24)
         }
         .padding(.horizontal, 26)
-        .frame(height: 50)
+        .frame(height: 40)
         .foregroundStyle(store.sleepTheme.text)
         .accessibilityLabel("Anuncio")
     }
