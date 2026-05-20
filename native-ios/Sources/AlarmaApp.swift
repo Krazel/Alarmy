@@ -1431,8 +1431,7 @@ final class NightSession: ObservableObject {
 
 final class AlarmSoundPlayer {
     private var audioPlayer: AVAudioPlayer?
-    private var volumeLockTimer: Timer?
-    private let alarmStartVolume: Float = 0.04
+    private var rampTimer: Timer?
 
     static func preview(sound: AlarmSound) {
         let player = AlarmSoundPlayer()
@@ -1468,7 +1467,7 @@ final class AlarmSoundPlayer {
     func start(for alarm: Alarm) {
         stop()
         let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default)
+        try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
         try? session.setActive(true)
 
         let fallbackSoundId = AlarmSound.defaultIds[0]
@@ -1498,42 +1497,34 @@ final class AlarmSoundPlayer {
     }
 
     private func playBundledSound(_ sound: AlarmSound, alarm: Alarm) {
-        let initialVolume: Float = alarm.fadeInEnabled ? alarmStartVolume : 1.0
-        let didStartBundled = playBundledFile(named: sound.fileName, volume: initialVolume, loop: true)
-        var didStartGenerated = false
-        if !didStartBundled,
+        let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 1.0
+        if !playBundledFile(named: sound.fileName, volume: initialVolume, loop: true),
            let url = generatedToneURL(name: "alarm-\(sound.id)", frequency: sound.baseFrequency, amplitude: 0.82, duration: 2.0) {
-            didStartGenerated = playAudioFile(at: url, volume: initialVolume, loop: true)
+            playAudioFile(at: url, volume: initialVolume, loop: true)
         }
-        guard didStartBundled || didStartGenerated else { return }
-        startVolumeRampIfNeeded(for: alarm)
+        if alarm.fadeInEnabled {
+            let started = Date()
+            rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+                guard let self else { return }
+                let elapsed = Date().timeIntervalSince(started)
+                let progress = min(1, elapsed / max(1, alarm.fadeDuration))
+                self.audioPlayer?.volume = Float(0.04 + progress * 0.96)
+                if progress >= 1 { timer.invalidate() }
+            }
+        }
     }
 
     private func playCustomSound(fileName: String, alarm: Alarm) {
-        let initialVolume: Float = alarm.fadeInEnabled ? alarmStartVolume : 1.0
-        guard playCustomFile(named: fileName, volume: initialVolume, loop: true) else { return }
-        startVolumeRampIfNeeded(for: alarm)
-    }
-
-    private func startVolumeRampIfNeeded(for alarm: Alarm) {
-        guard alarm.fadeInEnabled, let audioPlayer else { return }
-        let rampDuration = max(1, alarm.fadeDuration)
-        audioPlayer.setVolume(1.0, fadeDuration: rampDuration)
-        volumeLockTimer?.invalidate()
-        volumeLockTimer = Timer.scheduledTimer(withTimeInterval: rampDuration + 0.25, repeats: false) { [weak self] _ in
+        let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 1.0
+        playCustomFile(named: fileName, volume: initialVolume, loop: true)
+        guard alarm.fadeInEnabled else { return }
+        let started = Date()
+        rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
             guard let self else { return }
-            self.audioPlayer?.setVolume(1.0, fadeDuration: 0)
-            self.audioPlayer?.volume = 1.0
-            self.startFullVolumeLock()
-        }
-    }
-
-    private func startFullVolumeLock() {
-        volumeLockTimer?.invalidate()
-        volumeLockTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            guard let self, let audioPlayer = self.audioPlayer, audioPlayer.isPlaying else { return }
-            audioPlayer.setVolume(1.0, fadeDuration: 0)
-            audioPlayer.volume = 1.0
+            let elapsed = Date().timeIntervalSince(started)
+            let progress = min(1, elapsed / max(1, alarm.fadeDuration))
+            self.audioPlayer?.volume = Float(0.04 + progress * 0.96)
+            if progress >= 1 { timer.invalidate() }
         }
     }
 
@@ -1572,8 +1563,8 @@ final class AlarmSoundPlayer {
     }
 
     func stop() {
-        volumeLockTimer?.invalidate()
-        volumeLockTimer = nil
+        rampTimer?.invalidate()
+        rampTimer = nil
         audioPlayer?.stop()
         audioPlayer = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -2276,7 +2267,7 @@ struct EditAlarmView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
 
-                        FadeDurationControl(enabled: $alarm.fadeInEnabled, duration: $alarm.fadeDuration, theme: theme)
+                        FadeDurationControl(duration: $alarm.fadeDuration, theme: theme)
 
                         Toggle(isOn: $alarm.motionSnooze) {
                             Label("Mover para posponer", systemImage: "iphone.radiowaves.left.and.right")
@@ -2663,7 +2654,6 @@ struct SoundSelector: View {
 }
 
 struct FadeDurationControl: View {
-    @Binding var enabled: Bool
     @Binding var duration: Double
     var theme: SleepTheme = .sunset
 
@@ -2679,37 +2669,21 @@ struct FadeDurationControl: View {
             HStack {
                 Label("Volumen progresivo", systemImage: "waveform")
                 Spacer()
-                Text(enabled ? durationText : "Maximo")
+                Text(durationText)
                     .font(.headline.weight(.black))
                     .foregroundStyle(theme.primary)
             }
             .foregroundStyle(theme.text)
 
-            HStack(spacing: 8) {
-                volumeModeButton(title: "Progresivo", systemImage: "waveform", isSelected: enabled) {
-                    enabled = true
-                }
-                volumeModeButton(title: "Directo al maximo", systemImage: "speaker.wave.3.fill", isSelected: !enabled) {
-                    enabled = false
-                }
+            Slider(value: $duration, in: 60...600, step: 60) {
+                Text("Subida")
+            } minimumValueLabel: {
+                Text("1 min")
+            } maximumValueLabel: {
+                Text("10 min")
             }
-
-            if enabled {
-                Slider(value: $duration, in: 60...600, step: 60) {
-                    Text("Subida")
-                } minimumValueLabel: {
-                    Text("1 min")
-                } maximumValueLabel: {
-                    Text("10 min")
-                }
-                .tint(theme.primary)
-                .foregroundStyle(theme.secondaryText)
-            } else {
-                Label("La alarma sonara directamente al volumen maximo.", systemImage: "speaker.wave.3.fill")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(theme.secondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            .tint(theme.primary)
+            .foregroundStyle(theme.secondaryText)
         }
         .padding(16)
         .background(theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.07))
@@ -2717,26 +2691,6 @@ struct FadeDurationControl: View {
         .onAppear {
             if duration < 60 { duration = 60 }
         }
-    }
-
-    private func volumeModeButton(title: String, systemImage: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .font(.subheadline.weight(.black))
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-                .frame(maxWidth: .infinity)
-                .frame(height: 42)
-                .background(isSelected ? theme.primary.opacity(0.22) : panelFill)
-                .foregroundStyle(isSelected ? theme.primary : theme.text)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(isSelected ? theme.primary.opacity(0.58) : theme.secondaryText.opacity(0.16), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var panelFill: Color {
-        theme == .sunset ? Color.white.opacity(0.26) : Color.white.opacity(0.07)
     }
 }
 
