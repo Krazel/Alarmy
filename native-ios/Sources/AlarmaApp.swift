@@ -1662,6 +1662,7 @@ struct RootTabView: View {
 
 private struct HeightAdjustedTabView: UIViewControllerRepresentable {
     private static let extraTabBarHeight: CGFloat = 8
+    private static let tabItemVerticalLift: CGFloat = 8
 
     @ObservedObject var store: AlarmStore
     @ObservedObject var session: NightSession
@@ -1669,7 +1670,7 @@ private struct HeightAdjustedTabView: UIViewControllerRepresentable {
     @ObservedObject var navigation: AppNavigation
 
     func makeUIViewController(context: Context) -> TallerTabBarController {
-        let controller = TallerTabBarController(extraHeight: Self.extraTabBarHeight)
+        let controller = TallerTabBarController(extraHeight: Self.extraTabBarHeight, itemVerticalLift: Self.tabItemVerticalLift)
         controller.delegate = context.coordinator
         controller.viewControllers = [
             hostingController(
@@ -1716,10 +1717,7 @@ private struct HeightAdjustedTabView: UIViewControllerRepresentable {
 
     private func hostingController(title: String, systemImage: String, view: AnyView) -> UIHostingController<AnyView> {
         let controller = UIHostingController(rootView: view)
-        let item = UITabBarItem(title: title, image: UIImage(systemName: systemImage), selectedImage: UIImage(systemName: systemImage))
-        item.titlePositionAdjustment = UIOffset(horizontal: 0, vertical: -10)
-        item.imageInsets = UIEdgeInsets(top: -10, left: 0, bottom: 10, right: 0)
-        controller.tabBarItem = item
+        controller.tabBarItem = UITabBarItem(title: title, image: UIImage(systemName: systemImage), selectedImage: UIImage(systemName: systemImage))
         return controller
     }
 
@@ -1743,9 +1741,11 @@ private struct HeightAdjustedTabView: UIViewControllerRepresentable {
 
 private final class TallerTabBarController: UITabBarController {
     private let extraHeight: CGFloat
+    private let itemVerticalLift: CGFloat
 
-    init(extraHeight: CGFloat) {
+    init(extraHeight: CGFloat, itemVerticalLift: CGFloat) {
         self.extraHeight = extraHeight
+        self.itemVerticalLift = itemVerticalLift
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -1760,6 +1760,9 @@ private final class TallerTabBarController: UITabBarController {
         frame.size.height = tabBar.sizeThatFits(view.bounds.size).height + extraHeight
         frame.origin.y = view.bounds.height - frame.height
         tabBar.frame = frame
+        tabBar.subviews
+            .filter { $0 is UIControl }
+            .forEach { $0.transform = CGAffineTransform(translationX: 0, y: -itemVerticalLift) }
     }
 }
 
