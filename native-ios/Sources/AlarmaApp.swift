@@ -1639,7 +1639,7 @@ struct RootTabView: View {
 
             if showsBottomAd {
                 BottomAdBanner()
-                    .offset(y: 32)
+                    .offset(y: 50)
                     .allowsHitTesting(false)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
