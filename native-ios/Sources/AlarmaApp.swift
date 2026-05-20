@@ -15,6 +15,7 @@ struct AlarmaApp: App {
 
     init() {
         AlarmSoundPlayer.configurePlaybackSession()
+        Self.configureTabBarItemPosition()
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
     }
 
@@ -30,6 +31,12 @@ struct AlarmaApp: App {
                     await NotificationScheduler.shared.reschedule(alarms: store.notificationAlarms)
                 }
         }
+    }
+
+    private static func configureTabBarItemPosition() {
+        let itemAppearance = UITabBarItem.appearance()
+        itemAppearance.titlePositionAdjustment = UIOffset(horizontal: 0, vertical: -2)
+        itemAppearance.imageInsets = UIEdgeInsets(top: -2, left: 0, bottom: 2, right: 0)
     }
 }
 
@@ -1675,43 +1682,18 @@ private struct BottomAdBanner: View {
     @EnvironmentObject private var store: AlarmStore
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text("AD")
-                .font(.system(size: 13, weight: .black))
-                .foregroundStyle(adText)
-                .padding(.horizontal, 10)
-                .frame(height: 28)
-                .background(pillBackground)
-                .clipShape(Capsule())
-
-            Text("Run analytics at scale")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(primaryText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-
-            Spacer(minLength: 8)
-
-            ZStack {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.white)
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color(red: 0.20, green: 0.79, blue: 0.83), lineWidth: 2)
-                Image(systemName: "play.fill")
-                    .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(Color(red: 0.20, green: 0.79, blue: 0.83))
-                    .offset(x: 1)
-            }
-            .frame(width: 24, height: 24)
-        }
+        Text("AD")
+            .font(.system(size: 13, weight: .black))
+            .foregroundStyle(adText)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(pillBackground)
+            .clipShape(Capsule())
+            .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 26)
         .frame(height: 40)
         .foregroundStyle(store.sleepTheme.text)
         .accessibilityLabel("Anuncio")
-    }
-
-    private var primaryText: Color {
-        store.sleepTheme == .sunset ? Color.black.opacity(0.70) : Color.white.opacity(0.78)
     }
 
     private var adText: Color {
