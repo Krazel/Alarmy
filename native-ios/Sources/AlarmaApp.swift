@@ -1679,15 +1679,16 @@ private struct RootBottomChrome: View {
                 tabButton(.settings, title: "Ajustes", systemImage: "gearshape.fill")
             }
             .frame(height: 70)
-
-            if showsAd {
-                BottomAdBanner()
-                    .offset(y: 46)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
         }
         .padding(.bottom, 24)
         .background(chromeBackground)
+        .overlay(alignment: .bottom) {
+            if showsAd {
+                BottomAdBanner()
+                    .offset(y: 22)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
         .ignoresSafeArea(.container, edges: .bottom)
     }
 
