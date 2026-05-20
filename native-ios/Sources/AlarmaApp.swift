@@ -1040,7 +1040,7 @@ final class NotificationScheduler {
         let content = UNMutableNotificationContent()
         content.title = alarm.label.isEmpty ? "Alarma" : alarm.label
         content.body = "La alarma está sonando."
-        content.sound = nil
+        content.sound = .default
         content.interruptionLevel = .timeSensitive
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
@@ -1430,23 +1430,8 @@ final class NightSession: ObservableObject {
 }
 
 final class AlarmSoundPlayer {
-    private static let fadeStartVolume: Float = 0.04
-    private static let fullVolume: Float = 1.0
-
     private var audioPlayer: AVAudioPlayer?
     private var rampTimer: Timer?
-    private var interruptionObserver: NSObjectProtocol?
-    private var routeChangeObserver: NSObjectProtocol?
-    private var fadeStartedAt: Date?
-    private var fadeDuration: TimeInterval = 1
-    private var alarmPlaybackActive = false
-    private var wasPlayingBeforeInterruption = false
-    private var currentAlarmURL: URL?
-    private var currentAlarmLoop = false
-
-    deinit {
-        removeAudioObservers()
-    }
 
     static func preview(sound: AlarmSound) {
         let player = AlarmSoundPlayer()
@@ -1482,9 +1467,8 @@ final class AlarmSoundPlayer {
     func start(for alarm: Alarm) {
         stop()
         let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default)
+        try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
         try? session.setActive(true)
-        installAudioObservers()
 
         let fallbackSoundId = AlarmSound.defaultIds[0]
         let soundId = alarm.soundIds.count > 1 ? (alarm.soundIds.randomElement() ?? fallbackSoundId) : (alarm.soundIds.first ?? fallbackSoundId)
@@ -1513,18 +1497,35 @@ final class AlarmSoundPlayer {
     }
 
     private func playBundledSound(_ sound: AlarmSound, alarm: Alarm) {
-        let initialVolume: Float = alarm.fadeInEnabled ? Self.fadeStartVolume : Self.fullVolume
+        let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 1.0
         if !playBundledFile(named: sound.fileName, volume: initialVolume, loop: true),
            let url = generatedToneURL(name: "alarm-\(sound.id)", frequency: sound.baseFrequency, amplitude: 0.82, duration: 2.0) {
             playAudioFile(at: url, volume: initialVolume, loop: true)
         }
-        configureAlarmPlayback(fadeInEnabled: alarm.fadeInEnabled, fadeDuration: alarm.fadeDuration, loop: true)
+        if alarm.fadeInEnabled {
+            let started = Date()
+            rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+                guard let self else { return }
+                let elapsed = Date().timeIntervalSince(started)
+                let progress = min(1, elapsed / max(1, alarm.fadeDuration))
+                self.audioPlayer?.volume = Float(0.04 + progress * 0.96)
+                if progress >= 1 { timer.invalidate() }
+            }
+        }
     }
 
     private func playCustomSound(fileName: String, alarm: Alarm) {
-        let initialVolume: Float = alarm.fadeInEnabled ? Self.fadeStartVolume : Self.fullVolume
+        let initialVolume: Float = alarm.fadeInEnabled ? 0.04 : 1.0
         playCustomFile(named: fileName, volume: initialVolume, loop: true)
-        configureAlarmPlayback(fadeInEnabled: alarm.fadeInEnabled, fadeDuration: alarm.fadeDuration, loop: true)
+        guard alarm.fadeInEnabled else { return }
+        let started = Date()
+        rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self else { return }
+            let elapsed = Date().timeIntervalSince(started)
+            let progress = min(1, elapsed / max(1, alarm.fadeDuration))
+            self.audioPlayer?.volume = Float(0.04 + progress * 0.96)
+            if progress >= 1 { timer.invalidate() }
+        }
     }
 
     @discardableResult
@@ -1549,107 +1550,11 @@ final class AlarmSoundPlayer {
             audioPlayer?.volume = volume
             audioPlayer?.prepareToPlay()
             audioPlayer?.play()
-            currentAlarmURL = url
-            currentAlarmLoop = loop
             return true
         } catch {
             audioPlayer = nil
             return false
         }
-    }
-
-    private func configureAlarmPlayback(fadeInEnabled: Bool, fadeDuration: TimeInterval, loop: Bool) {
-        alarmPlaybackActive = true
-        currentAlarmLoop = loop
-        self.fadeDuration = max(1, fadeDuration)
-        fadeStartedAt = fadeInEnabled ? Date() : nil
-        if fadeInEnabled {
-            startRampTimer()
-        } else {
-            audioPlayer?.volume = Self.fullVolume
-        }
-    }
-
-    private func startRampTimer() {
-        rampTimer?.invalidate()
-        rampTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
-            guard let self else { return }
-            self.applyRampVolume()
-            if self.rampProgress >= 1 { timer.invalidate() }
-        }
-        rampTimer?.fire()
-    }
-
-    private var rampProgress: Double {
-        guard let fadeStartedAt else { return 1 }
-        return min(1, Date().timeIntervalSince(fadeStartedAt) / fadeDuration)
-    }
-
-    private func applyRampVolume() {
-        let volume = Self.fadeStartVolume + Float(rampProgress) * (Self.fullVolume - Self.fadeStartVolume)
-        audioPlayer?.volume = min(Self.fullVolume, volume)
-    }
-
-    private func installAudioObservers() {
-        removeAudioObservers()
-        interruptionObserver = NotificationCenter.default.addObserver(
-            forName: AVAudioSession.interruptionNotification,
-            object: AVAudioSession.sharedInstance(),
-            queue: .main
-        ) { [weak self] notification in
-            self?.handleInterruption(notification)
-        }
-        routeChangeObserver = NotificationCenter.default.addObserver(
-            forName: AVAudioSession.routeChangeNotification,
-            object: AVAudioSession.sharedInstance(),
-            queue: .main
-        ) { [weak self] _ in
-            self?.resumeAlarmPlaybackIfNeeded()
-        }
-    }
-
-    private func removeAudioObservers() {
-        if let interruptionObserver {
-            NotificationCenter.default.removeObserver(interruptionObserver)
-            self.interruptionObserver = nil
-        }
-        if let routeChangeObserver {
-            NotificationCenter.default.removeObserver(routeChangeObserver)
-            self.routeChangeObserver = nil
-        }
-    }
-
-    private func handleInterruption(_ notification: Notification) {
-        guard alarmPlaybackActive,
-              let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let type = AVAudioSession.InterruptionType(rawValue: rawType) else { return }
-
-        switch type {
-        case .began:
-            wasPlayingBeforeInterruption = audioPlayer?.isPlaying == true
-        case .ended:
-            guard wasPlayingBeforeInterruption else { return }
-            resumeAlarmPlaybackIfNeeded()
-        @unknown default:
-            break
-        }
-    }
-
-    private func resumeAlarmPlaybackIfNeeded() {
-        guard alarmPlaybackActive else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-        try? AVAudioSession.sharedInstance().setActive(true)
-        if audioPlayer == nil, let currentAlarmURL {
-            _ = playAudioFile(at: currentAlarmURL, volume: Self.fadeStartVolume, loop: currentAlarmLoop)
-        }
-        applyRampVolume()
-        if audioPlayer?.isPlaying == false {
-            audioPlayer?.play()
-        }
-        if rampProgress < 1 {
-            startRampTimer()
-        }
-        wasPlayingBeforeInterruption = false
     }
 
     private func customSoundsDirectory() throws -> URL {
@@ -1660,11 +1565,6 @@ final class AlarmSoundPlayer {
     func stop() {
         rampTimer?.invalidate()
         rampTimer = nil
-        removeAudioObservers()
-        alarmPlaybackActive = false
-        wasPlayingBeforeInterruption = false
-        currentAlarmURL = nil
-        fadeStartedAt = nil
         audioPlayer?.stop()
         audioPlayer = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
