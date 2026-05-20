@@ -1617,12 +1617,32 @@ struct RootTabView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            activeTab
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    Color.clear.frame(height: bottomChromeHeight)
-                }
+            TabView(selection: $navigation.selectedTab) {
+                ContentView()
+                    .tabItem {
+                        Label("Alarmas", systemImage: "alarm.fill")
+                    }
+                    .tag(AppTab.alarm)
 
-            RootBottomChrome(showsAd: showsBottomAd)
+                DreamJournalView()
+                    .tabItem {
+                        Label("Diario", systemImage: "book.closed.fill")
+                    }
+                    .tag(AppTab.journal)
+
+                SettingsView()
+                    .tabItem {
+                        Label("Ajustes", systemImage: "gearshape.fill")
+                    }
+                    .tag(AppTab.settings)
+            }
+
+            if showsBottomAd {
+                BottomAdBanner()
+                    .padding(.bottom, 10)
+                    .allowsHitTesting(false)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
         }
         .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
         .onAppear(perform: showSupportPromptIfNeeded)
@@ -1636,99 +1656,14 @@ struct RootTabView: View {
         }
     }
 
-    @ViewBuilder
-    private var activeTab: some View {
-        switch navigation.selectedTab {
-        case .alarm:
-            ContentView()
-        case .journal:
-            DreamJournalView()
-        case .settings:
-            SettingsView()
-        }
-    }
-
     private var showsBottomAd: Bool {
         store.shouldShowAds && !session.isActive && session.ringingAlarm == nil
-    }
-
-    private var bottomChromeHeight: CGFloat {
-        showsBottomAd ? 144 : 92
     }
 
     private func showSupportPromptIfNeeded() {
         guard store.shouldShowSupportPrompt, !session.isActive, session.ringingAlarm == nil else { return }
         store.markSupportPromptShown()
         showingSupportPrompt = true
-    }
-}
-
-private struct RootBottomChrome: View {
-    @EnvironmentObject private var store: AlarmStore
-    @EnvironmentObject private var navigation: AppNavigation
-    let showsAd: Bool
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Divider()
-                .overlay(Color.white.opacity(store.sleepTheme == .sunset ? 0.25 : 0.10))
-
-            HStack(spacing: 0) {
-                tabButton(.alarm, title: "Alarmas", systemImage: "alarm.fill")
-                tabButton(.journal, title: "Diario", systemImage: "book.closed.fill")
-                tabButton(.settings, title: "Ajustes", systemImage: "gearshape.fill")
-            }
-            .frame(height: 70)
-        }
-        .padding(.bottom, 24)
-        .background(chromeBackground)
-        .overlay(alignment: .bottom) {
-            if showsAd {
-                BottomAdBanner()
-                    .offset(y: 22)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
-        }
-        .ignoresSafeArea(.container, edges: .bottom)
-    }
-
-    private func tabButton(_ tab: AppTab, title: String, systemImage: String) -> some View {
-        let isSelected = navigation.selectedTab == tab
-        return Button {
-            navigation.selectedTab = tab
-        } label: {
-            VStack(spacing: 5) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 24, weight: .heavy))
-                    .symbolRenderingMode(.hierarchical)
-
-                Text(title)
-                    .font(.system(size: 12, weight: .heavy))
-            }
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(isSelected ? selectedColor : inactiveColor)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var chromeBackground: some View {
-        Group {
-            if store.sleepTheme == .sunset {
-                Color.white.opacity(0.90)
-            } else {
-                Color(red: 0.04, green: 0.06, blue: 0.10).opacity(0.96)
-            }
-        }
-        .background(.ultraThinMaterial)
-    }
-
-    private var selectedColor: Color {
-        store.sleepTheme.primary
-    }
-
-    private var inactiveColor: Color {
-        store.sleepTheme == .sunset ? Color.black.opacity(0.42) : Color.white.opacity(0.46)
     }
 }
 
