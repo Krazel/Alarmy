@@ -1613,18 +1613,15 @@ private extension FixedWidthInteger {
 struct RootTabView: View {
     @EnvironmentObject private var store: AlarmStore
     @EnvironmentObject private var session: NightSession
-    @EnvironmentObject private var dreams: DreamStore
     @EnvironmentObject private var navigation: AppNavigation
     @State private var showingSupportPrompt = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            HeightAdjustedTabView(
-                store: store,
-                session: session,
-                dreams: dreams,
-                navigation: navigation
-            )
+            activeTab
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    Color.clear.frame(height: bottomReservedHeight)
+                }
 
             if showsBottomAd {
                 VStack(spacing: 0) {
@@ -1636,6 +1633,11 @@ struct RootTabView: View {
                 .allowsHitTesting(false)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
+
+            RootBottomTabBar()
+                .frame(height: 92)
+                .padding(.bottom, showsBottomAd ? 40 : 0)
+                .ignoresSafeArea(.container, edges: .bottom)
         }
         .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
         .onAppear(perform: showSupportPromptIfNeeded)
@@ -1649,8 +1651,24 @@ struct RootTabView: View {
         }
     }
 
+    @ViewBuilder
+    private var activeTab: some View {
+        switch navigation.selectedTab {
+        case .alarm:
+            ContentView()
+        case .journal:
+            DreamJournalView()
+        case .settings:
+            SettingsView()
+        }
+    }
+
     private var showsBottomAd: Bool {
         store.shouldShowAds && !session.isActive && session.ringingAlarm == nil
+    }
+
+    private var bottomReservedHeight: CGFloat {
+        showsBottomAd ? 132 : 92
     }
 
     private func showSupportPromptIfNeeded() {
@@ -1660,130 +1678,58 @@ struct RootTabView: View {
     }
 }
 
-private struct HeightAdjustedTabView: UIViewControllerRepresentable {
-    private static let extraTabBarHeight: CGFloat = 8
-    private static let tabItemVerticalLift: CGFloat = 8
+private struct RootBottomTabBar: View {
+    @EnvironmentObject private var store: AlarmStore
+    @EnvironmentObject private var navigation: AppNavigation
 
-    @ObservedObject var store: AlarmStore
-    @ObservedObject var session: NightSession
-    @ObservedObject var dreams: DreamStore
-    @ObservedObject var navigation: AppNavigation
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .overlay(borderColor)
 
-    func makeUIViewController(context: Context) -> TallerTabBarController {
-        let controller = TallerTabBarController(extraHeight: Self.extraTabBarHeight, itemVerticalLift: Self.tabItemVerticalLift)
-        controller.delegate = context.coordinator
-        controller.viewControllers = [
-            hostingController(
-                title: "Alarmas",
-                systemImage: "alarm.fill",
-                view: AnyView(ContentView()
-                    .environmentObject(store)
-                    .environmentObject(session)
-                    .environmentObject(dreams)
-                    .environmentObject(navigation))
-            ),
-            hostingController(
-                title: "Diario",
-                systemImage: "book.closed.fill",
-                view: AnyView(DreamJournalView()
-                    .environmentObject(store)
-                    .environmentObject(dreams)
-                    .environmentObject(navigation))
-            ),
-            hostingController(
-                title: "Ajustes",
-                systemImage: "gearshape.fill",
-                view: AnyView(SettingsView()
-                    .environmentObject(store)
-                    .environmentObject(dreams))
-            )
-        ]
-        controller.selectedIndex = navigation.selectedTab.index
-        configure(controller)
-        return controller
-    }
+            HStack(spacing: 0) {
+                tabButton(.alarm, title: "Alarmas", systemImage: "alarm.fill")
+                tabButton(.journal, title: "Diario", systemImage: "book.closed.fill")
+                tabButton(.settings, title: "Ajustes", systemImage: "gearshape.fill")
+            }
+            .padding(.top, 10)
 
-    func updateUIViewController(_ controller: TallerTabBarController, context: Context) {
-        let selectedIndex = navigation.selectedTab.index
-        if controller.selectedIndex != selectedIndex {
-            controller.selectedIndex = selectedIndex
+            Spacer(minLength: 0)
         }
-        configure(controller)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(backgroundColor)
     }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(navigation: navigation)
-    }
+    private func tabButton(_ tab: AppTab, title: String, systemImage: String) -> some View {
+        let isSelected = navigation.selectedTab == tab
+        return Button {
+            navigation.selectedTab = tab
+        } label: {
+            VStack(spacing: 5) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 25, weight: .heavy))
+                    .symbolRenderingMode(.hierarchical)
 
-    private func hostingController(title: String, systemImage: String, view: AnyView) -> UIHostingController<AnyView> {
-        let controller = UIHostingController(rootView: view)
-        controller.tabBarItem = UITabBarItem(title: title, image: UIImage(systemName: systemImage), selectedImage: UIImage(systemName: systemImage))
-        return controller
-    }
-
-    private func configure(_ controller: TallerTabBarController) {
-        controller.tabBar.tintColor = UIColor(Color(red: 0.86, green: 0.34, blue: 0.20))
-        controller.tabBar.unselectedItemTintColor = UIColor.secondaryLabel
-    }
-
-    final class Coordinator: NSObject, UITabBarControllerDelegate {
-        private let navigation: AppNavigation
-
-        init(navigation: AppNavigation) {
-            self.navigation = navigation
+                Text(title)
+                    .font(.system(size: 13, weight: .heavy))
+            }
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(isSelected ? store.sleepTheme.primary : inactiveColor)
+            .contentShape(Rectangle())
         }
-
-        func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
-            navigation.selectedTab = AppTab(index: tabBarController.selectedIndex)
-        }
-    }
-}
-
-private final class TallerTabBarController: UITabBarController {
-    private let extraHeight: CGFloat
-    private let itemVerticalLift: CGFloat
-
-    init(extraHeight: CGFloat, itemVerticalLift: CGFloat) {
-        self.extraHeight = extraHeight
-        self.itemVerticalLift = itemVerticalLift
-        super.init(nibName: nil, bundle: nil)
+        .buttonStyle(.plain)
     }
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+    private var backgroundColor: Color {
+        store.sleepTheme == .sunset ? Color.white.opacity(0.94) : Color(red: 0.04, green: 0.06, blue: 0.10).opacity(0.97)
     }
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        var frame = tabBar.frame
-        frame.size.height = tabBar.sizeThatFits(view.bounds.size).height + extraHeight
-        frame.origin.y = view.bounds.height - frame.height
-        tabBar.frame = frame
-        tabBar.subviews
-            .filter { $0 is UIControl }
-            .forEach { $0.transform = CGAffineTransform(translationX: 0, y: -itemVerticalLift) }
-    }
-}
-
-private extension AppTab {
-    var index: Int {
-        switch self {
-        case .alarm: return 0
-        case .journal: return 1
-        case .settings: return 2
-        }
+    private var borderColor: Color {
+        store.sleepTheme == .sunset ? Color.black.opacity(0.12) : Color.white.opacity(0.10)
     }
 
-    init(index: Int) {
-        switch index {
-        case 1:
-            self = .journal
-        case 2:
-            self = .settings
-        default:
-            self = .alarm
-        }
+    private var inactiveColor: Color {
+        store.sleepTheme == .sunset ? Color.black.opacity(0.42) : Color.white.opacity(0.48)
     }
 }
 
