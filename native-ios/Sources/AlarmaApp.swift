@@ -1616,24 +1616,13 @@ struct RootTabView: View {
     @State private var showingSupportPrompt = false
 
     var body: some View {
-        TabView(selection: $navigation.selectedTab) {
-            ContentView()
-                .tabItem {
-                    Label("Alarmas", systemImage: "alarm.fill")
+        ZStack(alignment: .bottom) {
+            activeTab
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    Color.clear.frame(height: bottomChromeHeight)
                 }
-                .tag(AppTab.alarm)
 
-            DreamJournalView()
-                .tabItem {
-                    Label("Diario", systemImage: "book.closed.fill")
-                }
-                .tag(AppTab.journal)
-
-            SettingsView()
-                .tabItem {
-                    Label("Ajustes", systemImage: "gearshape.fill")
-                }
-                .tag(AppTab.settings)
+            RootBottomChrome(showsAd: showsBottomAd)
         }
         .tint(Color(red: 0.86, green: 0.34, blue: 0.20))
         .onAppear(perform: showSupportPromptIfNeeded)
@@ -1647,10 +1636,149 @@ struct RootTabView: View {
         }
     }
 
+    @ViewBuilder
+    private var activeTab: some View {
+        switch navigation.selectedTab {
+        case .alarm:
+            ContentView()
+        case .journal:
+            DreamJournalView()
+        case .settings:
+            SettingsView()
+        }
+    }
+
+    private var showsBottomAd: Bool {
+        store.shouldShowAds && !session.isActive && session.ringingAlarm == nil
+    }
+
+    private var bottomChromeHeight: CGFloat {
+        showsBottomAd ? 144 : 92
+    }
+
     private func showSupportPromptIfNeeded() {
         guard store.shouldShowSupportPrompt, !session.isActive, session.ringingAlarm == nil else { return }
         store.markSupportPromptShown()
         showingSupportPrompt = true
+    }
+}
+
+private struct RootBottomChrome: View {
+    @EnvironmentObject private var store: AlarmStore
+    @EnvironmentObject private var navigation: AppNavigation
+    let showsAd: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .overlay(Color.white.opacity(store.sleepTheme == .sunset ? 0.25 : 0.10))
+
+            HStack(spacing: 0) {
+                tabButton(.alarm, title: "Alarmas", systemImage: "alarm.fill")
+                tabButton(.journal, title: "Diario", systemImage: "book.closed.fill")
+                tabButton(.settings, title: "Ajustes", systemImage: "gearshape.fill")
+            }
+            .frame(height: 70)
+
+            if showsAd {
+                BottomAdBanner()
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
+        .padding(.bottom, 24)
+        .background(chromeBackground)
+        .ignoresSafeArea(.container, edges: .bottom)
+    }
+
+    private func tabButton(_ tab: AppTab, title: String, systemImage: String) -> some View {
+        let isSelected = navigation.selectedTab == tab
+        return Button {
+            navigation.selectedTab = tab
+        } label: {
+            VStack(spacing: 5) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 24, weight: .heavy))
+                    .symbolRenderingMode(.hierarchical)
+
+                Text(title)
+                    .font(.system(size: 12, weight: .heavy))
+            }
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(isSelected ? selectedColor : inactiveColor)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var chromeBackground: some View {
+        Group {
+            if store.sleepTheme == .sunset {
+                Color.white.opacity(0.90)
+            } else {
+                Color(red: 0.04, green: 0.06, blue: 0.10).opacity(0.96)
+            }
+        }
+        .background(.ultraThinMaterial)
+    }
+
+    private var selectedColor: Color {
+        store.sleepTheme.primary
+    }
+
+    private var inactiveColor: Color {
+        store.sleepTheme == .sunset ? Color.black.opacity(0.42) : Color.white.opacity(0.46)
+    }
+}
+
+private struct BottomAdBanner: View {
+    @EnvironmentObject private var store: AlarmStore
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("AD")
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(adText)
+                .padding(.horizontal, 10)
+                .frame(height: 28)
+                .background(pillBackground)
+                .clipShape(Capsule())
+
+            Text("Run analytics at scale")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+
+            Spacer(minLength: 8)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.white)
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color(red: 0.20, green: 0.79, blue: 0.83), lineWidth: 2)
+                Image(systemName: "play.fill")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(Color(red: 0.20, green: 0.79, blue: 0.83))
+                    .offset(x: 1)
+            }
+            .frame(width: 24, height: 24)
+        }
+        .padding(.horizontal, 26)
+        .frame(height: 50)
+        .foregroundStyle(store.sleepTheme.text)
+        .accessibilityLabel("Anuncio")
+    }
+
+    private var primaryText: Color {
+        store.sleepTheme == .sunset ? Color.black.opacity(0.70) : Color.white.opacity(0.78)
+    }
+
+    private var adText: Color {
+        store.sleepTheme == .sunset ? Color.black.opacity(0.70) : Color.white.opacity(0.76)
+    }
+
+    private var pillBackground: Color {
+        store.sleepTheme == .sunset ? Color.black.opacity(0.10) : Color.white.opacity(0.10)
     }
 }
 
@@ -4324,10 +4452,6 @@ struct SettingsView: View {
                             supportGroup
                         }
 
-                        if store.shouldShowAds {
-                            settingsAdBanner
-                        }
-
                         Text(appIdentityText)
                             .font(.caption.weight(.black))
                             .foregroundStyle(store.sleepTheme.secondaryText)
@@ -4489,29 +4613,6 @@ struct SettingsView: View {
         .padding(16)
         .background(store.sleepTheme == .sunset ? Color.white.opacity(0.62) : Color.white.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 18))
-    }
-
-    private var settingsAdBanner: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "megaphone.fill")
-                .font(.subheadline.weight(.black))
-                .foregroundStyle(store.sleepTheme.secondaryText)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Anuncio")
-                    .font(.caption.weight(.black))
-                Text("Espacio reservado para un anuncio discreto.")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(store.sleepTheme.secondaryText)
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 58)
-        .background(store.sleepTheme == .sunset ? Color.white.opacity(0.40) : Color.white.opacity(0.06))
-        .foregroundStyle(store.sleepTheme.text)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     private func settingsGroup<Content: View>(_ title: String, systemImage: String, @ViewBuilder content: () -> Content) -> some View {
