@@ -59,6 +59,8 @@ jobs:
             find "$APP_PATH" -maxdepth 2 -type f | sort
             exit 1
           fi
+          rm -rf "$APP_PATH/PlugIns"
+          find "$APP_PATH" -maxdepth 1 -name "*.entitlements" -type f -delete
           mkdir -p unsigned-ipa/Payload
           cp -R "$APP_PATH" "unsigned-ipa/Payload/$(basename "$APP_PATH")"
           VERSIONED_IPA="Alarma-iPhone-v${APP_VERSION}-build-${GITHUB_RUN_NUMBER}.ipa"
