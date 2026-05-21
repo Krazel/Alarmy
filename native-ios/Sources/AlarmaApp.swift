@@ -1431,7 +1431,9 @@ final class NightSession: ObservableObject {
 
 final class AlarmSoundPlayer {
     private var audioPlayer: AVAudioPlayer?
-    private var volumeLockTimer: Timer?
+    private var rampTimer: DispatchSourceTimer?
+    private var volumeLockTimer: DispatchSourceTimer?
+    private let audioRampQueue = DispatchQueue(label: "com.dmkr.alarma.volume-ramp")
     private let alarmStartVolume: Float = 0.04
 
     static func preview(sound: AlarmSound) {
@@ -1518,23 +1520,61 @@ final class AlarmSoundPlayer {
     private func startVolumeRampIfNeeded(for alarm: Alarm) {
         guard alarm.fadeInEnabled, let audioPlayer else { return }
         let rampDuration = max(1, alarm.fadeDuration)
-        audioPlayer.setVolume(1.0, fadeDuration: rampDuration)
-        volumeLockTimer?.invalidate()
-        volumeLockTimer = Timer.scheduledTimer(withTimeInterval: rampDuration + 0.25, repeats: false) { [weak self] _ in
+        let started = Date()
+        rampTimer?.cancel()
+        volumeLockTimer?.cancel()
+
+        audioPlayer.volume = alarmStartVolume
+        let timer = DispatchSource.makeTimerSource(queue: audioRampQueue)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(250), leeway: .milliseconds(50))
+        timer.setEventHandler { [weak self] in
+            guard let self, let audioPlayer = self.audioPlayer, audioPlayer.isPlaying else {
+                self?.rampTimer?.cancel()
+                self?.rampTimer = nil
+                return
+            }
+
+            let elapsed = Date().timeIntervalSince(started)
+            let progress = min(1, elapsed / rampDuration)
+            let easedProgress = progress * progress * (3 - 2 * progress)
+            audioPlayer.volume = self.alarmStartVolume + Float(easedProgress) * (1.0 - self.alarmStartVolume)
+
+            if progress >= 1 {
+                self.rampTimer?.cancel()
+                self.rampTimer = nil
+                audioPlayer.setVolume(1.0, fadeDuration: 0)
+                audioPlayer.volume = 1.0
+                self.startFullVolumeLock()
+            }
+        }
+        rampTimer = timer
+        timer.resume()
+
+        let lockTimer = DispatchSource.makeTimerSource(queue: audioRampQueue)
+        lockTimer.schedule(deadline: .now() + rampDuration + 0.25, leeway: .milliseconds(100))
+        lockTimer.setEventHandler { [weak self] in
             guard let self else { return }
+            self.rampTimer?.cancel()
+            self.rampTimer = nil
             self.audioPlayer?.setVolume(1.0, fadeDuration: 0)
             self.audioPlayer?.volume = 1.0
             self.startFullVolumeLock()
         }
+        volumeLockTimer = lockTimer
+        lockTimer.resume()
     }
 
     private func startFullVolumeLock() {
-        volumeLockTimer?.invalidate()
-        volumeLockTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+        volumeLockTimer?.cancel()
+        let timer = DispatchSource.makeTimerSource(queue: audioRampQueue)
+        timer.schedule(deadline: .now() + 5, repeating: .seconds(5), leeway: .milliseconds(250))
+        timer.setEventHandler { [weak self] in
             guard let self, let audioPlayer = self.audioPlayer, audioPlayer.isPlaying else { return }
             audioPlayer.setVolume(1.0, fadeDuration: 0)
             audioPlayer.volume = 1.0
         }
+        volumeLockTimer = timer
+        timer.resume()
     }
 
     @discardableResult
@@ -1572,7 +1612,9 @@ final class AlarmSoundPlayer {
     }
 
     func stop() {
-        volumeLockTimer?.invalidate()
+        rampTimer?.cancel()
+        rampTimer = nil
+        volumeLockTimer?.cancel()
         volumeLockTimer = nil
         audioPlayer?.stop()
         audioPlayer = nil
