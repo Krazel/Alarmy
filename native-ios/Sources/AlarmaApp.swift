@@ -1432,10 +1432,6 @@ final class NightSession: ObservableObject {
 
 final class AlarmSoundPlayer {
     private var audioPlayer: AVAudioPlayer?
-    private var rampTimer: DispatchSourceTimer?
-    private var volumeLockTimer: DispatchSourceTimer?
-    private let audioRampQueue = DispatchQueue(label: "com.dmkr.alarma.volume-ramp")
-    private let alarmStartVolume: Float = 0.04
 
     static func preview(sound: AlarmSound) {
         let player = AlarmSoundPlayer()
@@ -1471,7 +1467,7 @@ final class AlarmSoundPlayer {
     func start(for alarm: Alarm) {
         stop()
         let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default)
+        try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
         try? session.setActive(true)
 
         let fallbackSoundId = AlarmSound.defaultIds[0]
@@ -1501,22 +1497,18 @@ final class AlarmSoundPlayer {
     }
 
     private func playBundledSound(_ sound: AlarmSound, alarm: Alarm) {
-        let initialVolume: Float = alarm.fadeInEnabled ? alarmStartVolume : 1.0
-        let didStartBundled = playBundledFile(named: sound.fileName, volume: initialVolume, loop: true)
+        let didStartBundled = playBundledFile(named: sound.fileName, volume: 1.0, loop: true)
         var didStartGenerated = false
         if !didStartBundled,
            let url = generatedToneURL(name: "alarm-\(sound.id)", frequency: sound.baseFrequency, amplitude: 0.82, duration: 2.0) {
-            didStartGenerated = playAudioFile(at: url, volume: initialVolume, loop: true)
+            didStartGenerated = playAudioFile(at: url, volume: 1.0, loop: true)
         }
         guard didStartBundled || didStartGenerated else { return }
-        startVolumeRampIfNeeded(for: alarm)
         startSystemVolumeRamp(for: alarm)
     }
 
     private func playCustomSound(fileName: String, alarm: Alarm) {
-        let initialVolume: Float = alarm.fadeInEnabled ? alarmStartVolume : 1.0
-        guard playCustomFile(named: fileName, volume: initialVolume, loop: true) else { return }
-        startVolumeRampIfNeeded(for: alarm)
+        guard playCustomFile(named: fileName, volume: 1.0, loop: true) else { return }
         startSystemVolumeRamp(for: alarm)
     }
 
@@ -1526,66 +1518,6 @@ final class AlarmSoundPlayer {
         } else {
             SystemVolumeController.shared.setImmediately(1.0)
         }
-    }
-
-    private func startVolumeRampIfNeeded(for alarm: Alarm) {
-        guard alarm.fadeInEnabled, let audioPlayer else { return }
-        let rampDuration = max(1, alarm.fadeDuration)
-        let started = Date()
-        rampTimer?.cancel()
-        volumeLockTimer?.cancel()
-
-        audioPlayer.volume = alarmStartVolume
-        let timer = DispatchSource.makeTimerSource(queue: audioRampQueue)
-        timer.schedule(deadline: .now(), repeating: .milliseconds(250), leeway: .milliseconds(50))
-        timer.setEventHandler { [weak self] in
-            guard let self, let audioPlayer = self.audioPlayer, audioPlayer.isPlaying else {
-                self?.rampTimer?.cancel()
-                self?.rampTimer = nil
-                return
-            }
-
-            let elapsed = Date().timeIntervalSince(started)
-            let progress = min(1, elapsed / rampDuration)
-            let easedProgress = progress * progress * (3 - 2 * progress)
-            audioPlayer.volume = self.alarmStartVolume + Float(easedProgress) * (1.0 - self.alarmStartVolume)
-
-            if progress >= 1 {
-                self.rampTimer?.cancel()
-                self.rampTimer = nil
-                audioPlayer.setVolume(1.0, fadeDuration: 0)
-                audioPlayer.volume = 1.0
-                self.startFullVolumeLock()
-            }
-        }
-        rampTimer = timer
-        timer.resume()
-
-        let lockTimer = DispatchSource.makeTimerSource(queue: audioRampQueue)
-        lockTimer.schedule(deadline: .now() + rampDuration + 0.25, leeway: .milliseconds(100))
-        lockTimer.setEventHandler { [weak self] in
-            guard let self else { return }
-            self.rampTimer?.cancel()
-            self.rampTimer = nil
-            self.audioPlayer?.setVolume(1.0, fadeDuration: 0)
-            self.audioPlayer?.volume = 1.0
-            self.startFullVolumeLock()
-        }
-        volumeLockTimer = lockTimer
-        lockTimer.resume()
-    }
-
-    private func startFullVolumeLock() {
-        volumeLockTimer?.cancel()
-        let timer = DispatchSource.makeTimerSource(queue: audioRampQueue)
-        timer.schedule(deadline: .now() + 5, repeating: .seconds(5), leeway: .milliseconds(250))
-        timer.setEventHandler { [weak self] in
-            guard let self, let audioPlayer = self.audioPlayer, audioPlayer.isPlaying else { return }
-            audioPlayer.setVolume(1.0, fadeDuration: 0)
-            audioPlayer.volume = 1.0
-        }
-        volumeLockTimer = timer
-        timer.resume()
     }
 
     @discardableResult
@@ -1623,10 +1555,6 @@ final class AlarmSoundPlayer {
     }
 
     func stop() {
-        rampTimer?.cancel()
-        rampTimer = nil
-        volumeLockTimer?.cancel()
-        volumeLockTimer = nil
         audioPlayer?.stop()
         audioPlayer = nil
         SystemVolumeController.shared.restorePreviousVolume()
