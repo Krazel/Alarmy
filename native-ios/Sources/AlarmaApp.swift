@@ -1510,12 +1510,22 @@ final class AlarmSoundPlayer {
         }
         guard didStartBundled || didStartGenerated else { return }
         startVolumeRampIfNeeded(for: alarm)
+        startSystemVolumeRamp(for: alarm)
     }
 
     private func playCustomSound(fileName: String, alarm: Alarm) {
         let initialVolume: Float = alarm.fadeInEnabled ? alarmStartVolume : 1.0
         guard playCustomFile(named: fileName, volume: initialVolume, loop: true) else { return }
         startVolumeRampIfNeeded(for: alarm)
+        startSystemVolumeRamp(for: alarm)
+    }
+
+    private func startSystemVolumeRamp(for alarm: Alarm) {
+        if alarm.fadeInEnabled {
+            SystemVolumeController.shared.startRamp(to: 1.0, duration: max(1, alarm.fadeDuration))
+        } else {
+            SystemVolumeController.shared.setImmediately(1.0)
+        }
     }
 
     private func startVolumeRampIfNeeded(for alarm: Alarm) {
@@ -1619,6 +1629,7 @@ final class AlarmSoundPlayer {
         volumeLockTimer = nil
         audioPlayer?.stop()
         audioPlayer = nil
+        SystemVolumeController.shared.restorePreviousVolume()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
@@ -1663,6 +1674,121 @@ final class AlarmSoundPlayer {
         } catch {
             return nil
         }
+    }
+}
+
+final class SystemVolumeController {
+    static let shared = SystemVolumeController()
+
+    private var volumeView: MPVolumeView?
+    private weak var volumeSlider: UISlider?
+    private var previousVolume: Float?
+    private var rampTimer: DispatchSourceTimer?
+    private let rampQueue = DispatchQueue(label: "com.dmkr.alarma.system-volume-ramp")
+
+    private init() {}
+
+    func startRamp(to targetVolume: Float, duration: TimeInterval) {
+        Task { @MainActor in
+            guard let slider = prepareVolumeSlider() else { return }
+            rememberPreviousVolumeIfNeeded()
+            let startVolume = AVAudioSession.sharedInstance().outputVolume
+            startRampTimer(slider: slider, from: startVolume, to: targetVolume, duration: max(0.25, duration))
+        }
+    }
+
+    func setImmediately(_ targetVolume: Float) {
+        Task { @MainActor in
+            guard let slider = prepareVolumeSlider() else { return }
+            rememberPreviousVolumeIfNeeded()
+            setVolume(targetVolume, slider: slider)
+        }
+    }
+
+    func restorePreviousVolume() {
+        Task { @MainActor in
+            rampTimer?.cancel()
+            rampTimer = nil
+            guard let previousVolume else { return }
+            guard let slider = prepareVolumeSlider() else {
+                self.previousVolume = nil
+                return
+            }
+            setVolume(previousVolume, slider: slider)
+            self.previousVolume = nil
+        }
+    }
+
+    @MainActor
+    private func prepareVolumeSlider() -> UISlider? {
+        if let volumeSlider { return volumeSlider }
+
+        let volumeView = volumeView ?? MPVolumeView(frame: CGRect(x: -1000, y: -1000, width: 120, height: 24))
+        volumeView.showsRouteButton = false
+        volumeView.showsVolumeSlider = true
+        volumeView.alpha = 0.01
+        self.volumeView = volumeView
+
+        if volumeView.superview == nil,
+           let windowScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+           let window = windowScene.windows.first(where: { $0.isKeyWindow }),
+           let rootView = window.rootViewController?.view {
+            rootView.addSubview(volumeView)
+        }
+
+        let slider = volumeView.subviews.compactMap { $0 as? UISlider }.first
+        volumeSlider = slider
+        return slider
+    }
+
+    @MainActor
+    private func rememberPreviousVolumeIfNeeded() {
+        if previousVolume == nil {
+            previousVolume = AVAudioSession.sharedInstance().outputVolume
+        }
+    }
+
+    @MainActor
+    private func setVolume(_ value: Float, slider: UISlider) {
+        let clamped = min(1, max(0, value))
+        slider.setValue(clamped, animated: false)
+        slider.sendActions(for: .valueChanged)
+        slider.sendActions(for: .touchUpInside)
+    }
+
+    @MainActor
+    private func startRampTimer(slider: UISlider, from startVolume: Float, to targetVolume: Float, duration: TimeInterval) {
+        rampTimer?.cancel()
+        let started = Date()
+        let target = min(1, max(0, targetVolume))
+        let start = min(1, max(0, startVolume))
+        setVolume(start, slider: slider)
+
+        let timer = DispatchSource.makeTimerSource(queue: rampQueue)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(250), leeway: .milliseconds(50))
+        timer.setEventHandler { [weak self, weak slider] in
+            guard let self, let slider else {
+                self?.rampTimer?.cancel()
+                self?.rampTimer = nil
+                return
+            }
+
+            let elapsed = Date().timeIntervalSince(started)
+            let progress = min(1, elapsed / duration)
+            let easedProgress = progress * progress * (3 - 2 * progress)
+            let volume = start + Float(easedProgress) * (target - start)
+
+            Task { @MainActor in
+                self.setVolume(volume, slider: slider)
+                if progress >= 1 {
+                    self.rampTimer?.cancel()
+                    self.rampTimer = nil
+                    self.setVolume(target, slider: slider)
+                }
+            }
+        }
+        rampTimer = timer
+        timer.resume()
     }
 }
 
