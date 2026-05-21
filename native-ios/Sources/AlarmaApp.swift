@@ -1,6 +1,7 @@
 import AVFoundation
 import ActivityKit
 import CoreMotion
+import MediaPlayer
 import SwiftUI
 import UIKit
 import UserNotifications
@@ -2747,11 +2748,27 @@ struct FadeDurationControl: View {
                 .tint(theme.primary)
                 .foregroundStyle(theme.secondaryText)
             } else {
-                Label("La alarma sonara directamente al volumen maximo.", systemImage: "speaker.wave.3.fill")
+                Label("La alarma usara el volumen maximo interno de la app.", systemImage: "speaker.wave.3.fill")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(theme.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Volumen del iPhone", systemImage: "iphone")
+                    .font(.subheadline.weight(.black))
+                    .foregroundStyle(theme.text)
+
+                SystemVolumeSlider()
+                    .frame(height: 34)
+
+                Text("iOS solo permite cambiar este volumen con el control del sistema o los botones laterales.")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(theme.secondaryText)
+            }
+            .padding(12)
+            .background(panelFill)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
         }
         .padding(16)
         .background(theme == .sunset ? Color.white.opacity(0.52) : Color.white.opacity(0.07))
@@ -2780,6 +2797,17 @@ struct FadeDurationControl: View {
     private var panelFill: Color {
         theme == .sunset ? Color.white.opacity(0.26) : Color.white.opacity(0.07)
     }
+}
+
+struct SystemVolumeSlider: UIViewRepresentable {
+    func makeUIView(context _: Context) -> MPVolumeView {
+        let view = MPVolumeView(frame: .zero)
+        view.showsRouteButton = false
+        view.setVolumeThumbImage(UIImage(systemName: "circle.fill"), for: .normal)
+        return view
+    }
+
+    func updateUIView(_: MPVolumeView, context _: Context) {}
 }
 
 struct NightActiveView: View {
