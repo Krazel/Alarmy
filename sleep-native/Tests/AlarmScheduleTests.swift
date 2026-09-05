@@ -42,6 +42,12 @@ final class AlarmScheduleTests: XCTestCase {
         var alarm = WakeAlarm(); alarm.sounds = ["unknown"]
         XCTAssertEqual(alarm.chooseSound(previous: nil), "dawn")
     }
+    func testExpiredOneShotDoesNotRearm() {
+        var alarm = WakeAlarm()
+        alarm.oneShotDate = date("2026-09-05T05:30:00Z")
+        XCTAssertNil(alarm.nextDate(after: date("2026-09-05T06:00:00Z"), calendar: calendar()))
+        XCTAssertEqual(alarm.nextDate(after: date("2026-09-05T04:00:00Z"), calendar: calendar()), alarm.oneShotDate)
+    }
     func testNegativeDurationIsClamped() {
         let now = Date()
         let entry = NightEntry(startedAt: now, endedAt: now.addingTimeInterval(-60))
@@ -63,7 +69,9 @@ final class StoreTests: XCTestCase {
         var alarm = WakeAlarm(); alarm.name = "Early flight"; alarm.hour = 4
         store.saveAlarm(alarm)
         let again = SleepStore(file: file)
-        XCTAssertEqual(again.data.alarms.last, alarm)
+        XCTAssertEqual(again.data.alarms.last?.name, alarm.name)
+        XCTAssertEqual(again.data.alarms.last?.hour, 4)
+        XCTAssertNotNil(again.data.alarms.last?.oneShotDate)
         XCTAssertNil(again.error)
     }
     func testRecoveryEndsAtLastCheckpointAndDoesNotDuplicate() {

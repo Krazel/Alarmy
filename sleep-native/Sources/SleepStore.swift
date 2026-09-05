@@ -20,7 +20,10 @@ final class SleepStore: ObservableObject {
             if FileManager.default.fileExists(atPath: self.file.path) {
                 data = try JSONDecoder().decode(SleepData.self, from: Data(contentsOf: self.file))
                 guard data.version == 1 else { throw CocoaError(.fileReadCorruptFile) }
-            } else { data = SleepData() }
+            } else {
+                data = SleepData()
+                data.alarms[0].oneShotDate = data.alarms[0].nextDate(after: Date())
+            }
         } catch {
             data = SleepData(); canWrite = false
             self.error = "Your saved data could not be opened. It has been preserved. Restart the app to try again."
@@ -37,15 +40,33 @@ final class SleepStore: ObservableObject {
             data = candidate
         } catch { self.error = "Could not save your changes: \(error.localizedDescription)" }
     }
-    func saveAlarm(_ alarm: WakeAlarm) {
+    func saveAlarm(_ input: WakeAlarm) {
+        var alarm = input
+        alarm.oneShotDate = nil
+        if alarm.enabled && alarm.weekdays.isEmpty { alarm.oneShotDate = alarm.nextDate(after: Date()) }
         change { value in
             if let index = value.alarms.firstIndex(where: { $0.id == alarm.id }) { value.alarms[index] = alarm }
             else if value.alarms.count < 8 { value.alarms.append(alarm) }
         }
     }
+    func expireOneShotAlarms(now: Date = Date()) {
+        let activeID = data.activeNight?.alarm.id
+        guard data.alarms.contains(where: { $0.enabled && $0.weekdays.isEmpty && $0.id != activeID && ($0.oneShotDate ?? .distantFuture) <= now }) else { return }
+        change { value in
+            for index in value.alarms.indices {
+                let alarm = value.alarms[index]
+                if alarm.weekdays.isEmpty && alarm.id != activeID && (alarm.oneShotDate ?? .distantFuture) <= now {
+                    value.alarms[index].enabled = false
+                }
+            }
+        }
+    }
     func saveEntry(_ entry: NightEntry) {
         change { value in
-            if let index = value.entries.firstIndex(where: { $0.id == entry.id }) { value.entries[index] = entry }
+            if let index = value.entries.firstIndex(where: { $0.id == entry.id }) {
+                value.entries[index].notes = entry.notes
+                value.entries[index].mood = entry.mood
+            }
         }
     }
     func finishNight(at date: Date, interrupted: Bool = false) {

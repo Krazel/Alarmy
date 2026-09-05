@@ -46,4 +46,3 @@ schemes:
         AlarmaSleep: all
     test:
       targets: [AlarmaSleepTests, AlarmaSleepUITests]
-

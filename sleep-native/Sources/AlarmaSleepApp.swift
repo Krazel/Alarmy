@@ -13,6 +13,7 @@ struct AlarmaSleepApp: App {
                 .tint(Palette.gold)
                 .task {
                     store.recoverInterruptedNight()
+                    store.expireOneShotAlarms()
                     store.cleanExpiredClips()
                     await reminders.refreshPermission()
                     if store.data.onboardingComplete { await reminders.sync(store.data.alarms) }
@@ -58,6 +59,7 @@ struct SleepRootView: View {
         .onChange(of: scenePhase) { phase in
             if phase == .active {
                 engine.tick()
+                store.expireOneShotAlarms()
                 store.cleanExpiredClips()
                 Task { await reminders.refreshPermission() }
             } else if phase == .background { engine.stopPreview() }
@@ -132,7 +134,7 @@ struct TonightView: View {
     @State private var preparation = false
     @State private var pendingStart = false
     private var next: WakeAlarm? {
-        store.data.alarms.filter(\.enabled).sorted {
+        store.data.alarms.filter { $0.enabled && $0.nextDate(after: Date()) != nil }.sorted {
             ($0.nextDate(after: Date()) ?? .distantFuture) < ($1.nextDate(after: Date()) ?? .distantFuture)
         }.first
     }
@@ -231,4 +233,3 @@ struct TonightView: View {
         }
     }
 }
-

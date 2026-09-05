@@ -40,6 +40,7 @@ final class ReminderScheduler: NSObject, ObservableObject, UNUserNotificationCen
         await refreshPermission()
         guard authorized else { return }
         for alarm in alarms.prefix(8) where alarm.enabled {
+            guard alarm.nextDate(after: Date()) != nil else { continue }
             let days: [Int?] = alarm.weekdays.isEmpty ? [nil] : alarm.weekdays.sorted().map { Optional($0) }
             for day in days {
 
@@ -82,5 +83,3 @@ final class ReminderScheduler: NSObject, ObservableObject, UNUserNotificationCen
         completionHandler([.banner, .sound])
     }
 }
-
-

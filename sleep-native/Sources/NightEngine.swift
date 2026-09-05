@@ -122,6 +122,7 @@ final class NightEngine: NSObject, ObservableObject {
     }
     func snooze() async {
         guard phase == .ringing, let store, let alarm = store.data.activeNight?.alarm else { return }
+        phase = .snoozing
         motion.stopAccelerometerUpdates(); shakeSamples = 0
         let next = Date().addingTimeInterval(Double(alarm.snoozeMinutes) * 60)
         do {
@@ -129,7 +130,7 @@ final class NightEngine: NSObject, ObservableObject {
             try playLoop("ambient", volume: 0.22)
             store.change { $0.activeNight?.wakeAt = next }
             phase = .snoozing
-        } catch { self.error = "Could not snooze: \(error.localizedDescription)" }
+        } catch { phase = .ringing; self.error = "Could not snooze: \(error.localizedDescription)" }
     }
     func finish(interrupted: Bool = false) {
         timer?.invalidate(); timer = nil
@@ -152,6 +153,7 @@ final class NightEngine: NSObject, ObservableObject {
         guard let url = Bundle.main.url(forResource: name, withExtension: "wav") else { throw CocoaError(.fileNoSuchFile) }
         let newPlayer = try AVAudioPlayer(contentsOf: url)
         newPlayer.numberOfLoops = -1; newPlayer.volume = volume
+        newPlayer.delegate = self
         newPlayer.prepareToPlay()
         guard newPlayer.play() else { throw CocoaError(.fileReadUnknown) }
         player?.stop(); player = newPlayer
@@ -179,6 +181,7 @@ final class NightEngine: NSObject, ObservableObject {
         let url = SleepStore.clipsDirectory.appendingPathComponent("\(UUID()).m4a")
         recorder = try AVAudioRecorder(url: url, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC,
             AVSampleRateKey: 22050, AVNumberOfChannelsKey: 1, AVEncoderBitRateKey: 32000])
+        recorder?.delegate = self
         recorder?.isMeteringEnabled = true
         guard recorder?.record() == true else { throw CocoaError(.fileWriteUnknown) }
         try FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: url.path)
@@ -216,9 +219,27 @@ final class NightEngine: NSObject, ObservableObject {
     }
 }
 
-extension NightEngine: AVAudioPlayerDelegate {
+extension NightEngine: AVAudioPlayerDelegate, AVAudioRecorderDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        Task { @MainActor in self.stopPreview() }
+        Task { @MainActor in
+            if player === self.player, self.phase != .idle {
+                self.finish(interrupted: true)
+                self.error = "Night audio stopped unexpectedly. Your night was saved and the backup reminder remains scheduled."
+            } else if player === self.preview { self.stopPreview() }
+        }
+    }
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor in
+            if player === self.player { self.finish(interrupted: true) }
+            else if player === self.preview { self.stopPreview() }
+            self.error = "Audio could not continue. Check your night session before relying on the alarm."
+        }
+    }
+    nonisolated func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
+        Task { @MainActor in
+            guard recorder === self.recorder else { return }
+            self.closeChunk(); self.recording = false
+            self.error = "Night sound recording stopped. Your wake-up audio is still active."
+        }
     }
 }
-

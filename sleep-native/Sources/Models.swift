@@ -7,6 +7,7 @@ struct WakeAlarm: Identifiable, Codable, Equatable {
     var minute = 30
     var weekdays: Set<Int> = [] // Calendar: Sunday = 1
     var enabled = true
+    var oneShotDate: Date?
     var sounds: [String] = ["dawn", "drift", "chimes"]
     var shuffle = true
     var fadeSeconds = 60
@@ -23,6 +24,7 @@ struct WakeAlarm: Identifiable, Codable, Equatable {
     static let days = [(2,"Mon"),(3,"Tue"),(4,"Wed"),(5,"Thu"),(6,"Fri"),(7,"Sat"),(1,"Sun")]
     func nextDate(after date: Date, calendar: Calendar = .current) -> Date? {
         guard enabled, (0...23).contains(hour), (0...59).contains(minute) else { return nil }
+        if weekdays.isEmpty, let oneShotDate { return oneShotDate > date ? oneShotDate : nil }
         let days: [Int?] = weekdays.isEmpty ? [nil] : weekdays.sorted().map { Optional($0) }
         return days.compactMap { day -> Date? in
             var components = DateComponents()

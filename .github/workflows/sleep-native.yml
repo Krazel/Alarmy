@@ -63,4 +63,3 @@ jobs:
             build-test.log
             build-device.log
           retention-days: 7
-
