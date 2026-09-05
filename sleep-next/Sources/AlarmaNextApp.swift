@@ -1,5 +1,6 @@
 import SwiftUI
 import UserNotifications
+import AVFoundation
 
 final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) { completionHandler([]) }
@@ -24,9 +25,12 @@ struct AlarmaNextApp: App {
                 .preferredColorScheme(store.archive.preferences.appearance == "night" ? .dark : (store.archive.preferences.appearance == "dawn" ? .light : nil))
                 .task { await store.load() }
                 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WakeDismissed"))) { _ in Task { await store.resume() } }
+                .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { notification in
+                    if let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt { store.interruption(began: raw == AVAudioSession.InterruptionType.began.rawValue) }
+                }
                 .onChange(of: phase) { newValue in
                     if newValue == .active { Task { await store.resume() } }
-                    else { store.audio.restoreScreen(); if store.archive.active == nil { store.audio.stopPlayback() } }
+                    else { Task { await store.flush() }; store.audio.restoreScreen(); if store.archive.active == nil { store.audio.stopPlayback() } }
                 }
         }
     }

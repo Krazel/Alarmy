@@ -11,7 +11,7 @@ final class NativeFlowTests: XCTestCase {
         app.buttons["edit-alarm"].tap(); XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5)); shot("02-en-alarm-editor"); app.buttons["Done"].tap()
         app.buttons["sounds"].tap(); XCTAssertTrue(app.navigationBars["Sounds"].waitForExistence(timeout: 5)); shot("03-en-sounds"); app.buttons["Done"].tap()
         app.buttons["begin-night"].tap(); XCTAssertTrue(app.buttons["finish-night"].waitForExistence(timeout: 5)); shot("04-en-active-night")
-        app.buttons["finish-night"].tap(); app.buttons["Finish night"].lastMatch.tap()
+        app.buttons["finish-night"].tap(); app.buttons["Finish night"].tap()
         XCTAssertTrue(app.textViews["journal-note"].waitForExistence(timeout: 5)); app.buttons["feeling-3"].tap(); shot("05-en-journal")
         app.swipeUp(); app.textViews["journal-note"].tap(); app.textViews["journal-note"].typeText("Example note: a quiet morning.")
         app.swipeDown(); app.tabBars.buttons["Settings"].tap(); XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5)); shot("06-en-settings")

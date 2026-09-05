@@ -18,6 +18,8 @@ final class SleepStore: ObservableObject {
     private var writeTail: Task<Bool, Never>?
     private var timer: Timer?
     private var lastCheckpoint = Date.distantPast
+    private var audioInterrupted = false
+    private var writesPending = 0
     var words: Words { Words(language: archive.preferences.language) }
     var testMode: Bool {
         #if DEBUG
@@ -55,21 +57,21 @@ final class SleepStore: ObservableObject {
             }
             #endif
             loaded = true
-            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
+            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in Task { @MainActor in self?.tick() } }
             await resume()
         } catch { failed = true; loaded = true; self.error = words("storageError") }
     }
     @discardableResult
     func commit(_ change: @escaping @Sendable (inout AppArchive) -> Void) -> Task<Bool, Never> {
         guard !failed else { return Task { false } }
-        change(&archive); saving = true
+        change(&archive); writesPending += 1; saving = true
         let preceding = writeTail
         let task = Task { [weak self] in
             if let preceding, !(await preceding.value) { return false }
             guard let self else { return false }
             do {
                 _ = try await repository.update(change)
-                self.saving = false
+                self.writesPending -= 1; self.saving = self.writesPending > 0
                 return true
             } catch { self.error = error.localizedDescription; self.failed = true; self.saving = false; return false }
         }
@@ -111,10 +113,11 @@ final class SleepStore: ObservableObject {
     }
     private func beginRecordingIfNeeded() throws {
         guard archive.preferences.record, !audio.isRecording, !ringing, !testMode else { return }
+        audio.onFailure = { [weak self] error in self?.error = error.localizedDescription }
         try audio.startRecording { [weak self] clip in self?.commit { $0.active?.clips.append(clip) } }
     }
     func resume() async {
-        guard archive.active != nil, !failed else { return }
+        guard loaded, archive.active != nil, !failed, !audioInterrupted else { return }
         if let dismissal = WakeDismissal.take(), dismissal.alarmID == archive.active?.alarmID.uuidString {
             await finish(at: dismissal.date); return
         }
@@ -128,7 +131,7 @@ final class SleepStore: ObservableObject {
         }
         guard UIApplication.shared.applicationState == .active else { return }
         audio.updateLight(wake: night.wake, minutes: archive.plan.lightMinutes)
-        if Date() >= night.wake && !ringing {
+        if Date() >= night.wake && !ringing && !audioInterrupted {
             ringing = true; audio.stopRecording()
             if !testMode { try? scheduler.cancel(id: night.alarmID) }
             do {
@@ -181,6 +184,16 @@ final class SleepStore: ObservableObject {
         if success, let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) {
             do { try FileManager.default.removeItem(at: url) } catch { self.error = error.localizedDescription }
         }
+    }
+    func interruption(began: Bool) {
+        audioInterrupted = began
+        if began { audio.stopRecording(); audio.stopPlayback(); audio.restoreScreen(); ringing = false }
+        else { Task { await resume() } }
+    }
+    func flush() async {
+        let token = UIApplication.shared.beginBackgroundTask(withName: "Save journal")
+        if let writeTail { _ = await writeTail.value }
+        if token != .invalid { UIApplication.shared.endBackgroundTask(token) }
     }
     func prune() async {
         if let writeTail { _ = await writeTail.value }

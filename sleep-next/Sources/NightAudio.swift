@@ -13,6 +13,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var segmentStart = Date()
     private var segmentURL: URL?
     private var receive: ((NightClip) -> Void)?
+    var onFailure: ((Error) -> Void)?
     private let motion = CMMotionManager()
     private var previousBrightness: CGFloat?
     private var previousIdle: Bool?
@@ -26,17 +27,19 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func startRecording(receive: @escaping (NightClip) -> Void) throws {
         self.receive = receive
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
         try session.setActive(true)
         try FileManager.default.createDirectory(at: DiskLocation.clips, withIntermediateDirectories: true)
         try newSegment()
         meter = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            guard let self else { return }
+            Task { @MainActor in
+            guard let self, self.recorder != nil else { return }
             self.recorder?.updateMeters()
             self.peak = max(self.peak, self.recorder?.averagePower(forChannel: 0) ?? -160)
             if Date().timeIntervalSince(self.segmentStart) >= 30 {
                 self.finishSegment()
-                do { try self.newSegment() } catch { self.stopRecording() }
+                do { try self.newSegment() } catch { self.stopRecording(); self.onFailure?(error) }
+            }
             }
         }
     }
@@ -67,14 +70,16 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         player = audio; playing = id
         if gradual {
             ramp = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+                Task { @MainActor in
                 guard let player = self?.player else { timer.invalidate(); return }
                 player.volume = min(1, player.volume + 0.025)
                 if player.volume >= 1 { timer.invalidate() }
+                }
             }
         }
     }
     func stopPlayback() { ramp?.invalidate(); ramp = nil; player?.stop(); player = nil; playing = nil }
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) { stopPlayback() }
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) { Task { @MainActor in self.stopPlayback() } }
     func watchMovement(action: @escaping () -> Void) {
         guard motion.isAccelerometerAvailable else { return }
         motion.accelerometerUpdateInterval = 0.2
