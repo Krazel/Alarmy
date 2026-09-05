@@ -21,7 +21,13 @@ struct JournalScreen: View {
                     healthCard
                     HStack { Spacer(); Image(systemName: "lock"); Text(store.words("saved")); Spacer() }.font(.caption2).foregroundStyle(Color.ink.opacity(0.5)).padding(.bottom, 18)
                 }.padding(.horizontal, 22).padding(.top, 18)
-            }.scrollIndicators(.hidden).background(Color.paper).toolbar(.hidden, for: .navigationBar).toolbarBackground(.visible, for: .tabBar)
+            }.scrollIndicators(.hidden).background(Color.paper)
+            .overlay(alignment: .top) {
+                GeometryReader { geometry in
+                    Color.paper.frame(height: geometry.safeAreaInsets.top).frame(maxHeight: .infinity, alignment: .top).ignoresSafeArea(edges: .top)
+                }.allowsHitTesting(false).accessibilityHidden(true)
+            }
+            .toolbar(.hidden, for: .navigationBar).toolbarBackground(.visible, for: .tabBar)
             .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(store.words("done")) { editingNote = false } } }
             .sheet(isPresented: $calendar) {
                 NavigationStack {
