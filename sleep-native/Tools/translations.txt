@@ -55,7 +55,7 @@ Sonido|Sound
 Volumen progresivo|Gradual volume
 Maximo|Maximum|Máximo
 Progresivo|Gradual
-Directo al maximo|Maximum immediately|Directo al máximo
+Directo al maximo|Full volume|Máximo directo
 Subida|Fade-in
 La alarma usara el volumen maximo interno de la app.|The alarm will use the app's full playback volume.|La alarma usará el volumen máximo interno de la app.
 Volumen del iPhone|iPhone volume

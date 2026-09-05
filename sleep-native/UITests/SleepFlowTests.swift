@@ -14,6 +14,8 @@ final class SleepFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["Start the night"].waitForExistence(timeout: 5))
         capture("02-en-sunset")
         app.buttons["theme-toggle"].tap()
+        XCTAssertTrue(app.buttons["Switch to light theme"].waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 1) // Allow the original theme animation to finish before evidence capture.
         capture("03-en-night")
         app.buttons["edit-alarm"].tap()
         XCTAssertTrue(app.buttons["Choose"].waitForExistence(timeout: 5))

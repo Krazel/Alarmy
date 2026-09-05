@@ -43,6 +43,8 @@ struct RootTabView: View {
             SettingsView().tabItem { Label(L("Ajustes"), systemImage: "gearshape.fill") }.tag(AppTab.settings)
         }
         .id(store.language)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .tint(store.sleepTheme.primary)
         .alert(L("Alarma"), isPresented: Binding(get: { message != nil }, set: { if !$0 { clearErrors() } })) {
             Button(L("Entendido")) { clearErrors() }
