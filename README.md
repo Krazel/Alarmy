@@ -1,13 +1,12 @@
-# Alarma — new native iPhone app
+# Alarma — native iPhone app
 
-The **new application** is in [`sleep-native/`](sleep-native/README.md). It is a fresh SwiftUI implementation for iOS 16+, version **0.1 (build 1)**, with its own bundle ID `com.krazel.alarmasleep`.
+The application is in [`sleep-native/`](sleep-native/README.md), SwiftUI for iOS 16+, **0.2 (build 1)**. It restores the original Alarma designs and interactions and adds complete **Castellano / English** language selection.
 
-This checkout is the isolated `codex/native-sleep-rebuild` branch. The original `Alarma` working directory was preserved. Legacy folders here are historical reference and are not compiled into the new app.
+This checkout is the isolated `codex/native-sleep-rebuild` branch. The original `Alarma` working directory is preserved. Legacy folders are references and are not compiled into the new target.
 
-- Product, build instructions and limits: [`sleep-native/README.md`](sleep-native/README.md)
-- XcodeGen project: [`sleep-native/project.yml`](sleep-native/project.yml)
-- New Swift code: [`sleep-native/Sources/`](sleep-native/Sources/)
-- Validation workflow: [`.github/workflows/sleep-native.yml`](.github/workflows/sleep-native.yml)
-- Local downloaded builds and simulator screenshots: `artifact/` (ignored by Git)
+- [Product and build instructions](sleep-native/README.md)
+- [XcodeGen project](sleep-native/project.yml)
+- [Validation](sleep-native/VALIDATION.md)
+- [CI workflow](.github/workflows/sleep-native.yml)
 
-Use the `AlarmaSleep` Xcode scheme. The older root `run.bat` and web scripts belong to the legacy prototype; they do not run the new iPhone application.
+Use the `AlarmaSleep` Xcode scheme. Downloaded unsigned iPhone builds are under the Git-ignored `artifact/` directory.

@@ -1,64 +1,45 @@
-# Alarma — native sleep rebuild
+# Alarma — native iPhone app
 
-Fresh SwiftUI iPhone implementation, version 0.1 (build 1), minimum iOS 16.
+SwiftUI for iOS 16+, version **0.2 (build 1)**. The original Alarma presentation is restored with its exact sunset/night background images, colors, typography, cards and navigation. The rebuilt persistence, audio lifecycle and notifications remain separate from the views.
 
-## Start here
+## Restored product
 
-The new app lives entirely in `sleep-native/`. Open `AlarmaSleep.xcodeproj` after running `xcodegen generate` in this directory on macOS. Choose the `AlarmaSleep` scheme. Set your signing team to install on an iPhone.
+- **Alarmas / Alarms**: one main nightly alarm; adjust hours and minutes independently by dragging the large clock, or open the wheel editor. Start and end the night from the original screens.
+- Original four bundled songs, previews, selection and rotation without an immediate repeat. Import playable audio from Files (up to 50 MB), preview and remove it. Empty selections fall back to the original default songs when saved.
+- Gradual volume (1–10 minutes), direct full app volume, native iPhone volume control, movement snooze, 1/3/5/10/15-minute snooze choices and gradual screen brightness over 3/5/10/15 minutes when the alarm rings. Previous brightness and idle-timer settings are restored on exit.
+- **Diario / Journal**: weekly calendar, month selector and full calendar; five original illustrated wake-up moods; notes saved automatically for any past/present day; night sound categories, counts, filtering and playback.
+- The original sleep-chart card reads awake/light/deep/REM intervals from **Apple Health**, with explicit opt-in. It preserves actual timestamps and gaps and selects a single data source per waking day to avoid combining overlapping device records. Unspecified sleep is never labelled as a measured phase. Without compatible records, it shows No data. It does not infer phases or sleep scores from phone movement/noise.
+- Optional microphone recording: 12-second clips, 120-clip cap, local classification using Apple's SoundAnalysis model. Only recognized top predictions at confidence ≥0.65 receive snore/breathing/cough/voice labels; other clips remain Other sound. Counts describe saved clips, not clinical events.
+- Delete recordings after 1/7/30/90 days, keep indefinitely, or delete all. Cleanup runs when the app is used. All data stays on the iPhone.
+- **Ajustes / Settings**: original groups, automatic/light/dark theme, recording/retention, open journal after alarm, snooze/light settings and support panel. Support is explicitly marked coming soon; no transaction, ad SDK or subscription is active.
+- **Castellano and English**: select System, Castellano or English in Settings. UI, dynamic messages, dates, notifications and permission explanations are localized. The app selection persists; iOS permission dialogs follow the device's app/system language.
 
-This worktree is isolated on `codex/native-sleep-rebuild`; the original `Alarma` checkout and its existing `native-ios` implementation remain untouched. Older directories in this worktree are inherited repository history and are not included in the new target.
+## Build
 
-## Product recovered from the existing app
+The app lives entirely in this directory, in the isolated `codex/native-sleep-rebuild` worktree. Original `Alarma` checkout and legacy implementation are unchanged. On macOS, install XcodeGen and run:
 
-Reviewed `native-ios/Sources/AlarmaApp.swift`, `src/alarm-core.js`, `IOS_READY.md` and the existing build workflow. The original concept includes gentle alarms, sound rotation, progressive volume, an active night session, snooze, optional night recordings, a dream journal and wake-up mood.
-
-The rebuild implements that core with separate models, persistence, notification scheduling, audio/session lifecycle and SwiftUI screens. No web view or Capacitor code is included. The first interface is English.
-
-## Implemented
-
-- First-run welcome; Tonight, Journal and Settings tabs.
-- Up to eight alarms, names, time, individual repeat days, enable/disable and deletion.
-- Three original generated WAV melodies, previews, multi-selection, shuffle without immediate repeats, fade-in and snooze settings.
-- An explicit night preparation flow with audio test; continuous audible ambient playback, wake-up audio, snooze, optional shake-to-snooze and end-night confirmation.
-- Backup local notifications, permission state and direct iPhone settings link.
-- Local atomic JSON persistence and interrupted-night recovery using the last checkpoint.
-- Journal with recorded session duration, recent-night chart, morning mood, notes and deletion.
-- Opt-in microphone clips with a loudness threshold, 12-second chunks, 120-clip limit per session, playback, deletion and 1/7/30-day retention.
-- Local storage only: no backend, accounts, tracking, ads or purchase placeholders.
-- Original app icon; imagegen night landscape integrated in the app.
-
-## Honest limits
-
-On iOS 16, ordinary scheduled reminders use local notifications and follow Silent mode and Focus. Continuous alarm audio requires starting a night with an audible soundscape. Force-quit, audio interruptions, exhausted battery and system termination can stop that session. The app cannot guarantee wake-up delivery. Test this on a physical iPhone before relying on it. No silent keep-alive audio, volume-slider manipulation or critical-alert entitlement is used.
-
-The journal reports time in the session, not measured sleep. Loud sounds are not classified as snoring, cough, breathing or speech. Sleep-stage inference, smart-wake claims, HealthKit and AlarmKit are outside this first build. Existing recordings and diary data are not imported automatically into the separate bundle ID.
-
-Recordings can include nearby sounds and the app's ambient audio. The threshold is only a simple loudness filter, not a validated sound detector. Clip cleanup happens when the app is used, not while it is terminated.
-
-## Build and verify
-
-The workflow `.github/workflows/sleep-native.yml` runs only on the isolated rebuild branch, only for a public repository, and uploads validation artifacts. It does not publish a release or submit to Apple.
-
-On macOS:
-
-```
+```sh
 xcodegen generate
 xcodebuild -project AlarmaSleep.xcodeproj -scheme AlarmaSleep -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO test
 ```
 
-Tests cover repeat schedules, exact-time rollover, daylight-saving gaps and repeats in Europe/Madrid, disabled/invalid schedules, shuffle, safe duration, persistence, corrupt-file preservation, interrupted-night recovery and bundled resources.
+For an iPhone, set a signing team and enable HealthKit on `com.krazel.alarmasleep`. The CI artifact is **unsigned**, so it is not a TestFlight/App Store install. CI publishes only build/test artifacts, not a release.
 
-Physical-device QA still required: locked screen overnight, volume and route behavior, incoming calls, denied permissions, force-quit, repeated snooze, recording playback, low-storage failures, clock/time-zone change during a session and iOS 16 layout/Dynamic Type/VoiceOver.
+The separate bundle does not automatically import the old app's sandbox. Version 0.1 JSON can still be opened; optional new fields receive defaults, and its old mood values are migrated. Its historical nights remain in the journal; the main nightly alarm is restored with the original song defaults.
 
-## Assets and sources
+## Device validation still needed
 
-`Tools/generate-audio.cjs` creates all four original synthesized audio files. No third-party music is copied.
+Continuous alarm audio requires starting the night; an audible ambient track maintains its audio session. Ordinary local notification backups follow iOS Silent/Focus rules. A force-quit, call/audio interruption, depleted battery or OS termination can stop continuous audio. Interrupted nights are checkpointed and the backup reminder is preserved. No silent audio loop, programmatic system-volume slider manipulation or critical-alert entitlement is used.
 
-`Resources/Assets.xcassets/NightLandscape.imageset/night-landscape.png` was created with the built-in imagegen tool on 2026-09-05. Prompt: original premium portrait illustration for an iPhone sleep app; midnight navy negative space, sparse dim stars, warm crescent, layered indigo/teal mountains, still lake and tiny distant cabin; no UI or typography. It is a background asset, not an approved screen reference or a screenshot.
+The screen-light feature requires the screen to stay on; it cannot illuminate a locked display. Physical testing is still required for overnight locked-screen operation, movement snooze, volume/brightness, interruptions, imported songs, microphone classifications and real Health data. Sound labels are estimates and may include ambient playback; they are not medical findings.
 
-Apple references checked for implementation:
-- https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/SchedulingandHandlingLocalNotifications.html
-- https://developer.apple.com/documentation/avfaudio/avaudiosession
-- https://developer.apple.com/videos/play/wwdc2025/230/ (AlarmKit is iOS 26+, not used by the iOS 16 target.)
+## Sources and evidence
 
-Validation results: [VALIDATION.md](VALIDATION.md). Full artwork prompt and provenance: [design/ASSETS.md](design/ASSETS.md). Native screenshots: [design/runtime](design/runtime/README.md).
+Presentation and legacy resources: `native-ios/Sources/AlarmaApp.swift` and `native-ios/Resources` at repository commit `f420f66`. The original designs were restored at the user's request.
+
+- [Apple SoundAnalysis](https://developer.apple.com/documentation/soundanalysis/snclassifysoundrequest/)
+- [Apple Health sleep categories](https://developer.apple.com/documentation/healthkit/hkcategoryvaluesleepanalysis)
+- [Reference parity](PARITY.md)
+- [Native screenshots in both languages](design/restored-runtime/README.md)
+- [Validation](VALIDATION.md)
+- [Asset provenance](design/ASSETS.md)

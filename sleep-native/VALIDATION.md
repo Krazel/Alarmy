@@ -1,33 +1,44 @@
-# Native rebuild validation — 2026-09-05
+# Native Alarma 0.2 validation — 2026-09-05
 
-Application: AlarmaSleep 0.1 (build 1)
+Application: **AlarmaSleep 0.2 (build 1)**, native SwiftUI, minimum iOS 16.
 
-App source commit: `5aae2ccbf5bc2152f77e0df0e271a062cfd10472`
+Validated app source: `345c787c89c6e425e88d5e9bab0bcadf546c4439`
 
-Validation run: https://github.com/Krazel/Alarmy/actions/runs/33955315749
+Successful Xcode run: https://github.com/Krazel/Alarmy/actions/runs/33959032585
 
-## Verified in Xcode
+## Verified
 
-- Simulator app and both test targets compile.
-- 10 model tests cover local schedules, once-only expiry, weekday recurrence, daylight-saving transitions, sound choice and duration handling.
-- 4 persistence/resource tests cover save/reload, interrupted-session recovery, corrupt-data preservation, all WAV resources and decoded artwork from the asset catalog.
-- 1 UI test exercises welcome, Tonight, the alarm editor, empty Journal, Settings and preparation; grants notification permission; starts an actual audio session; ends it; saves a mood and notes; relaunches the app and verifies the note remains.
-- Screenshots are captured from the running SwiftUI app, not HTML mockups. Journal content in test screenshots is synthetic XCTest input and does not represent a person's sleep.
+**23 tests passed**: 22 model/persistence/resource tests and one complete UI flow.
 
-## Device package
+- Local schedules, exact-time rollover, once-only expiry and Europe/Madrid daylight-saving transitions.
+- Sound rotation, duration clamping, atomic save/reload, corrupt-data preservation and interrupted-session recovery.
+- Five-mood migration, notes on days without recordings, cleared moods, nightly alarm rearming and options, indefinite clip retention.
+- Importing a playable song, choosing it for the alarm, deleting it and restoring safe default songs.
+- Health stage mapping leaves unspecified sleep unclassified; low-confidence or unrelated sound labels are not called snoring.
+- Both language bundles, original MP3 files, both background images and diary assets load from the app bundle.
+- Real simulator flow: theme changes, original editor and music selector, permission grant, actual night audio start/end, automatic journal opening, mood and note entry, full language switch into Spanish, calendar opening, app relaunch and persistence of language and notes.
+- Simulator compilation, tests and **Release iPhone build** all succeeded.
 
-Release iPhone build succeeded. The downloaded IPA archive contains the native executable, compiled asset catalog, four WAV files, privacy manifest and Info.plist.
+## Visual evidence
 
-Local delivery: `artifact/AlarmaSleep-0.1-build-1-unsigned.ipa`.
+14 native screenshots from the iPhone 16 Pro simulator are in [design/restored-runtime](design/restored-runtime/README.md). Reviewed the English and Spanish screens, completed theme transition, long labels and tab-bar contrast. Notes and mood shown in the captures are synthetic XCTest input, not a person's sleep data.
 
-IPA SHA-256: `80B8C8E82E967767D55B9D5CCEF77B08258B9E2141F787BD00FD50C523B85B71`.
+All 12 restored background/mood/sound PNGs and all four original MP3 files were compared by SHA-256 to the original `Alarma` checkout and match exactly. That checkout's tracked files remain unchanged.
 
-All 15 tests passed with zero failures. Eight simulator screenshots are archived in `design/runtime/`; the background is visible and the saved note survives relaunch. Screenshots were visually reviewed on the iPhone 16 Pro simulator dimensions.
+## iPhone package
 
-## Remaining physical-device checks
+Local package: `artifact/AlarmaSleep-0.2-build-1-unsigned.ipa` at the worktree root.
 
-The automated run is on an iPhone simulator. Minimum deployment target is iOS 16; an iOS 16 phone has not been exercised here.
+SHA-256:
 
-Before relying on alarms, verify a real overnight locked-screen session, speaker volume, fade-in, repeated snooze, calls/audio interruptions, force-quit behavior, microphone clips and retention, motion snooze, time-zone changes, low storage, Dynamic Type and VoiceOver on the intended iPhone.
+```text
+06000C99CBC0015DFDD46E57D5B5253AC4814B9E4A3D31061B4E1E300274BF42
+```
 
-The app measures session duration and stores user notes. It does not measure sleep stages or diagnose sleep conditions. The unsigned IPA requires signing before installation; no App Store or TestFlight submission was made.
+The IPA is **unsigned**. Installing requires signing for the iPhone, with HealthKit enabled for the app ID. No App Store/TestFlight upload or release was performed.
+
+## Physical checks pending
+
+An overnight physical-iPhone test is still needed: locked-screen/background playback, real volume and brightness, movement snooze, calls/audio interruptions, microphone classifications, imported-song formats and actual Health authorization/data. The simulator does not expose the physical iPhone volume slider. These device behaviors have not been claimed as physically validated.
+
+Sleep stages come from compatible Health records; without them, the graph intentionally stays empty. Support subscriptions remain explicitly unavailable and do not charge the user.

@@ -1,3 +1,12 @@
+# Restored assets — version 0.2
+
+At the user's request, runtime backgrounds now use the **unchanged original** SunsetBackground and NightBackground assets from `native-ios/Resources/Assets.xcassets`. The five mood faces and five sound icons are unchanged images from `native-ios/Resources/DiaryAssets`. SHA-256 equality was checked against the original checkout.
+
+The four original MP3 resources are copied unchanged from the existing app: bosque-al-amanecer, despertar-suave, funny-alarm and lo-fi-alarm-clock. No new music was downloaded. Their original rights/provenance remain those of the existing repository; this rebuild does not claim newly obtained music licenses.
+
+The following text records historical version 0.1 art generation. Its NightLandscape background is retained for history but is **not used by the restored interface**. The new app icon and ambient WAV remain in use; fallback synthesized alarm WAV files remain available.
+
+---
 # Original visual assets
 
 ## Night landscape
