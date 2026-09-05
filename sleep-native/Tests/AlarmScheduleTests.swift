@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 @testable import AlarmaSleep
 
 final class AlarmScheduleTests: XCTestCase {
@@ -101,6 +102,6 @@ final class StoreTests: XCTestCase {
         for name in ["ambient","dawn","drift","chimes"] {
             XCTAssertNotNil(bundle.url(forResource: name, withExtension: "wav"))
         }
-        XCTAssertNotNil(bundle.url(forResource: "night-landscape", withExtension: "png"))
+        XCTAssertNotNil(UIImage(named: "NightLandscape", in: bundle, compatibleWith: nil))
     }
 }

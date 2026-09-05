@@ -54,7 +54,7 @@ Physical-device QA still required: locked screen overnight, volume and route beh
 
 `Tools/generate-audio.cjs` creates all four original synthesized audio files. No third-party music is copied.
 
-`Resources/night-landscape.png` was created with the built-in imagegen tool on 2026-09-05. Prompt: original premium portrait illustration for an iPhone sleep app; midnight navy negative space, sparse dim stars, warm crescent, layered indigo/teal mountains, still lake and tiny distant cabin; no UI or typography. It is a background asset, not an approved screen reference or a screenshot.
+`Resources/Assets.xcassets/NightLandscape.imageset/night-landscape.png` was created with the built-in imagegen tool on 2026-09-05. Prompt: original premium portrait illustration for an iPhone sleep app; midnight navy negative space, sparse dim stars, warm crescent, layered indigo/teal mountains, still lake and tiny distant cabin; no UI or typography. It is a background asset, not an approved screen reference or a screenshot.
 
 Apple references checked for implementation:
 - https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/SchedulingandHandlingLocalNotifications.html
