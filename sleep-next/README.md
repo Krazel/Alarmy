@@ -19,7 +19,7 @@ Seleccionar el equipo de desarrollo para instalar en un iPhone. Identificador in
 - Alarma de la próxima noche, selección de sonidos sin repetir el anterior cuando hay alternativas, importación de audio, volumen progresivo en primer plano, posponer y movimiento para posponer con la app abierta.
 - AlarmKit a partir de iOS 26; notificaciones con sonido de hasta 29 segundos en iOS 16–25. En versiones anteriores hay que activar sonidos y desactivar Silencio/Concentración. La app explica estos límites. No se usa audio silencioso para mantenerla artificialmente activa.
 - Sesión nocturna persistente, inicio y final explícitos, luz gradual con la pantalla abierta, micrófono opcional y clips locales activados por ruido.
-- Diario con calendario, tiempo en cama, cinco estados de ánimo originales, notas guardadas automáticamente y escucha, clasificación manual y eliminación de clips.
+- Diario con calendario, tiempo en cama, cinco estados de ánimo originales, notas guardadas automáticamente y escucha, clasificación local con etiquetas corregibles y eliminación de clips.
 - Lectura opcional de las fases existentes en Salud. Sin fases o puntuaciones inventadas. Se elige una sola fuente de Salud por noche para evitar duplicar registros de diferentes aplicaciones.
 - Castellano e inglés, apariencia automática/amanecer/noche, retención de grabaciones y controles de privacidad.
 - Sin cuenta, servidor de grabaciones, anuncios, compras ni dependencias externas de la aplicación.
@@ -28,7 +28,7 @@ Seleccionar el equipo de desarrollo para instalar en un iPhone. Identificador in
 
 `Domain.swift` contiene los datos serializables. `ArchiveRepository` es el único escritor del archivo JSON: valida el esquema y publica cada cambio después de escribir atómicamente. `SleepStore` coordina transacciones ordenadas, alarma y sesión; conserva el estado ante un relanzamiento. Los servicios de alarmas, audio y Salud están separados de SwiftUI.
 
-Las notas y el ánimo pertenecen a un día civil. Las noches se agrupan por la fecha de finalización. El tiempo en cama mide el intervalo de la sesión iniciada por la persona; no equivale a tiempo dormido. Los clips se activan por nivel de sonido y se etiquetan manualmente; no existe clasificación médica automática.
+Las notas y el ánimo pertenecen a un día civil. Las noches se agrupan por la fecha de finalización. El tiempo en cama mide el intervalo de la sesión iniciada por la persona; no equivale a tiempo dormido. Los clips se activan por nivel de sonido y reciben sugerencias locales de SoundAnalysis al abrir el diario. Solo se aceptan categorías reconocidas con confianza mínima del 65 % y se pueden corregir. No existe clasificación médica automática.
 
 ## Recursos nuevos
 

@@ -31,7 +31,10 @@ final class SleepStore: ObservableObject {
     init() {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--reset-test") {
-            let root = FileManager.default.temporaryDirectory.appendingPathComponent("UI-" + UUID().uuidString)
+            let args = ProcessInfo.processInfo.arguments
+            let index = args.firstIndex(of: "--archive-id")
+            let identifier = index.flatMap { $0 + 1 < args.count ? args[$0+1] : nil } ?? UUID().uuidString
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent("UI-" + (UUID(uuidString: identifier)?.uuidString ?? UUID().uuidString))
             repository = ArchiveRepository(file: root.appendingPathComponent("archive.json"))
         } else { repository = ArchiveRepository() }
         #else
@@ -43,7 +46,7 @@ final class SleepStore: ObservableObject {
         do {
             archive = try await repository.prune()
             #if DEBUG
-            if testMode {
+            if testMode && archive.revision == 0 {
                 archive.preferences.language = ProcessInfo.processInfo.arguments.contains("--spanish") ? "es" : "en"
                 archive.preferences.appearance = "dawn"
                 if ProcessInfo.processInfo.arguments.contains("--design-fixture") {
@@ -174,7 +177,24 @@ final class SleepStore: ObservableObject {
     func label(_ clip: NightClip, kind: SoundKind) {
         commit { archive in
             for i in archive.sessions.indices {
-                if let j = archive.sessions[i].clips.firstIndex(where: { $0.id == clip.id }) { archive.sessions[i].clips[j].kind = kind }
+                if let j = archive.sessions[i].clips.firstIndex(where: { $0.id == clip.id }) { archive.sessions[i].clips[j].kind = kind; archive.sessions[i].clips[j].analysisDone = true; archive.sessions[i].clips[j].suggestion = false }
+            }
+        }
+    }
+    func analyzeClips(for day: Date) async {
+        let pending = sessions(day).flatMap(\.clips).filter { !$0.analysisDone }
+        for clip in pending {
+            guard !Task.isCancelled, let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) else { return }
+            let result = await SoundTagger.suggest(url: url)
+            guard !Task.isCancelled else { return }
+            commit { value in
+                for i in value.sessions.indices {
+                    if let j = value.sessions[i].clips.firstIndex(where: { $0.id == clip.id }), !value.sessions[i].clips[j].analysisDone {
+                        value.sessions[i].clips[j].kind = result.kind
+                        value.sessions[i].clips[j].analysisDone = true
+                        value.sessions[i].clips[j].suggestion = result.kind != .other
+                    }
+                }
             }
         }
     }
@@ -196,7 +216,17 @@ final class SleepStore: ObservableObject {
         if token != .invalid { UIApplication.shared.endBackgroundTask(token) }
     }
     func prune() async {
-        if let writeTail { _ = await writeTail.value }
-        do { archive = try await repository.prune() } catch { self.error = error.localizedDescription }
+        guard archive.preferences.keepDays > 0 else { return }
+        let cutoff = Date().addingTimeInterval(-Double(archive.preferences.keepDays)*86400)
+        let expired = archive.sessions.flatMap(\.clips).filter { $0.created < cutoff }
+        guard !expired.isEmpty else { return }
+        let ids = Set(expired.map(\.id))
+        let saved = await commit { value in
+            for i in value.sessions.indices { value.sessions[i].clips.removeAll { ids.contains($0.id) } }
+        }.value
+        guard saved else { return }
+        for clip in expired {
+            if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) { try? FileManager.default.removeItem(at: url) }
+        }
     }
 }

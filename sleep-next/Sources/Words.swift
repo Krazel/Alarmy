@@ -31,7 +31,7 @@ struct Words {
         "notes":["Lo que te llevas de la noche","What stays with you"], "notesHint":["Un sueño, una idea, cómo te sientes…","A dream, a thought, how you feel…"],
         "saved":["Guardado en este iPhone","Saved on this iPhone"], "saving":["Guardando…","Saving…"],
         "nightSounds":["Los sonidos de tu noche","The sounds of your night"],
-        "noClips":["No hay fragmentos guardados.","No saved clips."], "clipHint":["Fragmentos activados por ruido. Escúchalos y elige una etiqueta; no son un diagnóstico.","Clips triggered by noise. Listen and choose a label; they are not a diagnosis."],
+        "noClips":["No hay fragmentos guardados.","No saved clips."], "clipHint":["Fragmentos activados por ruido. ✧ indica una etiqueta sugerida en el iPhone; puedes corregirla. No es un diagnóstico.","Clips triggered by noise. ✧ marks an on-device suggestion; you can correct it. This is not a diagnosis."],
         "snore":["Ronquido","Snoring"], "breath":["Respiración","Breathing"], "voice":["Voz","Voice"], "cough":["Tos","Cough"], "other":["Sin etiquetar","Unlabelled"],
         "delete":["Eliminar","Delete"], "play":["Reproducir","Play"], "stop":["Parar","Stop"],
         "health":["Sueño en Salud","Sleep in Health"], "healthHint":["Fases registradas por tus dispositivos o apps de Salud. El tiempo en cama de Alarma se muestra por separado.","Stages recorded by your Health devices or apps. Alarma’s time in bed is shown separately."],

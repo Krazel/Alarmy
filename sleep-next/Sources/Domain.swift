@@ -31,6 +31,8 @@ struct NightClip: Codable, Equatable, Identifiable {
     let filename: String
     let duration: Double
     var kind: SoundKind = .other
+    var analysisDone = false
+    var suggestion = false
 }
 struct SleepSession: Codable, Equatable, Identifiable {
     let id: UUID

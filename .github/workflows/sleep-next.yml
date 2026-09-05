@@ -22,17 +22,19 @@ jobs:
           brew install xcodegen
           cd sleep-next
           xcodegen generate
-      - name: Compile app and tests
-        run: |
-          set -o pipefail
-          xcodebuild -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO build-for-testing 2>&1 | tee build-compile.log
-      - name: Choose simulator
+      - name: Start simulator
         timeout-minutes: 8
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if "iPhone" in x["name"]))')
           echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
           xcrun simctl boot "$DEVICE" || true
-          xcrun simctl bootstatus "$DEVICE" -b
+      - name: Compile app and tests
+        run: |
+          set -o pipefail
+          xcodebuild -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO build-for-testing 2>&1 | tee build-compile.log
+      - name: Wait for simulator
+        timeout-minutes: 8
+        run: xcrun simctl bootstatus "$DEVICE" -b
       - name: Test native app
         run: |
           set -o pipefail

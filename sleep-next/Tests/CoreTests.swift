@@ -1,4 +1,5 @@
 import XCTest
+import AVFoundation
 @testable import AlarmaNext
 
 final class DomainTests: XCTestCase {
@@ -26,6 +27,21 @@ final class DomainTests: XCTestCase {
     }
     func testStorageRejectsTraversal() { XCTAssertNil(DiskLocation.child("../secret", of: URL(fileURLWithPath: "/tmp"))); XCTAssertNil(DiskLocation.child("a/b", of: URL(fileURLWithPath: "/tmp"))); XCTAssertNotNil(DiskLocation.child("clip.m4a", of: URL(fileURLWithPath: "/tmp"))) }
     func testTranslationsComplete() { for (key, values) in Words.entries { XCTAssertEqual(values.count, 2, key); XCTAssertFalse(values[0].isEmpty, key); XCTAssertFalse(values[1].isEmpty, key) }; XCTAssertEqual(Words(language: "es")("journal"), "Diario"); XCTAssertEqual(Words(language: "en")("journal"), "Journal") }
+    func testSoundSuggestionsRejectLowConfidenceAndUnknownLabels() {
+        XCTAssertEqual(SoundSuggestion.kind(identifier: "snoring", confidence: 0.9), .snore)
+        XCTAssertEqual(SoundSuggestion.kind(identifier: "snoring", confidence: 0.4), .other)
+        XCTAssertEqual(SoundSuggestion.kind(identifier: "music", confidence: 0.99), .other)
+    }
+    func testImportedToneIsPreparedWithinNotificationLimit() throws {
+        let source = try XCTUnwrap(ToneLibrary.url("aurora", imported: []))
+        let tone = try ToneLibrary.prepare(source)
+        let url = try XCTUnwrap(DiskLocation.child(tone.filename, of: DiskLocation.tones))
+        defer { try? FileManager.default.removeItem(at: url) }
+        let audio = try AVAudioFile(forReading: url)
+        XCTAssertLessThanOrEqual(Double(audio.length)/audio.processingFormat.sampleRate, 29)
+        XCTAssertGreaterThan(audio.length, 0)
+        XCTAssertEqual(ToneLibrary.url(tone.id, imported: [tone]), url)
+    }
     func testBundledAssetsExist() { for id in ToneLibrary.builtins { XCTAssertNotNil(ToneLibrary.url(id, imported: [])) }; XCTAssertNotNil(UIImage(named: "DawnArtwork")) }
 }
 final class RepositoryTests: XCTestCase {

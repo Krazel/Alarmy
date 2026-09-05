@@ -29,7 +29,10 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
         try session.setActive(true)
-        try FileManager.default.createDirectory(at: DiskLocation.clips, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: DiskLocation.clips, withIntermediateDirectories: true, attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
+        var clipsDirectory = DiskLocation.clips
+        var resourceValues = URLResourceValues(); resourceValues.isExcludedFromBackup = true
+        try clipsDirectory.setResourceValues(resourceValues)
         try newSegment()
         meter = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in

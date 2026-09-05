@@ -3,6 +3,7 @@ import SwiftUI
 struct JournalScreen: View {
     @EnvironmentObject var store: SleepStore
     @State private var calendar = false
+    @FocusState private var editingNote: Bool
     @State private var stages: [SleepStage] = []
     private var nights: [SleepSession] { store.sessions(store.selectedDay) }
     private var clips: [NightClip] { nights.flatMap(\.clips) }
@@ -21,6 +22,7 @@ struct JournalScreen: View {
                     HStack { Spacer(); Image(systemName: "lock"); Text(store.words("saved")); Spacer() }.font(.caption2).foregroundStyle(Color.ink.opacity(0.5)).padding(.bottom, 18)
                 }.padding(.horizontal, 22).padding(.top, 18)
             }.scrollIndicators(.hidden).background(Color.paper).toolbar(.hidden, for: .navigationBar).toolbarBackground(.visible, for: .tabBar)
+            .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(store.words("done")) { editingNote = false } } }
             .sheet(isPresented: $calendar) {
                 NavigationStack {
                     DatePicker(store.words("calendar"), selection: $store.selectedDay, in: ...Date(), displayedComponents: .date).datePickerStyle(.graphical).padding().background(Color.paper)
@@ -28,6 +30,7 @@ struct JournalScreen: View {
                         .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { calendar = false } } }
                 }.presentationDetents([.medium, .large])
             }
+            .task(id: CalendarDay.key(store.selectedDay)) { await store.analyzeClips(for: store.selectedDay) }
             .task(id: CalendarDay.key(store.selectedDay) + String(store.archive.preferences.health)) {
                 stages = []
                 if store.archive.preferences.health {
@@ -111,7 +114,7 @@ struct JournalScreen: View {
                 HStack(alignment: .top) { Text(store.words("notes")).font(.system(size: 23, design: .serif)); Spacer(minLength: 10); Image(systemName: "pencil.line").foregroundStyle(Color.rust).padding(.top, 4) }
                 ZStack(alignment: .topLeading) {
                     if store.page(store.selectedDay).text.isEmpty { Text(store.words("notesHint")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.4)).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false) }
-                    TextEditor(text: Binding(get: { store.page(store.selectedDay).text }, set: { store.note($0, day: store.selectedDay) })).font(.system(size: 16)).lineSpacing(6).scrollContentBackground(.hidden).frame(minHeight: 120).accessibilityIdentifier("journal-note")
+                    TextEditor(text: Binding(get: { store.page(store.selectedDay).text }, set: { store.note($0, day: store.selectedDay) })).font(.system(size: 16)).lineSpacing(6).scrollContentBackground(.hidden).frame(minHeight: 120).focused($editingNote).accessibilityIdentifier("journal-note")
                 }
                 HStack { Rectangle().fill(Color.ink.opacity(0.1)).frame(height: 1); Text(store.words(store.saving ? "saving" : "saved")).font(.system(size: 9)).foregroundStyle(Color.ink.opacity(0.4)) }
             }
@@ -149,7 +152,7 @@ struct ClipRow: View {
             Menu {
                 ForEach(SoundKind.allCases, id: \.self) { kind in Button(store.words(kind.rawValue)) { store.label(clip, kind: kind) } }
                 Button(store.words("delete"), role: .destructive) { Task { await store.delete(clip) } }
-            } label: { HStack { Text(store.words(clip.kind.rawValue)); Image(systemName: "chevron.down") }.font(.caption) }
+            } label: { HStack { Text(store.words(clip.kind.rawValue)); if clip.suggestion { Image(systemName: "sparkle") }; Image(systemName: "chevron.down") }.font(.caption) }
         }.padding(.vertical, 6)
     }
 }
