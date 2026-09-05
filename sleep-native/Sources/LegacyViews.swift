@@ -956,7 +956,7 @@ struct NightActiveView: View {
     @EnvironmentObject private var session: NightSession
     let alarm: Alarm
     let theme: SleepTheme
-    @State private var showMotionHint = alarm.motionSnooze
+    @State private var showMotionHint = false
     @State private var showStartedTitle = true
 
     var body: some View {
@@ -1694,7 +1694,6 @@ struct FullSleepCalendarSheet: View {
             }
             .preferredColorScheme(store.sleepTheme == .night ? .dark : .light)
         }
-        .onDisappear { player?.stop(); player = nil; playingClipId = nil }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
@@ -1881,11 +1880,10 @@ struct WakeMoodSelector: View {
 }
 
 struct NightSoundsSummary: View {
+    @EnvironmentObject private var engine: NightEngine
     let entry: DreamEntry
     let theme: SleepTheme
     let onOpen: () -> Void
-    @State private var player: AVAudioPlayer?
-    @State private var playingClipId: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -1933,7 +1931,7 @@ struct NightSoundsSummary: View {
                         ZStack {
                             Circle()
                                 .stroke(Color.white.opacity(0.76), lineWidth: 2)
-                            Image(systemName: playingClipId == latest.id ? "pause.fill" : "play.fill")
+                            Image(systemName: engine.previewID == latest.id.uuidString ? "pause.fill" : "play.fill")
                                 .font(.system(size: 17, weight: .black))
                         }
                         .frame(width: 44, height: 44)
@@ -1998,11 +1996,7 @@ struct NightSoundsSummary: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor, lineWidth: 1))
         .foregroundStyle(theme.text)
-        .onDisappear {
-            player?.stop()
-            player = nil
-            playingClipId = nil
-        }
+        .onDisappear { engine.stopPreview() }
     }
 
     private func waveform(color: Color) -> some View {
@@ -2062,24 +2056,7 @@ struct NightSoundsSummary: View {
     }
 
     private func play(_ clip: SleepSoundClip) {
-        if playingClipId == clip.id {
-            player?.stop()
-            player = nil
-            playingClipId = nil
-            return
-        }
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try AVAudioSession.sharedInstance().setActive(true)
-            let nextPlayer = try AVAudioPlayer(contentsOf: clip.fileURL)
-            nextPlayer.prepareToPlay()
-            nextPlayer.play()
-            player = nextPlayer
-            playingClipId = clip.id
-        } catch {
-            player = nil
-            playingClipId = nil
-        }
+        engine.playPreview(clip.id.uuidString, url: clip.fileURL)
     }
 
     private var panelFill: Color {
@@ -2163,12 +2140,11 @@ struct DreamNotesCard: View {
 }
 
 struct NightSoundsSheet: View {
+    @EnvironmentObject private var engine: NightEngine
     @Environment(\.dismiss) private var dismiss
     let entry: DreamEntry
     let theme: SleepTheme
     @State private var selectedKind: SleepAudioEvent.Kind?
-    @State private var player: AVAudioPlayer?
-    @State private var playingClipId: UUID?
 
     var body: some View {
         NavigationStack {
@@ -2209,7 +2185,7 @@ struct NightSoundsSheet: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("Cerrar")) {
-                        player?.stop()
+                        engine.stopPreview()
                         dismiss()
                     }
                     .font(.headline.weight(.bold))
@@ -2217,6 +2193,7 @@ struct NightSoundsSheet: View {
             }
             .preferredColorScheme(theme == .night ? .dark : .light)
         }
+        .onDisappear { engine.stopPreview() }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
@@ -2256,7 +2233,7 @@ struct NightSoundsSheet: View {
                 ZStack {
                     Circle()
                         .stroke(Color.white.opacity(0.74), lineWidth: 2)
-                    Image(systemName: playingClipId == clip.id ? "pause.fill" : "play.fill")
+                    Image(systemName: engine.previewID == clip.id.uuidString ? "pause.fill" : "play.fill")
                         .font(.subheadline.weight(.black))
                 }
                 .frame(width: 40, height: 40)
@@ -2315,24 +2292,7 @@ struct NightSoundsSheet: View {
     }
 
     private func play(_ clip: SleepSoundClip) {
-        if playingClipId == clip.id {
-            player?.stop()
-            player = nil
-            playingClipId = nil
-            return
-        }
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try AVAudioSession.sharedInstance().setActive(true)
-            let nextPlayer = try AVAudioPlayer(contentsOf: clip.fileURL)
-            nextPlayer.prepareToPlay()
-            nextPlayer.play()
-            player = nextPlayer
-            playingClipId = clip.id
-        } catch {
-            player = nil
-            playingClipId = nil
-        }
+        engine.playPreview(clip.id.uuidString, url: clip.fileURL)
     }
 
     private func durationText(for clip: SleepSoundClip) -> String {
