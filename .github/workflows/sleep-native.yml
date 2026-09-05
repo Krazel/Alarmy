@@ -31,6 +31,11 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -project sleep-native/AlarmaSleep.xcodeproj -scheme AlarmaSleep -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build/simulator -resultBundlePath build/Tests.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build-test.log
+      - name: Export UI evidence
+        if: always()
+        run: |
+          mkdir -p evidence
+          xcrun xcresulttool export attachments --path build/Tests.xcresult --output-path evidence || true
       - name: Capture real simulator
         run: |
           xcrun simctl status_bar "$DEVICE" override --time '21:41' --batteryState charged --batteryLevel 100
@@ -38,7 +43,7 @@ jobs:
           xcrun simctl launch "$DEVICE" com.krazel.alarmasleep
           sleep 4
           mkdir -p evidence
-          xcrun simctl io "$DEVICE" screenshot evidence/01-welcome.png
+          xcrun simctl io "$DEVICE" screenshot evidence/last-screen.png
       - name: Build iPhone app
         run: |
           set -o pipefail
@@ -58,3 +63,4 @@ jobs:
             build-test.log
             build-device.log
           retention-days: 7
+

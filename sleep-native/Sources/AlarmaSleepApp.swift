@@ -130,6 +130,7 @@ struct TonightView: View {
     @State private var editing: WakeAlarm?
     @State private var starting = false
     @State private var preparation = false
+    @State private var pendingStart = false
     private var next: WakeAlarm? {
         store.data.alarms.filter(\.enabled).sorted {
             ($0.nextDate(after: Date()) ?? .distantFuture) < ($1.nextDate(after: Date()) ?? .distantFuture)
@@ -205,7 +206,12 @@ struct TonightView: View {
                 }
             }.toolbar(.hidden, for: .navigationBar)
                 .sheet(item: $editing) { alarm in AlarmEditor(alarm: alarm) }
-                .sheet(isPresented: $preparation) {
+                .sheet(isPresented: $preparation, onDismiss: {
+                    engine.stopPreview()
+                    guard pendingStart, let next else { return }
+                    pendingStart = false; starting = true
+                    Task { await engine.start(alarm: next, store: store, scheduler: reminders); starting = false }
+                }) {
                     NavigationStack {
                         VStack(alignment: .leading, spacing: 24) {
                             Image(systemName: "moon.zzz").font(.largeTitle).foregroundStyle(Palette.gold)
@@ -216,13 +222,13 @@ struct TonightView: View {
                             Button { engine.playPreview("dawn") } label: { Label("Test wake-up sound", systemImage: "play.circle") }
                             Spacer()
                             GoldButton(title: "Start my night") {
-                                guard let next else { return }
-                                preparation = false; starting = true
-                                Task { await engine.start(alarm: next, store: store, scheduler: reminders); starting = false }
+                                pendingStart = true
+                                preparation = false
                             }
                         }.padding(28).background(Palette.background).toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { preparation = false } } }
-                    }.onDisappear { engine.stopPreview() }
+                    }
                 }
         }
     }
 }
+

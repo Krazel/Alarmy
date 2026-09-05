@@ -36,6 +36,10 @@ final class NightEngine: NSObject, ObservableObject {
 
     func start(alarm: WakeAlarm, store: SleepStore, scheduler: ReminderScheduler) async {
         guard phase == .idle, !starting, let wake = alarm.nextDate(after: Date()) else { return }
+        guard store.data.activeNight == nil else {
+            error = "A previous night has not been saved successfully. Restart the app to recover it before starting another."
+            return
+        }
         starting = true
         defer { starting = false }
         stopPreview()
@@ -217,3 +221,4 @@ extension NightEngine: AVAudioPlayerDelegate {
         Task { @MainActor in self.stopPreview() }
     }
 }
+

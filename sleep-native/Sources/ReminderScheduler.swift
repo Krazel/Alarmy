@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import UserNotifications
 
 @MainActor
@@ -7,6 +8,8 @@ final class ReminderScheduler: NSObject, ObservableObject, UNUserNotificationCen
     @Published var error: String?
     private let center = UNUserNotificationCenter.current()
     private var generation = 0
+    private var syncing = false
+    private var requestedAlarms: [WakeAlarm] = []
     override init() { super.init(); center.delegate = self }
     func refreshPermission() async {
         let settings = await center.notificationSettings()
@@ -20,17 +23,26 @@ final class ReminderScheduler: NSObject, ObservableObject, UNUserNotificationCen
         } catch { self.error = error.localizedDescription; return false }
     }
     func sync(_ alarms: [WakeAlarm]) async {
+        requestedAlarms = alarms
         generation += 1
-        let requestGeneration = generation
+        guard !syncing else { return }
+        syncing = true
+        defer { syncing = false }
+        repeat {
+            let requestGeneration = generation
+            await replaceReminders(requestedAlarms)
+            if requestGeneration == generation { break }
+        } while true
+    }
+    private func replaceReminders(_ alarms: [WakeAlarm]) async {
         let existing = await center.pendingNotificationRequests()
-        guard requestGeneration == generation else { return }
         center.removePendingNotificationRequests(withIdentifiers: existing.filter { $0.identifier.hasPrefix("alarm-") }.map(\.identifier))
         await refreshPermission()
-        guard authorized, requestGeneration == generation else { return }
+        guard authorized else { return }
         for alarm in alarms.prefix(8) where alarm.enabled {
             let days: [Int?] = alarm.weekdays.isEmpty ? [nil] : alarm.weekdays.sorted().map { Optional($0) }
             for day in days {
-                guard requestGeneration == generation else { return }
+
                 let content = UNMutableNotificationContent()
                 content.title = alarm.name.isEmpty ? "Good morning" : alarm.name
                 content.body = "Your wake-up reminder. Open Alarma to start your day."
@@ -70,3 +82,5 @@ final class ReminderScheduler: NSObject, ObservableObject, UNUserNotificationCen
         completionHandler([.banner, .sound])
     }
 }
+
+

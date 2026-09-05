@@ -30,10 +30,20 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+  AlarmaSleepUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: AlarmaSleep
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   AlarmaSleep:
     build:
       targets:
         AlarmaSleep: all
     test:
-      targets: [AlarmaSleepTests]
+      targets: [AlarmaSleepTests, AlarmaSleepUITests]
+
