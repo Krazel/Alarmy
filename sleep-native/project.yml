@@ -1,0 +1,39 @@
+name: AlarmaSleep
+options:
+  bundleIdPrefix: com.krazel
+  deploymentTarget:
+    iOS: '16.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    MARKETING_VERSION: '0.1'
+    CURRENT_PROJECT_VERSION: '1'
+    TARGETED_DEVICE_FAMILY: '1'
+    CODE_SIGN_STYLE: Automatic
+targets:
+  AlarmaSleep:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    resources: [Resources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.krazel.alarmasleep
+        INFOPLIST_FILE: Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  AlarmaSleepTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: AlarmaSleep
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  AlarmaSleep:
+    build:
+      targets:
+        AlarmaSleep: all
+    test:
+      targets: [AlarmaSleepTests]

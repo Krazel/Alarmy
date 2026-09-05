@@ -1,0 +1,60 @@
+name: Native sleep rebuild validation
+on:
+  push:
+    branches: [codex/native-sleep-rebuild]
+    paths: ['sleep-native/**', '.github/workflows/sleep-native.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sleep-native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    if: github.event.repository.private == false
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          cd sleep-native
+          xcodegen generate
+      - name: Choose simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if "iPhone" in x["name"]))')
+          echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+      - name: Test native app
+        run: |
+          set -o pipefail
+          xcodebuild -project sleep-native/AlarmaSleep.xcodeproj -scheme AlarmaSleep -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build/simulator -resultBundlePath build/Tests.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build-test.log
+      - name: Capture real simulator
+        run: |
+          xcrun simctl status_bar "$DEVICE" override --time '21:41' --batteryState charged --batteryLevel 100
+          xcrun simctl install "$DEVICE" build/simulator/Build/Products/Debug-iphonesimulator/AlarmaSleep.app
+          xcrun simctl launch "$DEVICE" com.krazel.alarmasleep
+          sleep 4
+          mkdir -p evidence
+          xcrun simctl io "$DEVICE" screenshot evidence/01-welcome.png
+      - name: Build iPhone app
+        run: |
+          set -o pipefail
+          xcodebuild -project sleep-native/AlarmaSleep.xcodeproj -scheme AlarmaSleep -configuration Release -sdk iphoneos -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee build-device.log
+          mkdir -p package/Payload
+          cp -R build/device/Build/Products/Release-iphoneos/AlarmaSleep.app package/Payload/
+          cd package
+          zip -qry ../AlarmaSleep-0.1-build-1-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AlarmaSleep-validation
+          path: |
+            AlarmaSleep-*.ipa
+            evidence/
+            build/Tests.xcresult
+            build-test.log
+            build-device.log
+          retention-days: 7
