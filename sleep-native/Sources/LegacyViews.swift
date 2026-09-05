@@ -1890,7 +1890,7 @@ struct NightSoundsSummary: View {
             HStack {
                 DiaryAssetImage(name: "sound-wave")
                     .frame(width: 27, height: 27)
-                Text(L("Ruidos nocturnos"))
+                Text(L("Ruidos nocturnos")).lineLimit(1).minimumScaleFactor(0.70)
                     .font(.system(size: 19, weight: .bold))
                 Spacer()
                 Text(LF("%@ clips", String(describing: clipCount)))
