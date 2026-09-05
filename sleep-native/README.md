@@ -60,3 +60,5 @@ Apple references checked for implementation:
 - https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/SchedulingandHandlingLocalNotifications.html
 - https://developer.apple.com/documentation/avfaudio/avaudiosession
 - https://developer.apple.com/videos/play/wwdc2025/230/ (AlarmKit is iOS 26+, not used by the iOS 16 target.)
+
+Validation results: [VALIDATION.md](VALIDATION.md). Full artwork prompt and provenance: [design/ASSETS.md](design/ASSETS.md). Native screenshots: [design/runtime](design/runtime/README.md).
