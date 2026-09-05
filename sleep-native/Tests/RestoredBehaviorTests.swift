@@ -30,6 +30,20 @@ final class RestoredBehaviorTests: XCTestCase {
         XCTAssertTrue(store.sleepAlarm.lightWakeEnabled)
         XCTAssertEqual(store.sleepAlarm.snoozeMinutes, 15)
     }
+    func testImportedSongCanPlayAndRemovalUpdatesAlarmSelection() throws {
+        let store = store()
+        let url = try XCTUnwrap(Bundle(for: SleepStore.self).url(forResource: "dawn", withExtension: "wav"))
+        store.importCustomSound(from: url)
+        let sound = try XCTUnwrap(store.customSounds.first)
+        XCTAssertNotNil(SleepStore.soundURL(sound.soundId))
+        var alarm = store.sleepAlarm; alarm.sounds = [sound.soundId]
+        store.updateSleepAlarm(alarm)
+        XCTAssertEqual(store.sleepAlarm.chooseSound(previous: nil), sound.soundId)
+        store.removeCustomSound(sound)
+        XCTAssertNil(SleepStore.soundURL(sound.soundId))
+        XCTAssertEqual(store.sleepAlarm.sounds, AlarmSound.defaultIds)
+        XCTAssertNil(store.error)
+    }
     func testNeverRetentionKeepsOldClips() {
         let store = store()
         let clip = SoundClip(date: .distantPast, fileName: "test.m4a", seconds: 3)

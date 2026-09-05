@@ -152,7 +152,9 @@ final class DreamStore: ObservableObject {
         let size = store.data.entries.flatMap(\.clips).reduce(0) { sum, clip in
             sum + ((try? SleepStore.clipsDirectory.appendingPathComponent(clip.fileName).resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
         }
-        return ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file; formatter.allowsNonnumericFormatting = false
+        return formatter.string(fromByteCount: Int64(size))
     }
     func connectHealth() async {
         do { try await health.authorize(); store.change { $0.healthConnected = true }; await refreshHealth() }
