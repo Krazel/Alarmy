@@ -2,6 +2,8 @@
 
 Proyecto independiente escrito desde cero en `sleep-next`. Los diseños anteriores sirven de referencia visual; este proyecto no compila, importa ni enlaza código o recursos de `sleep-native` ni de la aplicación original.
 
+[Ver el diseño del diario](Design/README.md) · [Pruebas y paquete para iPhone](VALIDATION.md)
+
 ## Abrir y compilar
 
 Requiere macOS, Xcode 26 o posterior y XcodeGen:

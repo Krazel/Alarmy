@@ -1,12 +1,16 @@
-# Alarma — native iPhone app
+# Alarma — native iPhone app, rebuilt from scratch
 
-The application is in [`sleep-native/`](sleep-native/README.md), SwiftUI for iOS 16+, **0.2 (build 1)**. It restores the original Alarma designs and interactions and adds complete **Castellano / English** language selection.
+The current application is in **[`sleep-next/`](sleep-next/README.md)**: an independent SwiftUI project for **iOS 16+**, with **Castellano and English**, new domain models, persistence, alarm/audio/Health services, original assets and a redesigned sleep journal.
 
-This checkout is the isolated `codex/native-sleep-rebuild` branch. The original `Alarma` working directory is preserved. Legacy folders are references and are not compiled into the new target.
+- [Project and build instructions](sleep-next/README.md)
+- [Native XcodeGen project](sleep-next/project.yml)
+- [Sleep journal screenshots](sleep-next/Design/README.md)
+- [Asset provenance](sleep-next/Design/ASSETS.md)
+- [20 passed tests and iPhone package validation](sleep-next/VALIDATION.md)
+- [Validation workflow](.github/workflows/sleep-next.yml)
 
-- [Product and build instructions](sleep-native/README.md)
-- [XcodeGen project](sleep-native/project.yml)
-- [Validation](sleep-native/VALIDATION.md)
-- [CI workflow](.github/workflows/sleep-native.yml)
+Use the **AlarmaNext** Xcode scheme and bundle identifier `com.krazel.alarmanext`. Xcode 26 builds the app with guarded AlarmKit support on iOS 26 and sound notifications on iOS 16–25. See the app and project notes for the older-system alarm limitations.
 
-Use the `AlarmaSleep` Xcode scheme. Downloaded unsigned iPhone builds are under the Git-ignored `artifact/` directory.
+This is the authorized `codex/native-sleep-rebuild` branch. `sleep-native/` is the previous design restoration, kept as a reference; none of its app source or assets is compiled into AlarmaNext. Other legacy folders are also reference material. The separate original `Alarma` working directory is preserved.
+
+Downloaded unsigned iPhone builds are in the Git-ignored `artifact/` directory. Installing on an iPhone requires an Apple development signature.
