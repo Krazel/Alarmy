@@ -187,7 +187,7 @@ struct JournalView: View {
                                         Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.muted)
                                     }
                                 }
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(.plain).accessibilityIdentifier("night-entry-\(entry.id)")
                         }
                     }
                 }.padding(24)

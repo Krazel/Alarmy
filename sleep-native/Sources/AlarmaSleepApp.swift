@@ -106,25 +106,28 @@ struct WelcomeView: View {
         ZStack {
             NightLandscape()
             LinearGradient(colors: [.clear, Palette.background.opacity(0.95)], startPoint: .center, endPoint: .bottom).ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 24) {
-                Text("A L A R M A").font(.caption.weight(.semibold)).tracking(3).foregroundStyle(Palette.gold)
-                Spacer(minLength: 90)
-                Text("A softer end.\nA gentler beginning.")
-                    .font(.system(size: 42, weight: .regular, design: .serif)).fixedSize(horizontal: false, vertical: true)
-                Text("Make room for rest, wake to a sound you love, and keep a little record of your nights.")
-                    .font(.body).foregroundStyle(Palette.muted).lineSpacing(5)
-                VStack(alignment: .leading, spacing: 16) {
-                    Label("Gentle wake-up sounds", systemImage: "sun.horizon")
-                    Label("Your private night journal", systemImage: "book.closed")
-                    Label("Optional sound clips, saved on iPhone", systemImage: "lock")
-                }.font(.subheadline)
-                GoldButton(title: "Make tonight yours", symbol: "arrow.right") { store.change { $0.onboardingComplete = true } }
-                Text("No account needed. Your nights stay with you.").font(.caption).foregroundStyle(Palette.muted).frame(maxWidth: .infinity)
-            }.padding(28).padding(.bottom, 12)
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        Text("A L A R M A").font(.caption.weight(.semibold)).tracking(3).foregroundStyle(Palette.gold)
+                        Spacer(minLength: 60)
+                        Text("A softer end.\nA gentler beginning.")
+                            .font(.system(size: 42, weight: .regular, design: .serif)).fixedSize(horizontal: false, vertical: true)
+                        Text("Make room for rest, wake to a sound you love, and keep a little record of your nights.")
+                            .font(.body).foregroundStyle(Palette.muted).lineSpacing(5)
+                        VStack(alignment: .leading, spacing: 16) {
+                            Label("Gentle wake-up sounds", systemImage: "sun.horizon")
+                            Label("Your private night journal", systemImage: "book.closed")
+                            Label("Optional sound clips, saved on iPhone", systemImage: "lock")
+                        }.font(.subheadline)
+                        GoldButton(title: "Make tonight yours", symbol: "arrow.right") { store.change { $0.onboardingComplete = true } }
+                        Text("No account needed. Your nights stay with you.").font(.caption).foregroundStyle(Palette.muted).frame(maxWidth: .infinity)
+                    }.padding(28).padding(.bottom, 12).frame(minHeight: geometry.size.height)
+                }
+            }
         }
     }
 }
-
 struct TonightView: View {
     @EnvironmentObject private var store: SleepStore
     @EnvironmentObject private var engine: NightEngine

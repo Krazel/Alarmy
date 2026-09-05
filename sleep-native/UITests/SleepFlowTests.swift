@@ -25,6 +25,31 @@ final class SleepFlowTests: XCTestCase {
         app.buttons["Begin tonight"].tap()
         XCTAssertTrue(app.buttons["Start my night"].waitForExistence(timeout: 5))
         capture("06-night-preparation")
+        app.buttons["Start my night"].tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = springboard.buttons["Allow"]
+        if allow.waitForExistence(timeout: 8) { allow.tap() }
+        XCTAssertTrue(app.staticTexts["Nothing to do. Just rest."].waitForExistence(timeout: 12))
+        capture("07-active-night")
+        app.buttons["End this night"].tap()
+        app.buttons["End night"].tap()
+        let night = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "night-entry-")).firstMatch
+        XCTAssertTrue(night.waitForExistence(timeout: 8))
+        night.tap()
+        app.buttons["Rested"].tap()
+        let notes = app.textViews["Dreams and notes"]
+        notes.tap()
+        notes.typeText("A calm start.")
+        app.toolbars.buttons["Done"].tap()
+        app.buttons["Save"].tap()
+        app.terminate()
+        app.launch()
+        app.tabBars.buttons["Journal"].tap()
+        let savedNight = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "night-entry-")).firstMatch
+        XCTAssertTrue(savedNight.waitForExistence(timeout: 8))
+        savedNight.tap()
+        XCTAssertEqual(app.textViews["Dreams and notes"].value as? String, "A calm start.")
+        capture("08-saved-journal-entry")
         app.buttons["Cancel"].tap()
     }
     private func capture(_ name: String) {
