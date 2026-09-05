@@ -42,6 +42,7 @@ struct RootTabView: View {
             DreamJournalView().tabItem { Label(L("Diario"), systemImage: "book.closed.fill") }.tag(AppTab.journal)
             SettingsView().tabItem { Label(L("Ajustes"), systemImage: "gearshape.fill") }.tag(AppTab.settings)
         }
+        .id(store.language)
         .tint(store.sleepTheme.primary)
         .alert(L("Alarma"), isPresented: Binding(get: { message != nil }, set: { if !$0 { clearErrors() } })) {
             Button(L("Entendido")) { clearErrors() }

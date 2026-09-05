@@ -1019,7 +1019,7 @@ struct NightActiveView: View {
         .preferredColorScheme(theme == .night ? .dark : .light)
         .statusBarHidden(false)
         .onAppear {
-            showMotionHint = true
+            showMotionHint = alarm.motionSnooze
             showStartedTitle = true
             withAnimation(.easeOut(duration: 1.4).delay(2.2)) {
                 showMotionHint = false

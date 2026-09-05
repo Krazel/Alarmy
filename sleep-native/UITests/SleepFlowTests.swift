@@ -2,6 +2,7 @@ import XCTest
 
 final class SleepFlowTests: XCTestCase {
     func testOriginalDesignBilingualJournalAndNight() {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_GB"]
         app.launch()
