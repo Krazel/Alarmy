@@ -1,0 +1,51 @@
+name: AlarmaNext
+options:
+  bundleIdPrefix: com.krazel
+  deploymentTarget:
+    iOS: '16.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    MARKETING_VERSION: '1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    TARGETED_DEVICE_FAMILY: '1'
+    CODE_SIGN_STYLE: Automatic
+targets:
+  AlarmaNext:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.krazel.alarmanext
+        INFOPLIST_FILE: Info.plist
+        CODE_SIGN_ENTITLEMENTS: AlarmaNext.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  AlarmaNextTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: AlarmaNext
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+  AlarmaNextUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: AlarmaNext
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  AlarmaNext:
+    build:
+      targets:
+        AlarmaNext: all
+    test:
+      targets: [AlarmaNextTests, AlarmaNextUITests]
