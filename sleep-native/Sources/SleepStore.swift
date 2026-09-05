@@ -26,19 +26,25 @@ final class SleepStore: ObservableObject {
             }
         } catch {
             data = SleepData(); canWrite = false
-            self.error = "Your saved data could not be opened. It has been preserved. Restart the app to try again."
+            self.error = L("Your saved data could not be opened. It has been preserved. Restart the app to try again.")
+        }
+        if data.nightlyAlarm == nil {
+            var alarm = data.alarms.first ?? WakeAlarm()
+            alarm.oneShotDate = nil; alarm.enabled = true; alarm.weekdays = []
+            alarm.sounds = AlarmSound.defaultIds; alarm.shakeToSnooze = true
+            data.nightlyAlarm = alarm
         }
     }
 
     func change(_ update: (inout SleepData) -> Void) {
-        guard canWrite else { error = "Saved data is unavailable. Restart before making changes."; return }
+        guard canWrite else { error = L("Saved data is unavailable. Restart before making changes."); return }
         var candidate = data
         update(&candidate)
         do {
             let encoded = try JSONEncoder().encode(candidate)
             try encoded.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             data = candidate
-        } catch { self.error = "Could not save your changes: \(error.localizedDescription)" }
+        } catch { self.error = LF("Could not save your changes: %@", String(describing: error.localizedDescription)) }
     }
     func saveAlarm(_ input: WakeAlarm) {
         var alarm = input
@@ -95,6 +101,7 @@ final class SleepStore: ObservableObject {
         if !data.entries.flatMap(\.clips).contains(where: { $0.id == clip.id }) { deleteClipFile(clip) }
     }
     func cleanExpiredClips(now: Date = Date()) {
+        guard data.retentionDays > 0 else { return }
         let cutoff = now.addingTimeInterval(-Double(data.retentionDays) * 86400)
         let expired = data.entries.flatMap(\.clips).filter { $0.date < cutoff }
         guard !expired.isEmpty else { return }
@@ -109,6 +116,6 @@ final class SleepStore: ObservableObject {
         let url = Self.clipsDirectory.appendingPathComponent(clip.fileName)
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         do { try FileManager.default.removeItem(at: url) }
-        catch { self.error = "An audio file could not be deleted. \(error.localizedDescription)" }
+        catch { self.error = LF("An audio file could not be deleted. %@", String(describing: error.localizedDescription)) }
     }
 }

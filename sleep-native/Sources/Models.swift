@@ -2,7 +2,7 @@ import Foundation
 
 struct WakeAlarm: Identifiable, Codable, Equatable {
     var id = UUID()
-    var name = "Morning"
+    var name = L("Morning")
     var hour = 7
     var minute = 30
     var weekdays: Set<Int> = [] // Calendar: Sunday = 1
@@ -12,13 +12,15 @@ struct WakeAlarm: Identifiable, Codable, Equatable {
     var shuffle = true
     var fadeSeconds = 60
     var snoozeMinutes = 5
-    var shakeToSnooze = false
+    var shakeToSnooze = true
+    var lightWake: Bool?
+    var lightMinutes: Int?
 
     var timeText: String { String(format: "%02d:%02d", hour, minute) }
     var repeatText: String {
-        if weekdays.isEmpty { return "Once" }
-        if weekdays.count == 7 { return "Every day" }
-        if weekdays == [2,3,4,5,6] { return "Weekdays" }
+        if weekdays.isEmpty { return L("Once") }
+        if weekdays.count == 7 { return L("Every day") }
+        if weekdays == [2,3,4,5,6] { return L("Weekdays") }
         return Self.days.filter { weekdays.contains($0.0) }.map { $0.1 }.joined(separator: " · ")
     }
     static let days = [(2,"Mon"),(3,"Tue"),(4,"Wed"),(5,"Thu"),(6,"Fri"),(7,"Sat"),(1,"Sun")]
@@ -35,7 +37,7 @@ struct WakeAlarm: Identifiable, Codable, Equatable {
         }.min()
     }
     func chooseSound(previous: String?) -> String {
-        let valid = sounds.filter { SoundChoice.all.map(\.id).contains($0) }
+        let valid = sounds.filter { (SoundChoice.all.map(\.id) + AlarmSound.all.map(\.id)).contains($0) || $0.hasPrefix("custom:") }
         guard shuffle else { return valid.first ?? "dawn" }
         let pool = valid.filter { $0 != previous }
         return (pool.isEmpty ? valid : pool).randomElement() ?? "dawn"
@@ -54,20 +56,12 @@ struct SoundChoice: Identifiable {
     ]
 }
 
-enum WakeMood: String, Codable, CaseIterable, Identifiable {
-    case rested, okay, tired
-    var id: String { rawValue }
-    var title: String { rawValue.capitalized }
-    var symbol: String {
-        switch self { case .rested: return "sun.max"; case .okay: return "cloud.sun"; case .tired: return "cloud" }
-    }
-}
-
 struct SoundClip: Identifiable, Codable, Equatable {
     var id = UUID()
     var date: Date
     var fileName: String
     var seconds: Double
+    var kind: SleepAudioEvent.Kind?
 }
 
 struct NightEntry: Identifiable, Codable, Equatable {
@@ -95,6 +89,13 @@ struct ActiveNight: Codable {
 }
 
 struct SleepData: Codable {
+    var appearance: AppAppearance?
+    var language: AppLanguage?
+    var nightlyAlarm: WakeAlarm?
+    var openJournal: Bool?
+    var customSounds: [CustomAlarmSound]?
+    var journalNotes: [String: JournalNote]?
+    var healthConnected: Bool?
     var version = 1
     var alarms: [WakeAlarm] = [WakeAlarm()]
     var entries: [NightEntry] = []

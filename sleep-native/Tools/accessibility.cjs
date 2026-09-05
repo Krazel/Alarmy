@@ -1,0 +1,6 @@
+const fs=require('fs'),f='sleep-native/Sources/LegacyViews.swift';let s=fs.readFileSync(f,'utf8');
+s=s.replace(/(\.overlay\(Circle\(\)\.stroke\(theme == \.sunset \? Color.black.opacity\(0.05\) : theme.primary.opacity\(0.22\), lineWidth: 1\)\)\s*\})/, '$1\n                .accessibilityLabel(L("Editar alarma"))\n                .accessibilityIdentifier("edit-alarm")');
+for(const [component,label] of [['hour','Horas'],['minute','Minutos']])s=s.replace('.highPriorityGesture(timeDragGesture(for: .'+component+'))','.highPriorityGesture(timeDragGesture(for: .'+component+'))\n                        .accessibilityElement()\n                        .accessibilityLabel(L("'+label+'"))\n                        .accessibilityValue(timeText)\n                        .accessibilityAdjustableAction { direction in onAdjust(.'+component+', direction == .increment ? 1 : -1) }');
+s=s.replace('Image(systemName: "calendar").accessibilityIdentifier("full-calendar")','Image(systemName: "calendar").accessibilityIdentifier("full-calendar").accessibilityLabel(L("Calendario"))');
+s=s.replace(/\.onChange\(of: session.motionProgress\) \{ value in\s*if value > 0.96 \{ Task \{ await session.snooze\(\) \} \}\s*\}/,'');
+fs.writeFileSync(f,s);

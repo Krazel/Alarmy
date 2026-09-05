@@ -1,0 +1,3 @@
+"NSMicrophoneUsageDescription" = "Record optional night sound clips on this iPhone. Recordings are never uploaded.";
+"NSMotionUsageDescription" = "Detect phone movement to snooze while your alarm is ringing.";
+"NSHealthShareUsageDescription" = "Show sleep stages already recorded in Apple Health in your sleep journal.";

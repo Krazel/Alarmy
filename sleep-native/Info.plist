@@ -9,6 +9,9 @@
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
 <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+<key>CFBundleDevelopmentRegion</key><string>en</string>
+<key>CFBundleLocalizations</key><array><string>en</string><string>es</string></array>
+<key>NSHealthShareUsageDescription</key><string>Show sleep stages already recorded in Apple Health in your sleep journal.</string>
 <key>LSRequiresIPhoneOS</key><true/>
 <key>NSMicrophoneUsageDescription</key><string>Record optional night sound clips on this iPhone. Recordings are never uploaded.</string>
 <key>NSMotionUsageDescription</key><string>Detect a shake to snooze while your alarm is ringing.</string>

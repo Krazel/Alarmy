@@ -1,0 +1,3 @@
+"NSMicrophoneUsageDescription" = "Graba clips de sonidos nocturnos opcionales en este iPhone. Las grabaciones nunca se suben a Internet.";
+"NSMotionUsageDescription" = "Detecta el movimiento del móvil para posponer cuando suena la alarma.";
+"NSHealthShareUsageDescription" = "Muestra en tu diario las fases de sueño que ya tienes registradas en Salud.";

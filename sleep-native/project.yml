@@ -6,7 +6,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: '5.0'
-    MARKETING_VERSION: '0.1'
+    MARKETING_VERSION: '0.2'
     CURRENT_PROJECT_VERSION: '1'
     TARGETED_DEVICE_FAMILY: '1'
     CODE_SIGN_STYLE: Automatic
@@ -22,6 +22,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.krazel.alarmasleep
         INFOPLIST_FILE: Info.plist
+        CODE_SIGN_ENTITLEMENTS: AlarmaSleep.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
   AlarmaSleepTests:
     type: bundle.unit-test

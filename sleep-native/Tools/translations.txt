@@ -1,0 +1,167 @@
+Alarmas|Alarms
+Diario|Journal
+Ajustes|Settings
+Alarma|Alarma
+Entendido|Got it
+Buenas noches|Good night
+La noche ha comenzado|Your night has started
+Auto|Auto
+Claro|Light
+Oscuro|Dark
+Nunca|Never
+1 día|1 day
+7 días|7 days
+30 días|30 days
+90 días|90 days
+Bosque al amanecer|Forest at dawn
+Despertar suave|Gentle awakening
+Despierto|Awake
+Ligero|Light
+Profundo|Deep
+REM|REM
+Ronquido|Snoring
+Respiración|Breathing
+Voz|Voice
+Tos|Cough
+Otro sonido|Other sound
+Agotado|Exhausted
+Cansado|Tired
+Normal|Okay
+Calmado|Calm
+Con fuerza|Energized
+Empezar la noche|Start the night
+Activar modo noche|Switch to night theme
+Activar modo claro|Switch to light theme
+Descansa|Rest well
+Editar alarma|Edit alarm
+Musicas posibles|Wake-up music|Música para despertar
+Escoger|Choose
+Mover para posponer|Move to snooze
+Guardar|Save
+Ninguna seleccionada|None selected
+%@ seleccionadas|%@ selected
+Hora|Time
+Posponer|Snooze
+Luz progresiva|Gradual light
+Hecho|Done
+Deseleccionar|Deselect all
+Tus canciones|Your songs
+Cancion importada|Imported song|Canción importada
+Alarma clara|Bright alarm
+Ambiente natural|Nature ambience
+Entrada tranquila|Gentle start
+Ritmo suave|Soft rhythm
+Sonido|Sound
+Volumen progresivo|Gradual volume
+Maximo|Maximum|Máximo
+Progresivo|Gradual
+Directo al maximo|Maximum immediately|Directo al máximo
+Subida|Fade-in
+La alarma usara el volumen maximo interno de la app.|The alarm will use the app's full playback volume.|La alarma usará el volumen máximo interno de la app.
+Volumen del iPhone|iPhone volume
+iOS solo permite cambiar este volumen con el control del sistema o los botones laterales.|Adjust this volume using the system slider or the side buttons.
+Mueve el móvil\npara posponer|Move your phone\nto snooze
+Terminar|End
+Pospuesta|Snoozed
+Pospuesta hasta %@|Snoozed until %@
+Alarma sonando|Alarm ringing
+Listo|Done
+Diario de sueño|Sleep journal
+Hoy|Today
+Sin datos|No data
+Menos de 1 min|Less than 1 min
+LUN|MON
+MAR|TUE
+MIÉ|WED
+JUE|THU
+VIE|FRI
+SÁB|SAT
+DOM|SUN
+%@, sin datos|%@, no data
+%@, puntuacion %@|%@, score %@|%@, puntuación %@
+Escoger mes|Choose month
+Cerrar|Close
+Calendario|Calendar
+Cómo te has despertado|How did you wake up?
+Ruidos nocturnos|Night sounds
+%@ clips|%@ clips
+Ver clips|View clips
+Sin clips guardados esta noche.|No clips saved this night.
+Ronq.|Snore
+Resp.|Breath
+Diario de sueños|Dream journal
+Escribe aquí tus sueños, pensamientos o cómo\nha sido tu noche...|Write your dreams, thoughts or how\nyour night went...
+No hay clips de este tipo.|No clips of this type.
+Todos|All
+Ronquidos|Snoring
+Gráfica de sueño|Sleep chart
+Idioma|Language
+Sistema|System
+Castellano|Castellano
+English|English
+Apariencia|Appearance
+Tema|Theme
+Seguimiento nocturno|Night tracking
+Abrir diario al terminar alarma|Open journal when the alarm ends
+Grabar sonidos nocturnos|Record night sounds
+Conectar con Salud|Connect to Health
+Las fases de sueño proceden de Salud. Sin registros compatibles, la gráfica permanece vacía.|Sleep stages come from Health. Without compatible records, the chart stays empty.
+La detección de ronquidos, respiración fuerte, tos y voz se guarda localmente como estimación.|Snoring, breathing, cough and voice labels are on-device estimates.|Las etiquetas de ronquidos, respiración, tos y voz son estimaciones locales.
+Despertar|Wake-up
+Suscripción pendiente|Support coming soon
+El apoyo mensual estará disponible en una próxima versión. Todavía no hay compras que restaurar.|Monthly support will be available in a future version. There are no purchases to restore yet.
+Eliminar sonidos nocturnos|Delete night sounds
+Eliminar todos|Delete all
+Cancelar|Cancel
+Se borrarán los clips de audio guardados y los contadores de ruidos del diario.|Saved audio clips and journal sound counts will be deleted.
+Eliminar sonidos|Delete sounds after
+Eliminar todos los sonidos|Delete all sounds
+Apoyar la app|Support the app
+Activo|Active
+Opcional|Optional
+Sin anuncios activo|Ad-free active
+Próximamente|Coming soon
+El apoyo mensual todavía no está disponible. No se realizará ningún cargo.|Monthly support is not available yet. You will not be charged.
+Quitar anuncios|Remove ads
+Restaurar compras|Restore purchases
+La pantalla se ilumina al sonar|The screen brightens when the alarm rings
+Morning|Morning|Mañana
+Once|Once|Una vez
+Every day|Every day|Todos los días
+Weekdays|Weekdays|Entre semana
+A previous night has not been saved successfully. Restart the app to recover it before starting another.|A previous night has not been saved successfully. Restart the app to recover it before starting another.|No se ha podido guardar la noche anterior. Reinicia la app para recuperarla antes de empezar otra.
+Microphone access is off. Enable it in Settings or turn off night recording.|Microphone access is off. Enable it in Settings or turn off night recording.|El micrófono está desactivado. Actívalo en Ajustes o desactiva la grabación nocturna.
+The night could not start: %@|The night could not start: %@|No se pudo empezar la noche: %@
+Recording stopped: %@|Recording stopped: %@|Grabación detenida: %@
+The 120-clip limit was reached. Your alarm is still active.|The 120-clip limit was reached. Your alarm is still active.|Se alcanzó el límite de 120 clips. La alarma sigue activa.
+Alarm audio stopped: %@. The backup reminder remains scheduled.|Alarm audio stopped: %@. The backup reminder remains scheduled.|El audio de la alarma se detuvo: %@. El aviso de respaldo sigue programado.
+Could not snooze: %@|Could not snooze: %@|No se pudo posponer: %@
+Could not play audio: %@|Could not play audio: %@|No se pudo reproducir el audio: %@
+Audio was interrupted. This night has been saved; restart it to resume. Your backup reminder remains scheduled.|Audio was interrupted. This night has been saved; restart it to resume. Your backup reminder remains scheduled.|El audio se interrumpió. La noche se ha guardado; iníciala de nuevo para continuar. El aviso de respaldo sigue programado.
+The audio device disconnected. Restart your night to check the speaker.|The audio device disconnected. Restart your night to check the speaker.|El dispositivo de audio se desconectó. Reinicia la noche para comprobar el altavoz.
+iPhone audio restarted. Your night was saved. Start a new session to continue.|iPhone audio restarted. Your night was saved. Start a new session to continue.|El audio del iPhone se reinició. La noche se ha guardado. Inicia otra sesión para continuar.
+Night audio stopped unexpectedly. Your night was saved and the backup reminder remains scheduled.|Night audio stopped unexpectedly. Your night was saved and the backup reminder remains scheduled.|El audio se detuvo inesperadamente. La noche se ha guardado y el aviso de respaldo sigue programado.
+Audio could not continue. Check your night session before relying on the alarm.|Audio could not continue. Check your night session before relying on the alarm.|El audio no pudo continuar. Comprueba tu sesión nocturna antes de usar la alarma.
+Night sound recording stopped. Your wake-up audio is still active.|Night sound recording stopped. Your wake-up audio is still active.|La grabación nocturna se detuvo. El audio de la alarma sigue activo.
+La canción supera los 50 MB.|The song exceeds 50 MB.
+No se pudo importar la canción: %@|Could not import the song: %@
+No se pudo eliminar la canción: %@|Could not delete the song: %@
+No se pudo eliminar el audio: %@|Could not delete the audio: %@
+No se pudo leer Salud: %@|Could not read Health: %@
+No hay fases de sueño disponibles en Salud.|No sleep stages are available in Health.
+Datos de Salud actualizados|Health data updated
+Enable notifications in iPhone Settings to receive backup reminders.|Enable notifications in iPhone Settings to receive backup reminders.|Activa las notificaciones en Ajustes del iPhone para recibir avisos de respaldo.
+Good morning|Good morning|Buenos días
+Your wake-up reminder. Open Alarma to start your day.|Your wake-up reminder. Open Alarma to start your day.|Es hora de despertar. Abre Alarma para empezar el día.
+Could not schedule a reminder: %@|Could not schedule a reminder: %@|No se pudo programar un aviso: %@
+It's time to wake up. Open Alarma.|It's time to wake up. Open Alarma.|Es hora de despertar. Abre Alarma.
+Your saved data could not be opened. It has been preserved. Restart the app to try again.|Your saved data could not be opened. It has been preserved. Restart the app to try again.|No se pudieron abrir tus datos guardados. Se han conservado. Reinicia la app para volver a intentarlo.
+Saved data is unavailable. Restart before making changes.|Saved data is unavailable. Restart before making changes.|No se pueden leer tus datos. Reinicia la app antes de hacer cambios.
+Could not save your changes: %@|Could not save your changes: %@|No se pudieron guardar tus cambios: %@
+An audio file could not be deleted. %@|An audio file could not be deleted. %@|No se pudo eliminar un archivo de audio. %@
+Importar canción|Import song
+Reproducir %@|Play %@
+Eliminar %@|Delete %@
+Seleccionar %@|Select %@
+Minutos|Minutes
+Horas|Hours

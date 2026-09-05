@@ -18,7 +18,7 @@ final class ReminderScheduler: NSObject, ObservableObject, UNUserNotificationCen
     func requestPermission() async -> Bool {
         do {
             authorized = try await center.requestAuthorization(options: [.alert, .sound])
-            if !authorized { error = "Enable notifications in iPhone Settings to receive backup reminders." }
+            if !authorized { error = L("Enable notifications in iPhone Settings to receive backup reminders.") }
             return authorized
         } catch { self.error = error.localizedDescription; return false }
     }
@@ -45,8 +45,8 @@ final class ReminderScheduler: NSObject, ObservableObject, UNUserNotificationCen
             for day in days {
 
                 let content = UNMutableNotificationContent()
-                content.title = alarm.name.isEmpty ? "Good morning" : alarm.name
-                content.body = "Your wake-up reminder. Open Alarma to start your day."
+                content.title = alarm.name.isEmpty ? L("Good morning") : alarm.name
+                content.body = L("Your wake-up reminder. Open Alarma to start your day.")
                 content.sound = .default
                 var date = DateComponents()
                 date.hour = alarm.hour; date.minute = alarm.minute; date.weekday = day
@@ -57,14 +57,14 @@ final class ReminderScheduler: NSObject, ObservableObject, UNUserNotificationCen
                 let trigger = UNCalendarNotificationTrigger(dateMatching: date, repeats: day != nil)
                 let id = "alarm-\(alarm.id)-\(day ?? 0)"
                 do { try await center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger)) }
-                catch { self.error = "Could not schedule a reminder: \(error.localizedDescription)" }
+                catch { self.error = LF("Could not schedule a reminder: %@", String(describing: error.localizedDescription)) }
             }
         }
     }
     func scheduleNight(at date: Date) async throws {
         let content = UNMutableNotificationContent()
-        content.title = "Good morning"
-        content.body = "It's time to wake up. Open Alarma."
+        content.title = L("Good morning")
+        content.body = L("It's time to wake up. Open Alarma.")
         content.sound = .default
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, date.timeIntervalSinceNow), repeats: false)
         try await center.add(UNNotificationRequest(identifier: "night-backup", content: content, trigger: trigger))
