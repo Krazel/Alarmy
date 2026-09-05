@@ -21,7 +21,12 @@ jobs:
           brew install xcodegen
           cd sleep-native
           xcodegen generate
+      - name: Compile app and tests
+        run: |
+          set -o pipefail
+          xcodebuild -project sleep-native/AlarmaSleep.xcodeproj -scheme AlarmaSleep -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO build-for-testing 2>&1 | tee build-compile.log
       - name: Choose simulator
+        timeout-minutes: 8
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if "iPhone" in x["name"]))')
           echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
@@ -30,7 +35,7 @@ jobs:
       - name: Test native app
         run: |
           set -o pipefail
-          xcodebuild -project sleep-native/AlarmaSleep.xcodeproj -scheme AlarmaSleep -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build/simulator -resultBundlePath build/Tests.xcresult CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build-test.log
+          xcodebuild -project sleep-native/AlarmaSleep.xcodeproj -scheme AlarmaSleep -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build/simulator -resultBundlePath build/Tests.xcresult -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building 2>&1 | tee build-test.log
       - name: Export UI evidence
         if: always()
         run: |
@@ -61,5 +66,6 @@ jobs:
             evidence/
             build/Tests.xcresult
             build-test.log
+            build-compile.log
             build-device.log
           retention-days: 7
