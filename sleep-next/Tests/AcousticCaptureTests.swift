@@ -2,7 +2,7 @@ import XCTest
 import AVFoundation
 @testable import AlarmaNext
 
-private final class CaptureResults: @unchecked Sendable {
+final class CaptureResults: @unchecked Sendable {
     private let lock = NSLock()
     private var saved: [ClipReceipt] = []
     private var problems = 0
@@ -33,7 +33,7 @@ final class AcousticCaptureTests: XCTestCase {
         return (results, dir)
     }
     func testSilenceAndSteadyFanProduceNoFiles() async throws {
-        for level: Float in [0, 0.0001, 0.03] {
+        for level in [Float(0), Float(0.0001), Float(0.03)] {
             let (result, dir) = try await run(signal(events: [], background: level))
             XCTAssertTrue(result.clips.isEmpty); XCTAssertEqual(result.errors, 0)
             XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: dir.path).isEmpty)

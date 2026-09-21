@@ -35,12 +35,13 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func startRecording(nightID: UUID, wake: Date, margin: Double, byteLimit: Int, receive: @escaping (ClipReceipt) -> Void, progress: @escaping (Date) -> Void) throws {
         guard !isRecording, worker == nil else { return }
         guard AVAudioSession.sharedInstance().recordPermission == .granted else { captureState = "recordDenied"; throw CaptureError.permission }
-        guard !isRecording else { throw CaptureError.playbackDuringCapture }
         stopPlayback()
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement)
         try session.setActive(true)
         let engine = AVAudioEngine()
+        var tapInstalled = false
+        do {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate >= 8000, format.channelCount > 0 else { throw CaptureError.input }
@@ -65,23 +66,25 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             guard let channel = buffer.floatChannelData?[0] else { return }
             worker.enqueue(Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength))))
         }
-        do {
+        tapInstalled = true
             engine.prepare(); try engine.start()
             self.engine = engine; self.worker = worker; self.capturedRate = format.sampleRate; self.lastInput = Date(); captureState = "recordCalibrating"
-        } catch { input.removeTap(onBus: 0); engine.stop(); try? session.setActive(false); captureState = "recordError"; throw error }
+        } catch { if tapInstalled { engine.inputNode.removeTap(onBus: 0) }; engine.stop(); try? session.setActive(false); captureState = "recordError"; throw error }
     }
     @discardableResult
     func stopRecording(reason: String = "recordPaused") async -> Date? {
         let worker = self.worker
+        let endingGeneration = generation
         if reason == "recordReset" {
             generation = UUID(); ramp?.invalidate(); ramp = nil; player = nil; playing = nil; restoreScreen()
         } else if let engine { engine.inputNode.removeTap(onBus: 0); engine.stop() }
         engine = nil; self.worker = nil; captureState = reason
         let end = await worker?.stop()
-        if player == nil { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+        if player == nil && self.worker == nil && generation == endingGeneration { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
         return end
     }
     func play(url: URL, id: String, loop: Bool = false, gradual: Bool = false) throws {
+        guard !hasCapture else { throw CaptureError.playbackDuringCapture }
         stopPlayback()
         let session = AVAudioSession.sharedInstance()
         if !isRecording { try session.setCategory(.playback, mode: .default) }

@@ -19,7 +19,7 @@ struct JournalScreen: View {
                     notes
                     soundCard
                     healthCard
-                    HStack { Spacer(); Image(systemName: "lock"); Text(store.words("saved")); Spacer() }.font(.caption2).foregroundStyle(Color.ink.opacity(0.5)).padding(.bottom, 18)
+                    HStack { Spacer(); Image(systemName: "lock"); Text(store.words(store.writeFailed ? "savePending" : (store.saving ? "saving" : "saved"))); Spacer() }.font(.caption2).foregroundStyle(Color.ink.opacity(0.5)).padding(.bottom, 18)
                 }.padding(.horizontal, 22).padding(.top, 18)
             }.scrollIndicators(.hidden).background(Color.paper)
             .overlay(alignment: .top) {
@@ -130,7 +130,7 @@ struct JournalScreen: View {
                     if store.page(store.selectedDay).text.isEmpty { Text(store.words("notesHint")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.4)).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false) }
                     TextEditor(text: Binding(get: { store.page(store.selectedDay).text }, set: { store.note($0, day: store.selectedDay) })).font(.system(size: 16)).lineSpacing(6).scrollContentBackground(.hidden).frame(minHeight: 120).focused($editingNote).accessibilityIdentifier("journal-note")
                 }
-                HStack { Rectangle().fill(Color.ink.opacity(0.1)).frame(height: 1); Text(store.words(store.saving ? "saving" : "saved")).font(.system(size: 9)).foregroundStyle(Color.ink.opacity(0.4)) }
+                HStack { Rectangle().fill(Color.ink.opacity(0.1)).frame(height: 1); Text(store.words(store.writeFailed ? "savePending" : (store.saving ? "saving" : "saved"))).font(.system(size: 9)).foregroundStyle(Color.ink.opacity(0.4)) }
             }
         }
     }

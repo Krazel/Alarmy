@@ -20,7 +20,7 @@ Seleccionar el equipo de desarrollo para instalar en un iPhone. Identificador in
 
 - Alarma de la próxima noche, selección de sonidos sin repetir el anterior cuando hay alternativas, importación de audio, volumen progresivo en primer plano, posponer y movimiento para posponer con la app abierta.
 - AlarmKit a partir de iOS 26; notificaciones con sonido de hasta 29 segundos en iOS 16–25. En versiones anteriores hay que activar sonidos y desactivar Silencio/Concentración. La app explica estos límites. No se usa audio silencioso para mantenerla artificialmente activa.
-- Sesión nocturna persistente, inicio y final explícitos, luz gradual con la pantalla abierta, micrófono opcional y clips locales activados por ruido.
+- Sesión nocturna persistente, inicio y final explícitos, luz gradual con la pantalla abierta, micrófono opcional y detector adaptativo con clips locales, pausa visible, sensibilidad configurable y recuperación tras cierres. El diario muestra los periodos de captura separados del tiempo en cama.
 - Diario con calendario, tiempo en cama, cinco estados de ánimo originales, notas guardadas automáticamente y escucha, clasificación local con etiquetas corregibles y eliminación de clips.
 - Lectura opcional de las fases existentes en Salud. Sin fases o puntuaciones inventadas. Se elige una sola fuente de Salud por noche para evitar duplicar registros de diferentes aplicaciones.
 - Castellano e inglés, apariencia automática/amanecer/noche, retención de grabaciones y controles de privacidad.
@@ -30,7 +30,7 @@ Seleccionar el equipo de desarrollo para instalar en un iPhone. Identificador in
 
 `Domain.swift` contiene los datos serializables. `ArchiveRepository` es el único escritor del archivo JSON: valida el esquema y publica cada cambio después de escribir atómicamente. `SleepStore` coordina transacciones ordenadas, alarma y sesión; conserva el estado ante un relanzamiento. Los servicios de alarmas, audio y Salud están separados de SwiftUI.
 
-Las notas y el ánimo pertenecen a un día civil. Las noches se agrupan por la fecha de finalización. El tiempo en cama mide el intervalo de la sesión iniciada por la persona; no equivale a tiempo dormido. Los clips se activan por nivel de sonido y reciben sugerencias locales de SoundAnalysis al abrir el diario. Solo se aceptan categorías reconocidas con confianza mínima del 65 % y se pueden corregir. No existe clasificación médica automática.
+Las notas y el ánimo pertenecen a un día civil. Las noches se agrupan por la fecha de finalización. El tiempo en cama mide el intervalo de la sesión iniciada por la persona; no equivale a tiempo dormido. Los clips se activan por cambios sobre el nivel de fondo, con contexto anterior y posterior, y reciben sugerencias locales de SoundAnalysis al abrir el diario. Solo se aceptan categorías reconocidas con confianza mínima del 65 % y se pueden corregir. No existe clasificación médica automática.
 
 ## Recursos nuevos
 
@@ -38,6 +38,8 @@ Ver `Design/ASSETS.md`: ilustración generada para esta aplicación, paisaje noc
 
 ## Validación y límites
 
-La automatización `.github/workflows/sleep-next.yml` compila para simulador e iPhone con Xcode 26, ejecuta pruebas de dominio/persistencia e interfaz y exporta capturas de la app real y un IPA sin firma. Las pruebas visuales usan un modo exclusivo de Debug que omite permisos y, en la captura del diario, incorpora datos de ejemplo explícitos. El modo Release no contiene esos datos de ejemplo ni omite permisos.
+La automatización `.github/workflows/sleep-next.yml` compila para simulador e iPhone con Xcode 26, ejecuta pruebas de dominio/persistencia e interfaz y exporta capturas de la app real y un IPA sin firma. Los XCTest acústicos ejercitan la misma cola, segmentador y escritor con PCM sintético y comprueban los WAV producidos. Una prueba de interfaz independiente usa la petición real de micrófono y la deniega. Las pruebas visuales de diseño usan un modo exclusivo de Debug que omite permisos y, en la captura del diario, incorpora datos de ejemplo explícitos. El modo Release no contiene esos datos de ejemplo ni omite permisos.
 
 Antes de una distribución final se necesita una prueba nocturna en iPhones físicos: iOS 16–25 y iOS 26, pantalla bloqueada, Silencio/Concentración, permisos denegados, interrupción del micrófono, cambio de ruta de audio, reinicio, volumen y consumo de batería. El simulador no demuestra la fiabilidad acústica en esas condiciones.
+
+La corrección de grabación de la candidata **1.0.1 (1)** se documenta en [diagnóstico, evidencias y protocolo físico](Evidence/recording-2026-09-21/README.md). Los resultados históricos de 1.0 no validan este nuevo detector.

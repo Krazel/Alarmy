@@ -31,7 +31,7 @@ jobs:
       - name: Compile app and tests
         run: |
           set -o pipefail
-          xcodebuild -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO build-for-testing 2>&1 | tee build-compile.log
+          xcodebuild -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO ARCHS="$(uname -m)" build-for-testing 2>&1 | tee build-compile.log
       - name: Wait for simulator
         timeout-minutes: 8
         run: xcrun simctl bootstatus "$DEVICE" -b
