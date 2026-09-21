@@ -44,7 +44,15 @@ struct SleepSession: Codable, Equatable, Identifiable {
     let soundID: String
     var interrupted = false
     var clips: [NightClip] = []
+    var capturePaused: Bool?
+    var captureSpans: [CaptureSpan]?
     var duration: TimeInterval { max(0, (end ?? checkpoint).timeIntervalSince(start)) }
+}
+struct CaptureSpan: Codable, Equatable, Identifiable {
+    let id: UUID
+    let start: Date
+    var end: Date
+    var reason: String
 }
 struct JournalPage: Codable, Equatable {
     var feeling: MorningFeeling?
@@ -59,6 +67,7 @@ struct Preferences: Codable, Equatable {
     var language = "system"
     var appearance = "auto"
     var record = false
+    var sensitivity: Double?
     var keepDays = 30
     var openJournal = true
     var health = false

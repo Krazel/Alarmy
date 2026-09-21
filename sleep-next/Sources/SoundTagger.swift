@@ -4,6 +4,7 @@ import SoundAnalysis
 struct SoundSuggestion {
     let kind: SoundKind
     let confidence: Double
+    var completed = true
     static func kind(identifier: String, confidence: Double) -> SoundKind {
         guard confidence >= 0.65 else { return .other }
         switch identifier {
@@ -17,6 +18,8 @@ struct SoundSuggestion {
 }
 private final class ClassificationObserver: NSObject, SNResultsObserving {
     private let lock = NSLock()
+    private var finished = false
+    private var failed = false
     private var strongest = SoundSuggestion(kind: .other, confidence: 0)
     func request(_ request: SNRequest, didProduce result: SNResult) {
         guard let result = result as? SNClassificationResult, let top = result.classifications.first else { return }
@@ -25,9 +28,9 @@ private final class ClassificationObserver: NSObject, SNResultsObserving {
         lock.lock(); defer { lock.unlock() }
         if top.confidence > strongest.confidence { strongest = SoundSuggestion(kind: kind, confidence: top.confidence) }
     }
-    func request(_ request: SNRequest, didFailWithError error: Error) { }
-    func requestDidComplete(_ request: SNRequest) { }
-    func result() -> SoundSuggestion { lock.lock(); defer { lock.unlock() }; return strongest }
+    func request(_ request: SNRequest, didFailWithError error: Error) { lock.lock(); failed = true; lock.unlock() }
+    func requestDidComplete(_ request: SNRequest) { lock.lock(); finished = true; lock.unlock() }
+    func result() -> SoundSuggestion { lock.lock(); defer { lock.unlock() }; var value = strongest; value.completed = finished && !failed; return value }
 }
 struct SoundTagger {
     // Run after the night, on demand in the diary. Raw audio never leaves the device.
@@ -40,7 +43,7 @@ struct SoundTagger {
                 try analyzer.add(request, withObserver: observer)
                 analyzer.analyze()
                 return observer.result()
-            } catch { return SoundSuggestion(kind: .other, confidence: 0) }
+            } catch { return SoundSuggestion(kind: .other, confidence: 0, completed: false) }
         }.value
     }
 }

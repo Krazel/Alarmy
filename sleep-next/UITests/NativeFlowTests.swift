@@ -19,6 +19,17 @@ final class NativeFlowTests: XCTestCase {
         app.terminate(); app.launch(); XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); app.tabBars.buttons["Journal"].tap()
         XCTAssertEqual(app.textViews["journal-note"].value as? String, "Example note: a quiet morning.")
     }
+    func testMicrophoneDeniedStopsNightBeforeScheduling() {
+        let app=XCUIApplication(); app.launchArguments=["--reset-test"]
+        app.launch(); XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout:10))
+        app.switches["record-toggle"].tap(); app.buttons["begin-night"].tap()
+        let springboard=XCUIApplication(bundleIdentifier:"com.apple.springboard")
+        let deny=springboard.buttons.matching(NSPredicate(format:"label CONTAINS[c] 'Allow' AND label != 'Allow'")).firstMatch
+        if deny.waitForExistence(timeout:5) { deny.tap() }
+        XCTAssertTrue(app.staticTexts["Microphone permission is off. Turn recording off or allow it in Settings."].waitForExistence(timeout:5))
+        XCTAssertFalse(app.buttons["finish-night"].exists)
+        shot("15-microphone-denied")
+    }
     func testSpanishDiaryDesign() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--spanish", "--design-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); shot("07-es-home")

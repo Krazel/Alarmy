@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import AVFoundation
 
 @MainActor
 final class SleepStore: ObservableObject {
@@ -15,11 +16,13 @@ final class SleepStore: ObservableObject {
     let audio = NightAudio()
     let repository: ArchiveRepository
     private let scheduler = WakeScheduler()
-    private var writeTail: Task<Bool, Never>?
+    var writeTail: Task<Bool, Never>?
     private var timer: Timer?
     private var lastCheckpoint = Date.distantPast
-    private var audioInterrupted = false
+    var audioInterrupted = false
     private var writesPending = 0
+    var captureBusy = false
+    var resumeAfterInterruption = false
     var words: Words { Words(language: archive.preferences.language) }
     var testMode: Bool {
         #if DEBUG
@@ -28,7 +31,8 @@ final class SleepStore: ObservableObject {
         return false
         #endif
     }
-    init() {
+    init(repository: ArchiveRepository? = nil) {
+        if let repository { self.repository = repository; return }
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--reset-test") {
             let args = ProcessInfo.processInfo.arguments
@@ -60,6 +64,14 @@ final class SleepStore: ObservableObject {
             }
             #endif
             loaded = true
+            await recoverClips()
+            if archive.active != nil {
+                audio.captureState = "recordRecovered"
+                commit { value in
+                    value.active?.capturePaused = true
+                    if let count = value.active?.captureSpans?.count, count > 0 { value.active?.captureSpans?[count-1].reason = "recordRecovered" }
+                }
+            }
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in Task { @MainActor in self?.tick() } }
             await resume()
         } catch { failed = true; loaded = true; self.error = words("storageError") }
@@ -76,7 +88,7 @@ final class SleepStore: ObservableObject {
                 _ = try await repository.update(change)
                 self.writesPending -= 1; self.saving = self.writesPending > 0
                 return true
-            } catch { self.error = error.localizedDescription; self.failed = true; self.saving = false; return false }
+            } catch { self.error = error.localizedDescription; self.failed = true; self.saving = false; await self.audio.stopRecording(reason: "recordError"); return false }
         }
         writeTail = task
         return task
@@ -114,17 +126,12 @@ final class SleepStore: ObservableObject {
         } catch WakeFailure.permission { error = words("permissionError") }
         catch { self.error = error.localizedDescription }
     }
-    private func beginRecordingIfNeeded() throws {
-        guard archive.preferences.record, !audio.isRecording, !ringing, !testMode else { return }
-        audio.onFailure = { [weak self] error in self?.error = error.localizedDescription }
-        try audio.startRecording { [weak self] clip in self?.commit { $0.active?.clips.append(clip) } }
-    }
     func resume() async {
         guard loaded, archive.active != nil, !failed, !audioInterrupted else { return }
         if let dismissal = WakeDismissal.take(), dismissal.alarmID == archive.active?.alarmID.uuidString {
             await finish(at: dismissal.date); return
         }
-        do { try beginRecordingIfNeeded() } catch { self.error = error.localizedDescription }
+        if audio.isRecording && AVAudioSession.sharedInstance().recordPermission != .granted { await pauseCapture(reason: "recordDenied") }
         tick()
     }
     func tick() {
@@ -135,17 +142,22 @@ final class SleepStore: ObservableObject {
         guard UIApplication.shared.applicationState == .active else { return }
         audio.updateLight(wake: night.wake, minutes: archive.plan.lightMinutes)
         if Date() >= night.wake && !ringing && !audioInterrupted {
-            ringing = true; audio.stopRecording()
+            ringing = true
+            Task { await self.ring(night) }
+        }
+    }
+    private func ring(_ night: SleepSession) async {
+            await pauseCapture(reason: "recordAlarm")
             if !testMode { try? scheduler.cancel(id: night.alarmID) }
             do {
                 guard let url = ToneLibrary.url(night.soundID, imported: archive.tones) else { throw CocoaError(.fileNoSuchFile) }
                 try audio.play(url: url, id: "wake", loop: true, gradual: archive.plan.gradual)
                 if archive.plan.motionSnooze { audio.watchMovement { [weak self] in Task { await self?.snooze() } } }
             } catch { self.error = error.localizedDescription }
-        }
     }
     func snooze() async {
         guard !busy, var night = archive.active else { return }; busy = true; defer { busy = false }
+        night.capturePaused = false
         let old = night.alarmID; night.alarmID = UUID(); night.wake = Date().addingTimeInterval(Double(archive.plan.snoozeMinutes * 60))
         do {
             if !testMode { try await scheduler.schedule(id: night.alarmID, date: night.wake, filename: ToneLibrary.filename(night.soundID, imported: archive.tones), words: words); try? scheduler.cancel(id: old) }
@@ -158,8 +170,9 @@ final class SleepStore: ObservableObject {
     func finish(at end: Date = Date()) async {
         guard !busy, archive.active != nil else { return }; busy = true; defer { busy = false }
         do {
-            if let id = archive.active?.alarmID, !testMode { try scheduler.cancel(id: id) }
-            audio.stopAll(); ringing = false
+            if let id = archive.active?.alarmID, !testMode { do { try scheduler.cancel(id: id) } catch { self.error = error.localizedDescription } }
+            await pauseCapture(reason: "recordOff")
+            await audio.stopAll(); ringing = false
             // stopAll flushes the last clip before we snapshot the session.
             guard var night = archive.active else { return }
             night.end = max(night.start, end); night.checkpoint = max(night.start, end); let finished = night
@@ -187,6 +200,7 @@ final class SleepStore: ObservableObject {
             guard !Task.isCancelled, let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) else { return }
             let result = await SoundTagger.suggest(url: url)
             guard !Task.isCancelled else { return }
+            guard result.completed else { continue }
             commit { value in
                 for i in value.sessions.indices {
                     if let j = value.sessions[i].clips.firstIndex(where: { $0.id == clip.id }), !value.sessions[i].clips[j].analysisDone {
@@ -200,15 +214,10 @@ final class SleepStore: ObservableObject {
     }
     func delete(_ clip: NightClip) async {
         audio.stopPlayback()
-        let success = await commit { value in for i in value.sessions.indices { value.sessions[i].clips.removeAll { $0.id == clip.id } } }.value
-        if success, let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) {
-            do { try FileManager.default.removeItem(at: url) } catch { self.error = error.localizedDescription }
-        }
-    }
-    func interruption(began: Bool) {
-        audioInterrupted = began
-        if began { audio.stopRecording(); audio.stopPlayback(); audio.restoreScreen(); ringing = false }
-        else { Task { await resume() } }
+        do {
+            if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips), FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+            commit { value in for i in value.sessions.indices { value.sessions[i].clips.removeAll { $0.id == clip.id } } }
+        } catch { self.error = error.localizedDescription }
     }
     func flush() async {
         let token = UIApplication.shared.beginBackgroundTask(withName: "Save journal")

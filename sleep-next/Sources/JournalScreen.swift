@@ -94,6 +94,14 @@ struct JournalScreen: View {
                     Text(store.words("inBed")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                     ForEach(nights) { night in
                         HStack { Text(night.start, style: .time); Rectangle().fill(Color.rust.opacity(0.35)).frame(height: 2); Text(night.end ?? night.checkpoint, style: .time) }.font(.caption).monospacedDigit()
+                        if let spans = night.captureSpans, !spans.isEmpty {
+                            let seconds = spans.reduce(0.0) { $0 + max(0, $1.end.timeIntervalSince($1.start)) }
+                            Text(store.words("captureTime") + " · \(Int(seconds)/60) min").font(.caption)
+                            ForEach(spans) { span in
+                                HStack { Text(span.start, style: .time); Text("–"); Text(span.end, style: .time); Spacer(); Text(store.words(span.reason)) }.font(.system(size: 10)).foregroundStyle(Color.ink.opacity(0.6))
+                            }
+                            Text(store.words("captureGaps")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5))
+                        }
                         if night.interrupted { Text(store.words("interrupted")).font(.caption2).foregroundStyle(Color.rust) }
                     }
                 }

@@ -6,62 +6,71 @@ import CoreMotion
 final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var playing: String?
     private var player: AVAudioPlayer?
-    private var recorder: AVAudioRecorder?
-    private var meter: Timer?
+    @Published var captureState = "recordOff"
+    @Published var inputLevel = -100.0
+    private var engine: AVAudioEngine?
+    private var worker: CaptureWorker?
+    private var generation = UUID()
     private var ramp: Timer?
-    private var peak: Float = -160
-    private var segmentStart = Date()
-    private var segmentURL: URL?
-    private var receive: ((NightClip) -> Void)?
     var onFailure: ((Error) -> Void)?
     private let motion = CMMotionManager()
     private var previousBrightness: CGFloat?
     private var previousIdle: Bool?
-    var isRecording: Bool { recorder?.isRecording == true }
+    var isRecording: Bool { engine?.isRunning == true && worker != nil }
+    var canResume: Bool { !isRecording && captureState != "recordOff" && captureState != "recordAlarm" }
 
     func microphoneAllowed() async -> Bool {
         await withCheckedContinuation { continuation in
             AVAudioSession.sharedInstance().requestRecordPermission { continuation.resume(returning: $0) }
         }
     }
-    func startRecording(receive: @escaping (NightClip) -> Void) throws {
-        self.receive = receive
+    func startRecording(nightID: UUID, wake: Date, margin: Double, byteLimit: Int, receive: @escaping (ClipReceipt) -> Void, progress: @escaping (Date) -> Void) throws {
+        guard !isRecording, worker == nil else { return }
+        guard AVAudioSession.sharedInstance().recordPermission == .granted else { captureState = "recordDenied"; throw CaptureError.permission }
+        guard !isRecording else { throw CaptureError.playbackDuringCapture }
+        stopPlayback()
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+        try session.setCategory(.record, mode: .measurement)
         try session.setActive(true)
-        try FileManager.default.createDirectory(at: DiskLocation.clips, withIntermediateDirectories: true, attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
-        var clipsDirectory = DiskLocation.clips
-        var resourceValues = URLResourceValues(); resourceValues.isExcludedFromBackup = true
-        try clipsDirectory.setResourceValues(resourceValues)
-        try newSegment()
-        meter = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-            guard let self, self.recorder != nil else { return }
-            self.recorder?.updateMeters()
-            self.peak = max(self.peak, self.recorder?.averagePower(forChannel: 0) ?? -160)
-            if Date().timeIntervalSince(self.segmentStart) >= 30 {
-                self.finishSegment()
-                do { try self.newSegment() } catch { self.stopRecording(); self.onFailure?(error) }
-            }
-            }
+        let engine = AVAudioEngine()
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate >= 8000, format.channelCount > 0 else { throw CaptureError.input }
+        let generation = UUID(); self.generation = generation
+        let worker = try CaptureWorker(nightID: nightID, start: Date(), deadline: wake, rate: format.sampleRate, margin: margin, directory: DiskLocation.clips, byteLimit: byteLimit,
+            receipt: { value in Task { @MainActor in receive(value) } },
+            progress: { [weak self] date, level, calibrated in Task { @MainActor in
+                guard let self, self.generation == generation else { return }
+                self.inputLevel = level
+                if self.isRecording { self.captureState = calibrated ? "recordListening" : "recordCalibrating" }
+                progress(date)
+            } },
+            failure: { [weak self] error in Task { @MainActor in
+                guard let self, self.generation == generation else { return }
+                await self.stopRecording(reason: "recordError"); self.onFailure?(error)
+            } },
+            deadlineReached: { [weak self] in Task { @MainActor in
+                guard let self, self.generation == generation else { return }
+                await self.stopRecording(reason: "recordAlarm")
+            } })
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            guard let channel = buffer.floatChannelData?[0] else { return }
+            worker.enqueue(Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength))))
         }
+        do {
+            engine.prepare(); try engine.start()
+            self.engine = engine; self.worker = worker; captureState = "recordCalibrating"
+        } catch { input.removeTap(onBus: 0); engine.stop(); try? session.setActive(false); captureState = "recordError"; throw error }
     }
-    private func newSegment() throws {
-        let url = DiskLocation.clips.appendingPathComponent(UUID().uuidString + ".m4a")
-        let rec = try AVAudioRecorder(url: url, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 22050, AVNumberOfChannelsKey: 1, AVEncoderBitRateKey: 32000])
-        rec.isMeteringEnabled = true
-        guard rec.record() else { throw CocoaError(.fileWriteUnknown) }
-        recorder = rec; segmentURL = url; segmentStart = Date(); peak = -160
+    @discardableResult
+    func stopRecording(reason: String = "recordPaused") async -> Date? {
+        let worker = self.worker
+        if let engine { engine.inputNode.removeTap(onBus: 0); engine.stop() }
+        engine = nil; self.worker = nil; captureState = reason
+        let end = await worker?.stop()
+        if player == nil { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+        return end
     }
-    private func finishSegment() {
-        recorder?.stop(); recorder = nil
-        guard let url = segmentURL else { return }; segmentURL = nil
-        let duration = Date().timeIntervalSince(segmentStart)
-        if peak > -35 && duration >= 2 {
-            receive?(NightClip(id: UUID(), created: segmentStart, filename: url.lastPathComponent, duration: min(30, duration)))
-        } else { try? FileManager.default.removeItem(at: url) }
-    }
-    func stopRecording() { meter?.invalidate(); meter = nil; finishSegment(); receive = nil }
     func play(url: URL, id: String, loop: Bool = false, gradual: Bool = false) throws {
         stopPlayback()
         let session = AVAudioSession.sharedInstance()
@@ -104,8 +113,8 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         if let previousBrightness { UIScreen.main.brightness = previousBrightness }; previousBrightness = nil
         if let previousIdle { UIApplication.shared.isIdleTimerDisabled = previousIdle }; previousIdle = nil
     }
-    func stopAll() {
-        stopRecording(); stopPlayback(); restoreScreen()
+    func stopAll() async {
+        await stopRecording(reason: "recordOff"); stopPlayback(); restoreScreen()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
@@ -135,3 +144,5 @@ struct ToneLibrary {
         return ImportedTone(id: id, name: source.deletingPathExtension().lastPathComponent, filename: filename)
     }
 }
+
+enum CaptureError: Error { case permission, input, playbackDuringCapture }

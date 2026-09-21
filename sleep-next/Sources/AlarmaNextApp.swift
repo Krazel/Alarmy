@@ -26,7 +26,17 @@ struct AlarmaNextApp: App {
                 .task { await store.load() }
                 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("WakeDismissed"))) { _ in Task { await store.resume() } }
                 .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { notification in
-                    if let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt { store.interruption(began: raw == AVAudioSession.InterruptionType.began.rawValue) }
+                    if let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt {
+                        let options = (notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0
+                        Task { await store.interruption(began: raw == AVAudioSession.InterruptionType.began.rawValue, shouldResume: AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume)) }
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { note in
+                    let raw = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) ?? 0
+                    if store.audio.isRecording && [1,2,8].contains(raw) { Task { await store.pauseCapture(reason: "recordRoute") } }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.mediaServicesWereResetNotification)) { _ in
+                    Task { await store.pauseCapture(reason: "recordReset") }
                 }
                 .onChange(of: phase) { newValue in
                     if newValue == .active { Task { await store.resume() } }
@@ -80,6 +90,9 @@ struct AlarmScreen: View {
                                 Button { music = true } label: { HStack(spacing: 12) { Image(systemName: "waveform"); Text(store.words("sounds")); Spacer(); Text("\(store.archive.plan.sounds.count) " + store.words("selected")).font(.caption); Image(systemName: "chevron.right").font(.caption2) } }.font(.subheadline).foregroundStyle(Color.ink).accessibilityIdentifier("sounds")
                             }
                         }
+                        Toggle(isOn: Binding(get: { store.archive.preferences.record }, set: { value in store.preferences { $0.record = value } })) {
+                            Label(store.words("record"), systemImage: "mic")
+                        }.font(.subheadline).padding(16).background(Color.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 18)).accessibilityIdentifier("record-toggle")
                         Button { Task { await store.start() } } label: { HStack { if store.busy { ProgressView() }; Image(systemName: "moon.zzz"); Text(store.words("start")) } }.buttonStyle(PrimaryButton()).disabled(store.busy).accessibilityIdentifier("begin-night")
                         Spacer(minLength: 160)
                     }.padding(.horizontal, 26)
@@ -118,13 +131,13 @@ struct NightScreen: View {
     var body: some View {
         ZStack {
             NightLandscape()
-            VStack(spacing: 30) {
+            VStack(spacing: 18) {
                 Spacer()
                 Image(systemName: store.ringing ? "sun.max" : "moon.stars").font(.system(size: 40, weight: .ultraLight))
                 Text(store.words(store.ringing ? "morning" : "goodnight")).font(.system(size: 36, design: .serif))
                 if let night = store.archive.active {
                     VStack(spacing: 10) { Text(store.words("until")).font(.caption2).tracking(3); Text(night.wake, style: .time).font(.system(size: 68, weight: .ultraLight, design: .rounded)).monospacedDigit() }
-                    Label(store.words(store.audio.isRecording ? "recording" : "noRecording"), systemImage: store.audio.isRecording ? "waveform" : "moon").font(.caption).opacity(0.7)
+                    CapturePanel(audio: store.audio)
                 }
                 Spacer()
                 if store.ringing {
@@ -135,6 +148,7 @@ struct NightScreen: View {
         }.preferredColorScheme(.dark).interactiveDismissDisabled().disabled(store.busy)
         .confirmationDialog(store.words("endTitle"), isPresented: $confirm, titleVisibility: .visible) {
             Button(store.words("end"), role: .destructive) { Task { await store.finish() } }
+            Button(store.words("cancel"), role: .cancel) { }
         } message: { Text(store.words("endHint")) }
     }
 }
