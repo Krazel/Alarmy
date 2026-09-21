@@ -48,7 +48,8 @@ final class SleepStore: ObservableObject {
     func load() async {
         guard !loaded else { return }
         do {
-            archive = try await repository.prune()
+            archive = try await repository.load()
+            do { archive = try await repository.prune() } catch { self.error = error.localizedDescription }
             #if DEBUG
             if testMode && archive.revision == 0 {
                 archive.preferences.language = ProcessInfo.processInfo.arguments.contains("--spanish") ? "es" : "en"
@@ -65,6 +66,7 @@ final class SleepStore: ObservableObject {
             #endif
             loaded = true
             await recoverClips()
+            await prune()
             if archive.active != nil {
                 audio.captureState = "recordRecovered"
                 commit { value in
@@ -139,6 +141,12 @@ final class SleepStore: ObservableObject {
         if Date().timeIntervalSince(lastCheckpoint) >= 30 {
             lastCheckpoint = Date(); let now = Date(); commit { $0.active?.checkpoint = now }
         }
+        if !captureBusy && (audio.inputStalled || audio.needsRebuild) {
+            Task { await self.pauseCapture(reason: "recordNoInput") }
+        }
+        if !captureBusy && audio.isRecording && AVAudioSession.sharedInstance().recordPermission != .granted {
+            Task { await self.pauseCapture(reason: "recordDenied") }
+        }
         guard UIApplication.shared.applicationState == .active else { return }
         audio.updateLight(wake: night.wake, minutes: archive.plan.lightMinutes)
         if Date() >= night.wake && !ringing && !audioInterrupted {
@@ -157,7 +165,6 @@ final class SleepStore: ObservableObject {
     }
     func snooze() async {
         guard !busy, var night = archive.active else { return }; busy = true; defer { busy = false }
-        night.capturePaused = false
         let old = night.alarmID; night.alarmID = UUID(); night.wake = Date().addingTimeInterval(Double(archive.plan.snoozeMinutes * 60))
         do {
             if !testMode { try await scheduler.schedule(id: night.alarmID, date: night.wake, filename: ToneLibrary.filename(night.soundID, imported: archive.tones), words: words); try? scheduler.cancel(id: old) }
@@ -227,15 +234,17 @@ final class SleepStore: ObservableObject {
     func prune() async {
         guard archive.preferences.keepDays > 0 else { return }
         let cutoff = Date().addingTimeInterval(-Double(archive.preferences.keepDays)*86400)
-        let expired = archive.sessions.flatMap(\.clips).filter { $0.created < cutoff }
+        let expired = (archive.sessions.flatMap(\.clips) + (archive.active?.clips ?? [])).filter { $0.created < cutoff }
         guard !expired.isEmpty else { return }
         let ids = Set(expired.map(\.id))
-        let saved = await commit { value in
-            for i in value.sessions.indices { value.sessions[i].clips.removeAll { ids.contains($0.id) } }
-        }.value
-        guard saved else { return }
-        for clip in expired {
-            if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) { try? FileManager.default.removeItem(at: url) }
-        }
+        do {
+            for clip in expired {
+                if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips), FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+            }
+            _ = await commit { value in
+                for i in value.sessions.indices { value.sessions[i].clips.removeAll { ids.contains($0.id) } }
+                value.active?.clips.removeAll { ids.contains($0.id) }
+            }.value
+        } catch { self.error = error.localizedDescription }
     }
 }

@@ -124,9 +124,13 @@ final class ClipSpool {
     }
     private func finalize(_ value: OpenClip) throws -> ClipReceipt? {
         let raw = url(value.id, ".pcm")
-        guard FileManager.default.fileExists(atPath: raw.path) else { return nil }
+        guard FileManager.default.fileExists(atPath: raw.path) else {
+            if FileManager.default.fileExists(atPath: url(value.id, ".receipt.json").path) { try FileManager.default.removeItem(at: url(value.id, ".open.json")) }
+            return nil
+        }
         var pcm = try Data(contentsOf: raw); if pcm.count % 2 != 0 { pcm.removeLast() }
-        guard pcm.count > 0, pcm.count <= 32_000_000, value.sampleRate >= 8000, value.sampleRate <= 192000 else { return nil }
+        if pcm.isEmpty { try FileManager.default.removeItem(at: raw); try FileManager.default.removeItem(at: url(value.id, ".open.json")); return nil }
+        guard pcm.count <= 32_000_000, value.sampleRate >= 8000, value.sampleRate <= 192000 else { throw CocoaError(.fileReadCorruptFile) }
         var wav = Data()
         func string(_ s: String) { wav.append(contentsOf: s.utf8) }
         func u32(_ n: UInt32) { var n = n.littleEndian; withUnsafeBytes(of: &n) { wav.append(contentsOf: $0) } }
@@ -144,7 +148,7 @@ final class ClipSpool {
     private(set) var recoveryFailures = 0
     func recover() throws -> [ClipReceipt] {
         for file in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) where file.lastPathComponent.hasSuffix(".open.json") {
-            do { let value = try JSONDecoder().decode(OpenClip.self, from: Data(contentsOf: file)); if try finalize(value) == nil { recoveryFailures += 1 } } catch { recoveryFailures += 1 }
+            do { let value = try JSONDecoder().decode(OpenClip.self, from: Data(contentsOf: file)); _ = try finalize(value) } catch { recoveryFailures += 1 }
         }
         return try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).filter { $0.lastPathComponent.hasSuffix(".receipt.json") }.compactMap { file in
             guard let data = try? Data(contentsOf: file) else { return nil }
@@ -162,7 +166,7 @@ final class ClipSpool {
 }
 
 /// All disk work and detector state are confined to this queue, not the render thread.
-final class CaptureWorker {
+final class CaptureWorker: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.krazel.alarma.capture", qos: .utility)
     private let slots = DispatchSemaphore(value: 16)
     private let overflowLock = NSLock()

@@ -11,11 +11,19 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var engine: AVAudioEngine?
     private var worker: CaptureWorker?
     private var generation = UUID()
+    private var capturedRate = 0.0
+    private var lastInput = Date.distantPast
+    var inputStalled: Bool { worker != nil && Date().timeIntervalSince(lastInput) > 5 }
+    var needsRebuild: Bool {
+        guard worker != nil, let engine else { return false }
+        return !engine.isRunning || engine.inputNode.outputFormat(forBus: 0).sampleRate != capturedRate
+    }
     private var ramp: Timer?
     var onFailure: ((Error) -> Void)?
     private let motion = CMMotionManager()
     private var previousBrightness: CGFloat?
     private var previousIdle: Bool?
+    var hasCapture: Bool { worker != nil }
     var isRecording: Bool { engine?.isRunning == true && worker != nil }
     var canResume: Bool { !isRecording && captureState != "recordOff" && captureState != "recordAlarm" }
 
@@ -41,7 +49,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             receipt: { value in Task { @MainActor in receive(value) } },
             progress: { [weak self] date, level, calibrated in Task { @MainActor in
                 guard let self, self.generation == generation else { return }
-                self.inputLevel = level
+                self.lastInput = Date(); self.inputLevel = level
                 if self.isRecording { self.captureState = calibrated ? "recordListening" : "recordCalibrating" }
                 progress(date)
             } },
@@ -59,13 +67,15 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
         do {
             engine.prepare(); try engine.start()
-            self.engine = engine; self.worker = worker; captureState = "recordCalibrating"
+            self.engine = engine; self.worker = worker; self.capturedRate = format.sampleRate; self.lastInput = Date(); captureState = "recordCalibrating"
         } catch { input.removeTap(onBus: 0); engine.stop(); try? session.setActive(false); captureState = "recordError"; throw error }
     }
     @discardableResult
     func stopRecording(reason: String = "recordPaused") async -> Date? {
         let worker = self.worker
-        if let engine { engine.inputNode.removeTap(onBus: 0); engine.stop() }
+        if reason == "recordReset" {
+            generation = UUID(); ramp?.invalidate(); ramp = nil; player = nil; playing = nil; restoreScreen()
+        } else if let engine { engine.inputNode.removeTap(onBus: 0); engine.stop() }
         engine = nil; self.worker = nil; captureState = reason
         let end = await worker?.stop()
         if player == nil { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }

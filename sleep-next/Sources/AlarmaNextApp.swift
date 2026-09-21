@@ -33,7 +33,10 @@ struct AlarmaNextApp: App {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { note in
                     let raw = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) ?? 0
-                    if store.audio.isRecording && [1,2,8].contains(raw) { Task { await store.pauseCapture(reason: "recordRoute") } }
+                    if store.audio.isRecording && [1,2,7].contains(raw) { Task { await store.pauseCapture(reason: "recordRoute") } }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .AVAudioEngineConfigurationChange)) { _ in
+                    if store.audio.needsRebuild { Task { await store.pauseCapture(reason: "recordRoute") } }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.mediaServicesWereResetNotification)) { _ in
                     Task { await store.pauseCapture(reason: "recordReset") }

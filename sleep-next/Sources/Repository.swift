@@ -36,14 +36,14 @@ actor ArchiveRepository {
         let archive = try load()
         guard archive.preferences.keepDays > 0 else { return archive }
         let cutoff = now.addingTimeInterval(-Double(archive.preferences.keepDays) * 86400)
-        let expired = archive.sessions.flatMap(\.clips).filter { $0.created < cutoff }
+        let expired = (archive.sessions.flatMap(\.clips) + (archive.active?.clips ?? [])).filter { $0.created < cutoff }
         guard !expired.isEmpty else { return archive }
-        let result = try update { value in
-            for i in value.sessions.indices { value.sessions[i].clips.removeAll { $0.created < cutoff } }
-        }
         for clip in expired {
-            if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) { try? FileManager.default.removeItem(at: url) }
+            if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips), FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
         }
-        return result
+        return try update { value in
+            for i in value.sessions.indices { value.sessions[i].clips.removeAll { $0.created < cutoff } }
+            value.active?.clips.removeAll { $0.created < cutoff }
+        }
     }
 }

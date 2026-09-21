@@ -56,7 +56,7 @@ extension SleepStore {
             if recovery.1 > 0 { error = words("damagedClips") }
             for receipt in recovery.0 { index(receipt) }
             if let writeTail { _ = await writeTail.value }
-        } catch { error = words("recordFailure") + " " + error.localizedDescription }
+        } catch { self.error = words("recordFailure") + " " + error.localizedDescription }
     }
     func pauseCapture(reason: String = "recordPaused") async {
         while captureBusy { try? await Task.sleep(nanoseconds: 20_000_000) }; captureBusy = true; defer { captureBusy = false }
@@ -80,7 +80,7 @@ extension SleepStore {
     }
     func interruption(began: Bool, shouldResume: Bool = false) async {
         if began {
-            resumeAfterInterruption = audio.isRecording && archive.active?.capturePaused != true
+            resumeAfterInterruption = audio.hasCapture && archive.active?.capturePaused != true
             audioInterrupted = true
             await pauseCapture(reason: "recordInterrupted"); audio.stopPlayback(); audio.restoreScreen(); ringing = false
         } else {
