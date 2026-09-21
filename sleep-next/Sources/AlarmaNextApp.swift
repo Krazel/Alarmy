@@ -62,7 +62,10 @@ struct RootScreen: View {
                 }.id(store.archive.preferences.language)
             }
         }.tint(.rust).foregroundStyle(Color.ink)
-        .alert(store.words("error"), isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button(store.words("done")) { store.error = nil } } message: { Text(store.error ?? "") }
+        .alert(store.words("error"), isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
+            if store.writeFailed { Button(store.words("retrySave")) { Task { _ = await store.commit { _ in }.value } } }
+            Button(store.words("done")) { store.error = nil }
+        } message: { Text(store.error ?? "") }
         .fullScreenCover(isPresented: Binding(get: { store.archive.active != nil }, set: { _ in })) { NightScreen().environmentObject(store).environment(\.locale, store.words.locale) }
     }
 }

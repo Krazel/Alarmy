@@ -12,6 +12,7 @@ final class SleepStore: ObservableObject {
     @Published var ringing = false
     @Published var busy = false
     @Published var saving = false
+    @Published var writeFailed = false
     @Published var selectedDay = Date()
     let audio = NightAudio()
     let repository: ArchiveRepository
@@ -39,10 +40,10 @@ final class SleepStore: ObservableObject {
             let index = args.firstIndex(of: "--archive-id")
             let identifier = index.flatMap { $0 + 1 < args.count ? args[$0+1] : nil } ?? UUID().uuidString
             let root = FileManager.default.temporaryDirectory.appendingPathComponent("UI-" + (UUID(uuidString: identifier)?.uuidString ?? UUID().uuidString))
-            repository = ArchiveRepository(file: root.appendingPathComponent("archive.json"))
-        } else { repository = ArchiveRepository() }
+            self.repository = ArchiveRepository(file: root.appendingPathComponent("archive.json"))
+        } else { self.repository = ArchiveRepository() }
         #else
-        repository = ArchiveRepository()
+        self.repository = ArchiveRepository()
         #endif
     }
     func load() async {
@@ -82,15 +83,22 @@ final class SleepStore: ObservableObject {
     func commit(_ change: @escaping @Sendable (inout AppArchive) -> Void) -> Task<Bool, Never> {
         guard !failed else { return Task { false } }
         change(&archive); writesPending += 1; saving = true
+        let snapshot = archive
         let preceding = writeTail
         let task = Task { [weak self] in
-            if let preceding, !(await preceding.value) { return false }
+            if let preceding { _ = await preceding.value }
             guard let self else { return false }
             do {
-                _ = try await repository.update(change)
+                _ = try await repository.update { value in let revision = value.revision; value = snapshot; value.revision = revision }
                 self.writesPending -= 1; self.saving = self.writesPending > 0
+                if self.writesPending == 0 { self.writeFailed = false }
                 return true
-            } catch { self.error = error.localizedDescription; self.failed = true; self.saving = false; await self.audio.stopRecording(reason: "recordError"); return false }
+            } catch {
+                self.error = error.localizedDescription; self.writeFailed = true
+                self.writesPending -= 1; self.saving = self.writesPending > 0
+                self.archive.active?.capturePaused = true
+                await self.audio.stopRecording(reason: "recordError"); return false
+            }
         }
         writeTail = task
         return task
@@ -176,7 +184,6 @@ final class SleepStore: ObservableObject {
     }
     func finish(at end: Date = Date()) async {
         guard !busy, archive.active != nil else { return }; busy = true; defer { busy = false }
-        do {
             if let id = archive.active?.alarmID, !testMode { do { try scheduler.cancel(id: id) } catch { self.error = error.localizedDescription } }
             await pauseCapture(reason: "recordOff")
             await audio.stopAll(); ringing = false
@@ -186,7 +193,6 @@ final class SleepStore: ObservableObject {
             guard await commit({ $0.sessions.insert(finished, at: 0); $0.active = nil }).value else { return }
             selectedDay = night.end ?? Date()
             if archive.preferences.openJournal { tab = 1 }
-        } catch { self.error = error.localizedDescription }
     }
     func importTone(_ url: URL) async {
         do {

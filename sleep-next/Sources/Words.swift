@@ -8,6 +8,7 @@ struct Words {
     static let entries: [String: [String]] = [
         "damagedClips":["Algunos fragmentos no se pudieron recuperar. Se han conservado los archivos y recuperado los demás.","Some clips could not be recovered. Their files were preserved and the other clips were recovered."],
         "recordNoInput":["No llega audio del micrófono · pulsa Reanudar","No microphone audio is arriving · tap Resume"],
+        "retrySave":["Reintentar guardado","Retry saving"],
         "recordOff":["Micrófono desactivado","Microphone off"],
         "recordCalibrating":["Ajustando al sonido de la habitación…","Calibrating room sound…"],
         "recordListening":["Escuchando · grabación de eventos activa","Listening · event recording active"],

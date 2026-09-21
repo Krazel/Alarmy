@@ -15,6 +15,21 @@ final class CaptureIntegrationTests: XCTestCase {
         let receipt=try XCTUnwrap(spool.close())
         return (store,night,receipt,DiskLocation.clips.appendingPathComponent(receipt.clip.filename))
     }
+    func testWriteFailureCanRetryWithoutLosingEarlierEdits() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let repository=ArchiveRepository(file:root.appendingPathComponent("archive.json"))
+        let archive=try await repository.load()
+        let store=SleepStore(repository:repository); store.archive=archive; store.loaded=true
+        try FileManager.default.removeItem(at:root)
+        let first=await store.commit { $0.pages["day"]=JournalPage(text:"Keep the unsaved note") }.value
+        XCTAssertFalse(first); XCTAssertTrue(store.writeFailed); XCTAssertFalse(store.failed)
+        try FileManager.default.createDirectory(at:root,withIntermediateDirectories:true)
+        let second=await store.commit { $0.pages["day"]?.feeling = .peaceful }.value
+        XCTAssertTrue(second); XCTAssertFalse(store.writeFailed)
+        let restored=try await ArchiveRepository(file:root.appendingPathComponent("archive.json")).load()
+        XCTAssertEqual(restored.pages["day"]?.text,"Keep the unsaved note")
+        XCTAssertEqual(restored.pages["day"]?.feeling,.peaceful)
+    }
     func testReceiptIndexesOnceIntoOwningNightAndCanBeDeleted() async throws {
         let (store,night,receipt,url)=try await fixture()
         store.index(receipt); store.index(receipt)

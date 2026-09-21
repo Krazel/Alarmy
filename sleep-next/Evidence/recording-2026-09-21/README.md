@@ -21,7 +21,7 @@ Encargo del 21-09-2026, PR-019. Implementación: `sleep-next`, rama `codex/nativ
 5. PCM temporal y metadatos escritos antes del índice; WAV final atómico y recibo persistente hasta que el archivo principal confirma el guardado. La recuperación es idempotente y utiliza el ID de la noche, incluso si el fragmento llega después de terminarla. Los archivos dañados no impiden recuperar los demás.
 6. Periodos de captura basados en muestras recibidas, separados del tiempo en cama. Los huecos de captura no son tiempo dormido ni fases estimadas.
 7. Escucha, sugerencia local de SoundAnalysis, corrección manual y eliminación desde el diario. Un error de clasificación queda pendiente de reintento, no se marca como éxito.
-8. Cuotas de 256 MiB por noche y 512 MiB en la carpeta de clips; parada visible ante errores o límite. Retención respeta notas y ánimo. No se envía audio a servidores; los clips quedan excluidos de copias de seguridad automáticas.
+8. Cuotas de 256 MiB por noche y 512 MiB en la carpeta de clips; parada visible ante errores o límite. Retención respeta notas y ánimo. Los errores de borrado son visibles. Un fallo al escribir el índice conserva las ediciones en memoria y permite reintentar sin perderlas. No se envía audio a servidores; los clips quedan excluidos de copias de seguridad automáticas.
 
 ## Interrupciones y límites
 
@@ -29,7 +29,7 @@ Encargo del 21-09-2026, PR-019. Implementación: `sleep-next`, rama `codex/nativ
 - Cierre forzado: la captura se detiene. Al volver se recuperan archivos y se requiere Reanudar. Los segundos de contexto que solo existían en RAM antes de abrir un evento no se pueden recuperar.
 - Llamadas/otros audios: pausa y cierre del fragmento. Solo se intenta retomar si el sistema recomienda reanudar y el micrófono estaba activo; una pausa manual se respeta.
 - Cambio de dispositivo de entrada, configuración incompatible o reinicio de los servicios de audio: estado de pausa/reinicio y acción explícita para volver a capturar. Un flujo sin muestras durante 5 s se muestra como detenido.
-- Alarma: la cola de captura corta en la fecha de despertar. La reproducción propia exige que la captura esté detenida. Tras posponer se puede reanudar el micrófono explícitamente.
+- Alarma: la cola de captura corta 2 s antes de la fecha de despertar para liberar la sesión de audio antes del aviso. La reproducción propia exige que la captura esté detenida. Tras posponer se puede reanudar el micrófono explícitamente.
 - La detección identifica cambios acústicos, no garantiza distinguir ronquidos de respiración, habla, ventiladores o ruido externo. Las etiquetas son sugerencias corregibles; el audio sintético no valida precisión clínica ni personal.
 
 ## Documentación oficial consultada el 21-09-2026

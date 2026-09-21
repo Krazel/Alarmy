@@ -45,7 +45,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate >= 8000, format.channelCount > 0 else { throw CaptureError.input }
         let generation = UUID(); self.generation = generation
-        let worker = try CaptureWorker(nightID: nightID, start: Date(), deadline: wake, rate: format.sampleRate, margin: margin, directory: DiskLocation.clips, byteLimit: byteLimit,
+        let worker = try CaptureWorker(nightID: nightID, start: Date(), deadline: wake.addingTimeInterval(-2), rate: format.sampleRate, margin: margin, directory: DiskLocation.clips, byteLimit: byteLimit,
             receipt: { value in Task { @MainActor in receive(value) } },
             progress: { [weak self] date, level, calibrated in Task { @MainActor in
                 guard let self, self.generation == generation else { return }
