@@ -1,0 +1,33 @@
+{
+  "sourceCommit": "0efac28e6a3621b47df75265c00ac70232793b09",
+  "ciRun": "https://github.com/Krazel/Alarmy/actions/runs/35635101317",
+  "inputSeconds": 12.0,
+  "input": "controlled-input.wav",
+  "events": [
+    {
+      "event": 1,
+      "startSeconds": 1.06,
+      "durationSeconds": 4.14,
+      "samplesEqualInputSlice": true,
+      "peakPCM16": 327,
+      "sha256": "c29bd3051105419df40720cf8f97c94b1c695e1e4a81dfd4cdbf9e784f509d4c"
+    },
+    {
+      "event": 2,
+      "startSeconds": 6.06,
+      "durationSeconds": 4.24,
+      "samplesEqualInputSlice": true,
+      "peakPCM16": 327,
+      "sha256": "adc07e9a66c7db957a35a0eed8f335ac48506522c903d21bfe5df7c9d341e595"
+    }
+  ],
+  "testCounts": {
+    "acoustic": 15,
+    "captureIntegration": 5,
+    "domain": 11,
+    "repository": 7,
+    "nativeUI": 3
+  },
+  "failures": 0,
+  "physicalMicrophoneTested": false
+}

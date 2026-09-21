@@ -1,0 +1,25 @@
+{
+  "ipa": "AlarmaNext-1.0.1-build-1-0efac28-unsigned-Local-QA.ipa",
+  "sha256": "17f9059182005c8ac932dec66e338575d473007ae8339f8c65fd0bad8b56a7cd",
+  "version": "1.0.1",
+  "build": "1",
+  "minimumOS": "16.0.0",
+  "SDK": "26.5.0",
+  "alarmKit": [
+    {
+      "name": "/System/Library/Frameworks/AlarmKit.framework/AlarmKit",
+      "weak": true
+    }
+  ],
+  "backgroundModes": [
+    "audio"
+  ],
+  "localizations": [
+    "en",
+    "es"
+  ],
+  "embeddedProvisioning": false,
+  "containsDebugBypass": false,
+  "containsControlledFeed": false,
+  "containsDesignFixture": false
+}

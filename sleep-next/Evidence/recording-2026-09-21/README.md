@@ -57,4 +57,14 @@ Usar una build firmada en un iPhone con iOS 16–25 y otro con iOS 26 si están 
 
 Los XCTest acústicos inyectan PCM controlado en la misma cola, detector y escritor usados por el tap. Exportan el archivo de entrada, WAV de eventos y JSON de tiempos como adjuntos de XCTest. No activan un micrófono personal ni usan voces grabadas. La prueba de permiso nativo deniega la petición del simulador.
 
-Resultado de CI y hash de la candidata: se incorporan tras finalizar la validación. La evidencia automatizada no sustituye la prueba nocturna física ni una evaluación de exactitud de clasificación.
+Validación completada: [Xcode CI 35635101317](https://github.com/Krazel/Alarmy/actions/runs/35635101317), fuente `0efac28e6a3621b47df75265c00ac70232793b09`. Compilación para simulador e iPhone correcta. **41 pruebas, cero fallos**: 15 acústicas, 5 de integración de captura, 11 de dominio, 7 de persistencia y 3 de interfaz. Las pruebas de interfaz incluyen la denegación del permiso real del simulador; las de diseño usan datos de ejemplo y el modo Debug documentado.
+
+El archivo [controlado de 12 segundos](controlled-input.wav) genera [evento 1](controlled-event-1.wav) de 4,14 s desde 1,06 s y [evento 2](controlled-event-2.wav) de 4,24 s desde 6,06 s. Se leyeron con AVAudioFile y SoundAnalysis en las pruebas nativas. La inspección local verificó que sus muestras PCM son idénticas a los cortes correspondientes del original, sin solapamiento; véase [audio-check.json](audio-check.json). Esto prueba la conservación del sonido sintético, no la detección de una persona durmiendo.
+
+Capturas nativas revisadas: [inicio](runtime/01-en-home.png), [noche y control de micrófono](runtime/04-en-active-night.png), [diario en castellano](runtime/08-es-journal-design.png), [sensibilidad y privacidad](runtime/11-es-settings.png), [permiso denegado](runtime/15-microphone-denied.png). Se conserva el lenguaje visual anterior. La noche de 8 h 5 min del diario es un ejemplo de diseño.
+
+Paquete: `AlarmaNext-1.0.1-build-1-0efac28-unsigned-Local-QA.ipa`, disponible en el artefacto de CI y en `artifact/recording-qa/run-0efac28/` del repositorio local. SHA-256: `17f9059182005c8ac932dec66e338575d473007ae8339f8c65fd0bad8b56a7cd`.
+
+La [inspección del paquete](package-check.json) confirma mínimo iOS 16.0.0, enlace opcional de AlarmKit, idiomas en/es y modo de segundo plano audio. Release no contiene los argumentos de omisión de permisos, el fixture de diseño ni la entrada de PCM de pruebas. No hay perfil de aprovisionamiento: el IPA está **sin firma y no es instalable directamente**. No se ha subido a TestFlight ni App Store en este encargo.
+
+El registro de Xcode contiene el error esperado del test de archivo de audio inexistente, avisos de selección de destino/metadatos de pruebas y el aviso de orientación del proyecto iPhone. No hay fallos de compilación ni de XCTest. La evidencia automatizada no sustituye la prueba nocturna física, la medición de batería ni una evaluación de exactitud de clasificación. Estas verificaciones siguen pendientes.

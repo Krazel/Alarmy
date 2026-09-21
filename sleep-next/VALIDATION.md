@@ -1,4 +1,14 @@
-# Validación de AlarmaNext 1.0 (build 1)
+# Validación de AlarmaNext
+
+## Candidata 1.0.1 (build 1) — 21 de septiembre de 2026
+
+Fuente validada: `0efac28e6a3621b47df75265c00ac70232793b09`. [CI completa](https://github.com/Krazel/Alarmy/actions/runs/35635101317): compilación de simulador e iPhone, **38 pruebas unitarias/integración y 3 de interfaz, cero fallos**.
+
+Corrección de seguimiento y clips: detector adaptativo con contexto, WAV recuperables por noche, pausa explícita, interrupciones, errores de almacenamiento y retención, sin reactivar el micrófono al relanzar. Se preservan castellano, inglés y el diseño.
+
+[Diagnóstico, WAV de prueba, capturas reales e inspección del paquete](Evidence/recording-2026-09-21/README.md). El IPA 1.0.1 (1) está sin firma; conserva iOS 16 como mínimo y AlarmKit opcional. Firma, prueba nocturna en iPhone físico y consumo de batería pendientes. No se ha distribuido por TestFlight ni publicado en este encargo.
+
+## Historial: AlarmaNext 1.0 (build 1)
 
 Código validado: `60352911c2361618b7d4234a70d08815ddf09f88`.
 
