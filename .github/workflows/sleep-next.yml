@@ -62,6 +62,21 @@ jobs:
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Payload/AlarmaNext.app/Info.plist)
           BUILD=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' Payload/AlarmaNext.app/Info.plist)
           zip -qry ../AlarmaNext-${VERSION}-build-${BUILD}-${GITHUB_SHA::7}-unsigned-Local-QA.ipa Payload
+      - name: Check compact iPhone controls
+        timeout-minutes: 8
+        run: |
+          set -o pipefail
+          RUNTIME=$(xcrun simctl list devices available -j | python3 -c 'import json,sys,os; d=json.load(sys.stdin); print(next(r for r,ds in d["devices"].items() if any(x["udid"]==os.environ["DEVICE"] for x in ds)))')
+          COMPACT=$(xcrun simctl create 'Alarma compact QA' com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation "$RUNTIME")
+          xcrun simctl shutdown "$DEVICE"
+          xcrun simctl boot "$COMPACT"
+          xcrun simctl bootstatus "$COMPACT" -b
+          xcodebuild -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -destination "platform=iOS Simulator,id=$COMPACT" -derivedDataPath build/simulator -resultBundlePath build/Compact.xcresult -only-testing:AlarmaNextUITests/NativeFlowTests/testCompactNightControls -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building 2>&1 | tee build-compact.log
+      - name: Export compact evidence
+        if: always()
+        run: |
+          mkdir -p evidence/compact
+          xcrun xcresulttool export attachments --path build/Compact.xcresult --output-path evidence/compact || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -70,7 +85,9 @@ jobs:
             AlarmaNext-*.ipa
             evidence/
             build/Tests.xcresult
+            build/Compact.xcresult
             build-test.log
             build-compile.log
             build-device.log
+            build-compact.log
           retention-days: 7

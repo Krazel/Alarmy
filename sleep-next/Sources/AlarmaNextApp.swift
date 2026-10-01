@@ -137,6 +137,8 @@ struct NightScreen: View {
     var body: some View {
         ZStack {
             NightLandscape()
+            GeometryReader { geometry in
+            ScrollView {
             VStack(spacing: 18) {
                 Spacer()
                 Image(systemName: store.ringing ? "sun.max" : "moon.stars").font(.system(size: 40, weight: .ultraLight))
@@ -150,7 +152,9 @@ struct NightScreen: View {
                     Button { Task { await store.snooze() } } label: { Text(store.words("snooze") + " · \(store.archive.plan.snoozeMinutes) min") }.buttonStyle(PrimaryButton())
                     Button(store.words("dismiss")) { Task { await store.finish() } }.padding()
                 } else { Button(store.words("end")) { confirm = true }.font(.subheadline).padding(20).frame(maxWidth: .infinity).overlay(Capsule().stroke(.white.opacity(0.3))).accessibilityIdentifier("finish-night") }
-            }.padding(32).padding(.bottom, 20).foregroundStyle(Color(red: 0.96, green: 0.92, blue: 0.83))
+            }.padding(32).padding(.bottom, 20).frame(minHeight: geometry.size.height).foregroundStyle(Color(red: 0.96, green: 0.92, blue: 0.83))
+            }.scrollIndicators(.hidden)
+            }
         }.preferredColorScheme(.dark).interactiveDismissDisabled().disabled(store.busy)
         .confirmationDialog(store.words("endTitle"), isPresented: $confirm, titleVisibility: .visible) {
             Button(store.words("end"), role: .destructive) { Task { await store.finish() } }

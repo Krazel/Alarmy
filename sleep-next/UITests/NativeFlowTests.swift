@@ -1,6 +1,19 @@
 import XCTest
 
 final class NativeFlowTests: XCTestCase {
+    func testCompactNightControls() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--spanish"]; app.launch()
+        let start = app.buttons["begin-night"]
+        XCTAssertTrue(start.waitForExistence(timeout: 10))
+        for _ in 0..<3 { if start.isHittable { break }; app.swipeUp() }
+        start.tap()
+        let end = app.buttons["finish-night"]
+        XCTAssertTrue(end.waitForExistence(timeout: 5))
+        for _ in 0..<3 { if end.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(end.isHittable); shot("20-es-compact-night-controls")
+        end.tap(); app.sheets.buttons["Terminar noche"].tap()
+        XCTAssertTrue(app.textViews["journal-note"].waitForExistence(timeout: 5))
+    }
     func testClipDetailPlaybackNavigationAndCorrection() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--english", "--design-fixture", "--clip-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); app.tabBars.buttons["Journal"].tap()
