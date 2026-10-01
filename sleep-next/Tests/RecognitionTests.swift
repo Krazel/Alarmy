@@ -25,6 +25,11 @@ final class RecognitionTests: XCTestCase {
         let bundle = Bundle(for: Self.self)
         let manifest = try XCTUnwrap(bundle.url(forResource: "manifest", withExtension: "json"))
         let sources = try JSONDecoder().decode([CorpusSource].self, from: Data(contentsOf: manifest))
+        let fan = try AVAudioFile(forReading: XCTUnwrap(bundle.url(forResource: "other-96913", withExtension: "mp3")))
+        let fanBuffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: fan.processingFormat, frameCapacity: AVAudioFrameCount(min(fan.length, Int64(fan.processingFormat.sampleRate*16)))))
+        try fan.read(into: fanBuffer)
+        let fanSamples = Array(UnsafeBufferPointer(start: try XCTUnwrap(fanBuffer.floatChannelData?[0]), count: Int(fanBuffer.frameLength)))
+        let fanRMS = sqrt(fanSamples.reduce(0.0) { $0 + Double($1)*Double($1) } / Double(fanSamples.count))
         var rows: [[String: Any]] = []
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -53,11 +58,52 @@ final class RecognitionTests: XCTestCase {
             XCTAssertTrue(observer.complete && !observer.failed, source.filename)
             let suggestion = await SoundTagger.suggest(url: url)
             XCTAssertTrue(suggestion.completed, source.filename)
-            rows.append(["file": source.filename, "expected": source.kind, "split": source.split,
+            let captured = CaptureResults()
+            let captureDirectory = directory.appendingPathComponent(name + "-capture")
+            let origin = Date(timeIntervalSince1970: 1_800_000_000)
+            let worker = try CaptureWorker(nightID: UUID(), start: origin, deadline: origin.addingTimeInterval(60), rate: rate, margin: 10, directory: captureDirectory,
+                                           receipt: captured.add, progress: { _,_,_ in }, failure: captured.fail, deadlineReached: captured.wake)
+            let mono = Array(UnsafeBufferPointer(start: try XCTUnwrap(context.floatChannelData?[0]), count: Int(context.frameLength)))
+            for offset in stride(from: 0, to: mono.count, by: 8192) { await worker.feedControlled(Array(mono[offset..<min(mono.count, offset+8192)])) }
+            await worker.stop()
+            XCTAssertEqual(captured.errors, 0, source.filename)
+            var pipeline: [[String: Any]] = []
+            for receipt in captured.clips {
+                let result = await SoundTagger.suggest(url: captureDirectory.appendingPathComponent(receipt.clip.filename))
+                XCTAssertTrue(result.completed, source.filename)
+                pipeline.append(["start": receipt.clip.created.timeIntervalSince(origin), "duration": receipt.clip.duration,
+                                 "predicted": result.kind.rawValue, "confidence": result.confidence,
+                                 "events": result.events.map { ["start": $0.start, "duration": $0.duration, "kind": $0.kind.rawValue, "confidence": $0.confidence] as [String: Any] }])
+            }
+            rows.append(["file": source.filename, "expected": source.kind, "split": source.split, "condition": "clean",
                          "predicted": suggestion.kind.rawValue, "confidence": suggestion.confidence,
                          "events": suggestion.events.map { ["start": $0.start, "duration": $0.duration, "kind": $0.kind.rawValue, "confidence": $0.confidence] as [String: Any] },
                          "defaultWindow": request.windowDuration.seconds, "constraint": String(describing: request.windowDurationConstraint),
-                         "knownLabels": request.knownClassifications, "windows": observer.windows])
+                         "knownLabels": request.knownClassifications, "windows": observer.windows, "capturedClips": pipeline])
+            let signalSamples = Array(UnsafeBufferPointer(start: try XCTUnwrap(buffer.floatChannelData?[0]), count: Int(buffer.frameLength)))
+            let signalRMS = sqrt(signalSamples.reduce(0.0) { $0 + Double($1)*Double($1) } / Double(signalSamples.count))
+            for condition in ["quiet-minus18dB", "real-fan-10dB"] {
+                let mixed = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: context.format, frameCapacity: context.frameCapacity))
+                mixed.frameLength = context.frameLength
+                for channel in 0..<Int(context.format.channelCount) {
+                    let input = try XCTUnwrap(context.floatChannelData?[channel]), output = try XCTUnwrap(mixed.floatChannelData?[channel])
+                    for i in 0..<Int(context.frameLength) {
+                        if condition == "quiet-minus18dB" { output[i] = input[i] * 0.12589254 }
+                        else {
+                            let n = Int(Double(i)*fan.processingFormat.sampleRate/rate) % fanSamples.count
+                            let noise = Double(fanSamples[n]) * signalRMS / max(1e-8, fanRMS) / sqrt(10)
+                            output[i] = max(-1, min(1, input[i] + Float(noise)))
+                        }
+                    }
+                }
+                let mixedURL = directory.appendingPathComponent(name + "-" + condition + ".caf")
+                do { let output = try AVAudioFile(forWriting: mixedURL, settings: mixed.format.settings); try output.write(from: mixed) }
+                let mixedResult = await SoundTagger.suggest(url: mixedURL)
+                XCTAssertTrue(mixedResult.completed, source.filename + condition)
+                rows.append(["file": source.filename, "expected": source.kind, "split": source.split, "condition": condition,
+                             "predicted": mixedResult.kind.rawValue, "confidence": mixedResult.confidence,
+                             "events": mixedResult.events.map { ["start": $0.start, "duration": $0.duration, "kind": $0.kind.rawValue, "confidence": $0.confidence] as [String: Any] }])
+            }
         }
         let data = try JSONSerialization.data(withJSONObject: rows, options: [.prettyPrinted, .sortedKeys])
         let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")

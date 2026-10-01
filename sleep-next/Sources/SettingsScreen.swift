@@ -67,7 +67,7 @@ struct SettingsScreen: View {
                 Section {
                     Label(store.words("local"), systemImage: "lock.shield")
                     Text(store.words("localHint")).font(.caption).foregroundStyle(.secondary)
-                } footer: { Text(store.words("about") + " · 1.0") }
+                } footer: { Text(store.words("about") + " · " + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")) }
             }.scrollContentBackground(.hidden).background(Color.paper).navigationTitle(store.words("settings")).toolbarBackground(.visible, for: .tabBar)
         }
     }

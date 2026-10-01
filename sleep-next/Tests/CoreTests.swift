@@ -19,6 +19,11 @@ final class DomainTests: XCTestCase {
     }
     func testRandomSoundAvoidsPrevious() { var plan = AlarmPlan(); plan.sounds = ["a", "b"]; for _ in 0..<50 { XCTAssertEqual(plan.sound(excluding: "a"), "b") } }
     func testEmptySelectionHasSafeSound() { var plan = AlarmPlan(); plan.sounds = []; XCTAssertEqual(plan.sound(excluding: nil), "aurora") }
+    func testMissingImportedAlarmToneFallsBackToBundledSound() {
+        let tone = ImportedTone(id: UUID().uuidString, name: "Missing", filename: UUID().uuidString + ".caf")
+        XCTAssertNil(ToneLibrary.url(tone.id, imported: [tone]))
+        XCTAssertEqual(ToneLibrary.filename(tone.id, imported: [tone]), "aurora.wav")
+    }
     func testCalendarWeekCrossesYear() {
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let day = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1))!

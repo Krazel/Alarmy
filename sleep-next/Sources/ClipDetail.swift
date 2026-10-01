@@ -52,7 +52,7 @@ struct ClipDetail: View {
                         PaperCard {
                             VStack(alignment: .leading, spacing: 14) {
                                 Text(store.words("correctLabel")).font(.headline)
-                                Menu { ForEach(SoundKind.allCases, id: \.self) { kind in Button(store.words(kind.rawValue)) { store.label(clip, kind: kind) } } } label: { Label(store.words(clip.kind.rawValue), systemImage: "pencil") }
+                                Menu { ForEach(SoundKind.allCases, id: \.self) { kind in Button(store.words(kind.rawValue)) { store.label(clip, kind: kind) } } } label: { Label(store.words(clip.kind.rawValue), systemImage: "pencil") }.accessibilityIdentifier("correct-clip-label")
                                 Text(store.words("clipHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                             }
                         }
@@ -68,7 +68,8 @@ struct ClipDetail: View {
             .alert(store.words("error"), isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
                 Button(store.words("done")) { store.error = nil }
             } message: { Text(store.error ?? "") }
-            .onDisappear { if audio.playing == clipID.uuidString { audio.stopPlayback() } }
+            .onAppear { store.clipPresented = true }
+            .onDisappear { store.clipPresented = false; if audio.playing == clipID.uuidString { audio.stopPlayback() } }
         }
     }
     private func move(_ delta: Int) {

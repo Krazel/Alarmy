@@ -35,15 +35,19 @@ final class AcousticSegmenter {
         cursor += Int64(samples.count)
         let power = samples.reduce(0.0) { $0 + Double($1) * Double($1) } / Double(samples.count)
         level = max(-100, 10 * log10(max(1e-10, power)))
-        if !active {
-            floorUpdates += 1
-            floorSamples.append(level)
-            if floorSamples.count > 500 { floorSamples.removeFirst() }
-            if floorSamples.count >= 50 {
-                calibrated = true
-                if floorUpdates % 25 == 0 {
-                    let ordered = floorSamples.sorted()
-                    noiseFloor = min(-25, max(-85, ordered[ordered.count/5]))
+        floorUpdates += 1
+        floorSamples.append(level)
+        if floorSamples.count > 500 { floorSamples.removeFirst() }
+        if floorSamples.count >= 50 {
+            calibrated = true
+            if floorUpdates % 25 == 0 {
+                let ordered = floorSamples.sorted()
+                if !active {
+                    noiseFloor = min(-5, max(-85, ordered[ordered.count/5]))
+                } else if length >= Int(sampleRate * 15), ordered[ordered.count*9/10] - ordered[ordered.count/10] < 3 {
+                    // A newly started steady fan must settle instead of filling storage.
+                    // Pulsed/variable sounds retain the previous floor and their full clips.
+                    noiseFloor = min(-5, max(-85, ordered[ordered.count/2]))
                 }
             }
         }

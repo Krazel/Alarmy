@@ -82,6 +82,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let endingGeneration = generation
         if reason == "recordReset" {
             generation = UUID(); ramp?.invalidate(); ramp = nil; player = nil; playing = nil; restoreScreen()
+            playbackTimer?.invalidate(); playbackTimer = nil; playbackTime = 0; playbackDuration = 0
         } else if let engine { engine.inputNode.removeTap(onBus: 0); engine.stop() }
         engine = nil; self.worker = nil; captureState = reason
         let end = await worker?.stop()
@@ -150,9 +151,13 @@ struct ToneLibrary {
     static func url(_ id: String, imported: [ImportedTone]) -> URL? {
         if builtins.contains(id) { return Bundle.main.url(forResource: id, withExtension: "wav") }
         guard let tone = imported.first(where: { $0.id == id }) else { return nil }
-        return DiskLocation.child(tone.filename, of: DiskLocation.tones)
+        guard let url = DiskLocation.child(tone.filename, of: DiskLocation.tones), FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return url
     }
-    static func filename(_ id: String, imported: [ImportedTone]) -> String { imported.first { $0.id == id }?.filename ?? "\(id).wav" }
+    static func filename(_ id: String, imported: [ImportedTone]) -> String {
+        guard let url = url(id, imported: imported) else { return "aurora.wav" }
+        return url.lastPathComponent
+    }
     static func prepare(_ source: URL) throws -> ImportedTone {
         let access = source.startAccessingSecurityScopedResource(); defer { if access { source.stopAccessingSecurityScopedResource() } }
         try FileManager.default.createDirectory(at: DiskLocation.tones, withIntermediateDirectories: true)

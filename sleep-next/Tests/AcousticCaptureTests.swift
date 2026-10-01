@@ -76,10 +76,18 @@ final class AcousticCaptureTests: XCTestCase {
         XCTAssertLessThanOrEqual(split.clips[0].clip.created.addingTimeInterval(split.clips[0].clip.duration),split.clips[1].clip.created)
     }
     func testLongEventSplitsWithoutDuplicateOrMissingSamples() async throws {
-        let (result, _) = try await run(signal(seconds: 70, events: [3...67]))
+        let samples = signal(seconds: 70, events: [3...67]).enumerated().map { index, value in
+            value * Float(0.65 + 0.35 * sin(2 * .pi * 0.5 * Double(index)/rate))
+        }
+        let (result, _) = try await run(samples)
         XCTAssertGreaterThanOrEqual(result.clips.count,3)
         for clip in result.clips { XCTAssertLessThanOrEqual(clip.clip.duration,30.02) }
         for (a,b) in zip(result.clips,result.clips.dropFirst()) { XCTAssertEqual(a.clip.created.addingTimeInterval(a.clip.duration).timeIntervalSince(b.clip.created),0,accuracy:0.001) }
+    }
+    func testFanStartingAfterCalibrationSettlesWithoutEndlessClips() async throws {
+        let (result, _) = try await run(signal(seconds: 70, events: [3...69], event: 0.03))
+        XCTAssertEqual(result.clips.count, 1)
+        XCTAssertLessThan(result.clips[0].clip.duration, 20)
     }
     func testStopFlushesShortEventIntoPlayableWAV() async throws {
         let (result, dir) = try await run(signal(seconds:3.15, events:[3...4]))

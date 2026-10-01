@@ -34,17 +34,22 @@ struct SoundSuggestion {
 private final class ClassificationObserver: NSObject, SNResultsObserving {
     private let lock = NSLock()
     private let duration: Double
+    private let breathingOnly: Bool
     private var finished = false
     private var failed = false
     private var windows: [SoundEvent] = []
-    init(duration: Double) { self.duration = duration }
+    init(duration: Double, breathingOnly: Bool = false) { self.duration = duration; self.breathingOnly = breathingOnly }
     func request(_ request: SNRequest, didProduce result: SNResult) {
         guard let result = result as? SNClassificationResult else { return }
         let start = max(0, result.timeRange.start.seconds), end = min(duration, result.timeRange.end.seconds)
         guard start.isFinite, end.isFinite, end > start else { return }
         lock.lock(); defer { lock.unlock() }
+        let respiratory = result.classifications.filter { ["breathing", "snoring"].contains($0.identifier) }.max { $0.confidence < $1.confidence }?.identifier
         for classification in result.classifications {
             let kind = SoundSuggestion.kind(identifier: classification.identifier, confidence: classification.confidence)
+            if breathingOnly && kind != .breath { continue }
+            // Breathing and snoring compete within the same window; retain the stronger.
+            if (kind == .breath || kind == .snore) && classification.identifier != respiratory { continue }
             if kind != .other { windows.append(SoundEvent(start: start, duration: end-start, kind: kind, confidence: classification.confidence)) }
         }
     }
@@ -60,15 +65,15 @@ private final class ClassificationObserver: NSObject, SNResultsObserving {
 }
 struct SoundTagger {
     static let version = 2
-    static func request() throws -> SNClassifySoundRequest {
+    static func request(seconds desired: Double = 1) throws -> SNClassifySoundRequest {
         let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
         // A supported window near one second retains brief respiratory events.
         switch request.windowDurationConstraint {
         case .durationRange(let range):
-            let seconds = max(range.start.seconds, min(range.end.seconds, 1))
+            let seconds = max(range.start.seconds, min(range.end.seconds, desired))
             request.windowDuration = CMTime(seconds: seconds, preferredTimescale: 48000)
         case .enumeratedDurations(let durations):
-            if let nearest = durations.min(by: { abs($0.seconds-1) < abs($1.seconds-1) }) { request.windowDuration = nearest }
+            if let nearest = durations.min(by: { abs($0.seconds-desired) < abs($1.seconds-desired) }) { request.windowDuration = nearest }
         @unknown default: break
         }
         request.overlapFactor = 0.5
@@ -80,11 +85,22 @@ struct SoundTagger {
             do {
                 guard !Task.isCancelled else { return SoundSuggestion(kind: .other, confidence: 0, completed: false) }
                 let file = try AVAudioFile(forReading: url)
-                let observer = ClassificationObserver(duration: Double(file.length)/file.processingFormat.sampleRate)
-                let analyzer = try SNAudioFileAnalyzer(url: url)
-                try analyzer.add(request(), withObserver: observer)
-                analyzer.analyze()
-                return observer.result()
+                let duration = Double(file.length)/file.processingFormat.sampleRate
+                func analyze(seconds: Double, breathingOnly: Bool) throws -> SoundSuggestion {
+                    let observer = ClassificationObserver(duration: duration, breathingOnly: breathingOnly)
+                    let analyzer = try SNAudioFileAnalyzer(url: url)
+                    try analyzer.add(request(seconds: seconds), withObserver: observer)
+                    analyzer.analyze()
+                    return observer.result()
+                }
+                let brief = try analyze(seconds: 1, breathingOnly: false)
+                guard !Task.isCancelled else { return SoundSuggestion(kind: .other, confidence: 0, completed: false) }
+                // Soft regular breathing needs more context than a brief cough.
+                let breathing = try analyze(seconds: 3, breathingOnly: true)
+                let events = SoundSuggestion.coalesce(brief.events + breathing.events)
+                let strongest = events.max { $0.confidence < $1.confidence }
+                return SoundSuggestion(kind: strongest?.kind ?? .other, confidence: strongest?.confidence ?? 0,
+                                       completed: brief.completed && breathing.completed, events: events)
             } catch { return SoundSuggestion(kind: .other, confidence: 0, completed: false) }
         }
         return await withTaskCancellationHandler(operation: { await task.value }, onCancel: { task.cancel() })

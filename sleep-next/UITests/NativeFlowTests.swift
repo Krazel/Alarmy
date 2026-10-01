@@ -12,7 +12,19 @@ final class NativeFlowTests: XCTestCase {
         app.buttons["Next"].tap(); XCTAssertTrue(app.staticTexts["2 / 2"].exists)
         app.buttons["Previous"].tap(); XCTAssertTrue(app.staticTexts["1 / 2"].exists)
         app.swipeUp(); shot("17-en-clip-intervals")
-        app.buttons["Done"].tap(); XCTAssertTrue(app.textViews["journal-note"].exists)
+        app.buttons["correct-clip-label"].tap(); app.buttons["Cough"].tap(); XCTAssertTrue(app.buttons["correct-clip-label"].label.contains("Cough"))
+        shot("18-en-clip-corrected")
+        app.buttons["Delete"].tap(); app.sheets.buttons["Delete"].tap()
+        XCTAssertTrue(app.textViews["journal-note"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'clip-detail-'")).count, 1)
+    }
+    func testSpanishClipDetail() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--spanish", "--design-fixture", "--clip-fixture"]; app.launch()
+        XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); app.tabBars.buttons["Diario"].tap()
+        let clip = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'clip-detail-'")).firstMatch
+        for _ in 0..<4 { if clip.isHittable { break }; app.swipeUp() }
+        clip.tap(); XCTAssertTrue(app.navigationBars["Escuchar fragmento"].waitForExistence(timeout: 5)); shot("19-es-clip-detail")
+        app.buttons["Siguiente"].tap(); XCTAssertTrue(app.staticTexts["2 / 2"].exists); app.buttons["Listo"].tap()
     }
     override func setUpWithError() throws { continueAfterFailure = false }
     private func shot(_ name: String) {
