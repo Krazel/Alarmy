@@ -1,0 +1,202 @@
+[
+  {
+    "file": "18-en-clip-corrected.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "5d0fc0a90424afeb2b4279dcca850a5dfef077f9ab2515be0e01880e7f37bbd7"
+  },
+  {
+    "file": "17-en-clip-intervals.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "29b64ae8da96a292ca6831295958e7f0b697ed2b65609716cd8033d8e5fba423"
+  },
+  {
+    "file": "16-en-clip-detail.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "32c5a1f529e86bf95bf33563acc0c82c638df339c83dacb03ae10ee38976e384"
+  },
+  {
+    "file": "20-es-compact-night-controls.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testCompactNightControls()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "b67a7c311bb9fea4958e63fee82f170dfd9d1d3397a1cacdba1f18bf2e81fc2f"
+  },
+  {
+    "file": "06-en-settings.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testEnglishNightAndJournal()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "a8d00304ad180dcd25be177d7a22cf7dcddbf1dd3cfc3803142534b33293d1fb"
+  },
+  {
+    "file": "05-en-journal.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testEnglishNightAndJournal()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "388d29c16b9098e4c82a2964cef40bf818668cf26ddd6cac026f6e39a81f1c64"
+  },
+  {
+    "file": "04-en-active-night.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testEnglishNightAndJournal()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "1f9d27578d56d7755bb7b523fc2cb220ed17d213aff06ae6efeb761b600fe403"
+  },
+  {
+    "file": "03-en-sounds.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testEnglishNightAndJournal()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "30999aca07582aca63246adbe7accef6d9f9396c5caddb0efad05b356c06e0f0"
+  },
+  {
+    "file": "02-en-alarm-editor.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testEnglishNightAndJournal()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "e15c8c035e56ef556e19cf96e2fdf0688a4fd5fc2a2d1f82a558032c05d61d97"
+  },
+  {
+    "file": "01-en-home.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testEnglishNightAndJournal()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "d0c43c3244f8a99bfd33fbede7f742477541e267ebe7d0b772ef1bbc7121c5a2"
+  },
+  {
+    "file": "19-es-clip-detail.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testSpanishClipDetail()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "1ab293f025e1c534a15ba352410094cf31d7f325694c33677fd32af54bff7838"
+  },
+  {
+    "file": "14-en-home-dark.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testSpanishDiaryDesign()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "d960bb170a5d36f5bb8414dcd259a68f116eb874f94a19db05d1e84b4662aa55"
+  },
+  {
+    "file": "13-en-journal-dark.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testSpanishDiaryDesign()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "5fc4a31970673d7e1a9393e2beecf3343967a98bb56df7adfe5a9f39a7c219b5"
+  },
+  {
+    "file": "12-en-journal-design.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testSpanishDiaryDesign()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "94334b336788b0e11349d13a9aa5cdfe69272a9a58125be2bf1a4143ec549e56"
+  },
+  {
+    "file": "11-es-settings.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testSpanishDiaryDesign()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "638f473c812ff922456956d0057ba491df2d190ec0ab273b3464350133f83bf5"
+  },
+  {
+    "file": "10-es-calendar.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testSpanishDiaryDesign()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "9946d04d6171a9c714828d13d2ada1b317b6d1374d6aff0367cbf855d45d1ea7"
+  },
+  {
+    "file": "09-es-journal-notes.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testSpanishDiaryDesign()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "b17fcbc0dc833c3e55f77ed0ebf7beb384e811a092aede24906ac9e42ef59fd8"
+  },
+  {
+    "file": "08-es-journal-design.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testSpanishDiaryDesign()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "c81b37903e1896219abd48e7c5e8095eb40d8ff57b5bc7ce8a416d18a730f05b"
+  },
+  {
+    "file": "07-es-home.png",
+    "device": "iPhone 17 Pro",
+    "test": "NativeFlowTests/testSpanishDiaryDesign()",
+    "pixels": [
+      1206,
+      2622
+    ],
+    "sha256": "9f0311352c023687fe23a7bdaf79728d7d83da0f5501646da46a64b98625b3dc"
+  },
+  {
+    "file": "se-20-es-compact-night-controls.png",
+    "device": "Alarma compact QA",
+    "test": "NativeFlowTests/testCompactNightControls()",
+    "pixels": [
+      750,
+      1334
+    ],
+    "sha256": "5cede2539c1a66495e52985c497167cf38662ee07b3c74a23442fdb42d10c344"
+  }
+]
