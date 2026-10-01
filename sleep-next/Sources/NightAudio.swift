@@ -16,6 +16,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var generation = UUID()
     private var capturedRate = 0.0
     private var lastInput = Date.distantPast
+    private(set) var lastCaptureEnd: Date?
     var inputStalled: Bool { worker != nil && Date().timeIntervalSince(lastInput) > 5 }
     var needsRebuild: Bool {
         guard worker != nil, let engine else { return false }
@@ -60,11 +61,14 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             } },
             failure: { [weak self] error in Task { @MainActor in
                 guard let self, self.generation == generation else { return }
-                await self.stopRecording(reason: "recordError"); self.onFailure?(error)
+                await self.stopRecording(reason: "recordError")
+                guard self.generation == generation else { return }
+                self.onFailure?(error)
             } },
             deadlineReached: { [weak self] in Task { @MainActor in
                 guard let self, self.generation == generation else { return }
                 await self.stopRecording(reason: "recordAlarm")
+                guard self.generation == generation else { return }
                 self.onDeadline?()
             } })
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
@@ -73,7 +77,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
         tapInstalled = true
             engine.prepare(); try engine.start()
-            self.engine = engine; self.worker = worker; self.capturedRate = format.sampleRate; self.lastInput = Date(); captureState = "recordCalibrating"
+            self.engine = engine; self.worker = worker; self.capturedRate = format.sampleRate; self.lastInput = Date(); self.lastCaptureEnd = nil; captureState = "recordCalibrating"
         } catch { if tapInstalled { engine.inputNode.removeTap(onBus: 0) }; engine.stop(); try? session.setActive(false); captureState = "recordError"; throw error }
     }
     @discardableResult
@@ -86,6 +90,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         } else if let engine { engine.inputNode.removeTap(onBus: 0); engine.stop() }
         engine = nil; self.worker = nil; captureState = reason
         let end = await worker?.stop()
+        if let end, generation == endingGeneration { lastCaptureEnd = end }
         if player == nil && self.worker == nil && generation == endingGeneration { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
         return end
     }

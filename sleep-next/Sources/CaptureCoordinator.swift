@@ -16,7 +16,7 @@ extension SleepStore {
         audio.onFailure = { [weak self] error in
             guard let self else { return }
             self.error = self.words("recordFailure") + " " + error.localizedDescription
-            self.commit { $0.active?.capturePaused = true }
+            Task { await self.pauseCapture(reason: "recordError") }
         }
         audio.onDeadline = { [weak self] in Task { await self?.pauseCapture(reason: "recordAlarm") } }
         try audio.startRecording(nightID: night.id, wake: night.wake, margin: archive.preferences.sensitivity ?? 10, byteLimit: remaining,
@@ -62,10 +62,11 @@ extension SleepStore {
     func pauseCapture(reason: String = "recordPaused") async {
         while captureBusy { try? await Task.sleep(nanoseconds: 20_000_000) }; captureBusy = true; defer { captureBusy = false }
         if reason != "recordInterrupted" { resumeAfterInterruption = false }
-        let end = await audio.stopRecording(reason: reason)
+        let end = await audio.stopRecording(reason: reason) ?? audio.lastCaptureEnd
         commit { value in
             value.active?.capturePaused = true
-            if let count = value.active?.captureSpans?.count, count > 0 {
+            if let count = value.active?.captureSpans?.count, count > 0,
+               value.active?.captureSpans?[count-1].reason == "recordListening" {
                 value.active?.captureSpans?[count-1].reason = reason
                 if let end { value.active?.captureSpans?[count-1].end = end }
             }

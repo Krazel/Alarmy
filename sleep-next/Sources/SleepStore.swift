@@ -85,7 +85,8 @@ final class SleepStore: ObservableObject {
                 audio.captureState = "recordRecovered"
                 commit { value in
                     value.active?.capturePaused = true
-                    if let count = value.active?.captureSpans?.count, count > 0 { value.active?.captureSpans?[count-1].reason = "recordRecovered" }
+                    if let count = value.active?.captureSpans?.count, count > 0,
+                       value.active?.captureSpans?[count-1].reason == "recordListening" { value.active?.captureSpans?[count-1].reason = "recordRecovered" }
                 }
                 // An old recovered night must not ring days after its scheduled wake.
                 if let night = archive.active, Date().timeIntervalSince(night.wake) > 15*60 {
@@ -115,7 +116,13 @@ final class SleepStore: ObservableObject {
                 self.error = error.localizedDescription; self.writeFailed = true
                 self.writesPending -= 1; self.saving = self.writesPending > 0
                 self.archive.active?.capturePaused = true
-                await self.audio.stopRecording(reason: "recordError"); return false
+                let end = await self.audio.stopRecording(reason: "recordError")
+                if let count = self.archive.active?.captureSpans?.count, count > 0,
+                   self.archive.active?.captureSpans?[count-1].reason == "recordListening" {
+                    self.archive.active?.captureSpans?[count-1].reason = "recordError"
+                    if let end { self.archive.active?.captureSpans?[count-1].end = end }
+                }
+                return false
             }
         }
         writeTail = task

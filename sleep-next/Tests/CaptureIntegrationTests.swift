@@ -3,6 +3,26 @@ import XCTest
 
 @MainActor
 final class CaptureIntegrationTests: XCTestCase {
+    func testFinishingDoesNotRewritePreviousUserPauseReasonOrTime() async throws {
+        let (store,_,receipt,url) = try await fixture()
+        defer { try? FileManager.default.removeItem(at: url); try? ClipSpool.acknowledge(receipt, directory: DiskLocation.clips) }
+        let end = Date(), span = CaptureSpan(id: UUID(), start: Date().addingTimeInterval(-60), end: end, reason: "recordListening")
+        _ = await store.commit { $0.active?.captureSpans = [span] }.value
+        await store.pauseCapture(reason: "recordPaused")
+        await store.pauseCapture(reason: "recordOff")
+        let saved = try await store.repository.load()
+        XCTAssertEqual(saved.active?.captureSpans?.last?.reason, "recordPaused")
+        XCTAssertEqual(saved.active?.captureSpans?.last?.end, end)
+    }
+    func testInterruptionDoesNotRewriteClosedUserPause() async throws {
+        let (store,_,receipt,url) = try await fixture()
+        defer { try? FileManager.default.removeItem(at: url); try? ClipSpool.acknowledge(receipt, directory: DiskLocation.clips) }
+        let span = CaptureSpan(id: UUID(), start: Date().addingTimeInterval(-60), end: Date(), reason: "recordPaused")
+        _ = await store.commit { $0.active?.captureSpans = [span]; $0.active?.capturePaused = true }.value
+        await store.interruption(began: true); await store.interruption(began: false, shouldResume: true)
+        XCTAssertEqual(store.archive.active?.captureSpans?.last, span)
+        XCTAssertFalse(store.audio.hasCapture)
+    }
     func testMissingAudioAnalysisFailureIsVisibleAndRetryable() async throws {
         let (store,_,receipt,url) = try await fixture(finished: true)
         store.index(receipt); if let task = store.writeTail { _ = await task.value }
