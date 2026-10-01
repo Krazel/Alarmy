@@ -11,4 +11,4 @@
 - **Nuevo encargo: subir a TestFlight directamente.** Automatización preparada en `.github/workflows/sleep-next-testflight.yml`. Pendientes: sesión de Apple para crear la ficha inicial (operación no soportada por API) y autorización explícita del perfil App Store y secretos temporales de CI exigida por la revisión automática. La build aún no está subida.
 - Firma previa: certificado existente verificado, Bundle ID propio con HealthKit y perfil ad hoc para dos iPhone preparados. No se ha ejecutado la firma local ni la instalación por USB; ese itinerario queda como antecedente.
 - Instalación, noche física, batería y alarmas en iOS anterior a 26: pendientes; no bloquean el nuevo encargo de subida. Audio personal en el teléfono.
-- Biblioteca D1: conciliación del resultado y nuevo encargo en curso. Se anotará el guardado tras verificarlo por API.
+- Biblioteca D1: PR-019 guardada y releída por API, revisión **6**, `2026-10-01T17:29:59.079Z`. Estado En producción; TestFlight No (subida solicitada pendiente), App Store Sin crear, anuncios No. Encargo, evidencia y bloqueo registrados en la misma ficha.
