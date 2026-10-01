@@ -75,6 +75,8 @@ jobs:
           PY
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/AlarmaNext.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" > "$RUNNER_TEMP/export.log" 2>&1 || { tail -60 "$RUNNER_TEMP/export.log"; exit 1; }
           codesign --verify --deep --strict "$RUNNER_TEMP/AlarmaNext.xcarchive/Products/Applications/AlarmaNext.app"
+          unzip -q "$RUNNER_TEMP/export/"*.ipa -d "$RUNNER_TEMP/export-check"
+          codesign --verify --deep --strict "$RUNNER_TEMP/export-check/Payload/AlarmaNext.app"
       - name: Encrypt device package before artifact upload
         env:
           QA_PACKAGE_KEY: ${{ secrets.QA_PACKAGE_KEY }}
