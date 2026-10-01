@@ -1,0 +1,14 @@
+{
+  "verifiedAt": "2026-10-01T19:48:00Z",
+  "verification": "App Store Connect official API: GET apps, builds and betaGroups",
+  "appId": "6818287946",
+  "name": "Alarma de Krazel",
+  "bundleId": "com.krazel.alarmanext",
+  "sku": "krazel-alarmanext",
+  "primaryLocale": "es-ES",
+  "appStoreConnectUrl": "https://appstoreconnect.apple.com/apps/6818287946",
+  "builds": [],
+  "betaGroups": [],
+  "testflightAvailable": false,
+  "publicStorePublished": false
+}

@@ -18,9 +18,14 @@ en segundo plano, sin corpus ni mecanismos de Debug: `package-check.json`.
 
 El usuario ha solicitado pasar directamente a TestFlight el 1 de octubre.
 La subida está preparada en `.github/workflows/sleep-next-testflight.yml`,
-reutilizando la fuente validada sin repetir pruebas. Faltan la sesión de Apple
-para crear la ficha inicial y la autorización explícita del perfil y secretos
-temporales exigida por la revisión automática. Aún no se ha subido la build.
+reutilizando la fuente validada sin repetir pruebas. La ficha inicial ya está
+creada como [Alarma de Krazel](https://appstoreconnect.apple.com/apps/6818287946),
+App ID 6818287946, y releída por la API oficial: `app-record.json`.
+El nombre «Alarma» estaba ocupado en Apple; el nombre del iPhone sigue siendo Alarma.
+Cerebro confirmó el procedimiento existente después de terminar su tarea.
+Falta la autorización explícita del perfil App Store y la transferencia temporal
+de la clave API al entorno GitHub `Krazel/Alarmy → alarma-local-qa`, exigida por
+la revisión automática. Aún no se ha subido la build.
 Instalación y noche física pendientes; no condicionan esta subida.
 No se ha autorizado publicar en App Store.
 
