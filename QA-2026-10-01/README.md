@@ -17,17 +17,29 @@ El binario incorpora mínimo iOS 16, enlace opcional de AlarmKit, ES/EN y audio
 en segundo plano, sin corpus ni mecanismos de Debug: `package-check.json`.
 
 El usuario ha solicitado pasar directamente a TestFlight el 1 de octubre.
-La subida está preparada en `.github/workflows/sleep-next-testflight.yml`,
-reutilizando la fuente validada sin repetir pruebas. La ficha inicial ya está
+La subida se completó el **2 de octubre de 2026** con
+[CI de TestFlight correcta](https://github.com/Krazel/Alarmy/actions/runs/36932912801),
+reutilizando el código validado sin repetir pruebas. La ficha inicial está
 creada como [Alarma de Krazel](https://appstoreconnect.apple.com/apps/6818287946),
 App ID 6818287946, y releída por la API oficial: `app-record.json`.
 El nombre «Alarma» estaba ocupado en Apple; el nombre del iPhone sigue siendo Alarma.
 Cerebro confirmó el procedimiento existente después de terminar su tarea.
-Falta la autorización explícita del perfil App Store y la transferencia temporal
-de la clave API al entorno GitHub `Krazel/Alarmy → alarma-local-qa`, exigida por
-la revisión automática. Aún no se ha subido la build.
-Instalación y noche física pendientes; no condicionan esta subida.
-No se ha autorizado publicar en App Store.
+El titular autorizó expresamente el perfil App Store y los secretos temporales
+el 2 de octubre. La build **1.1 (1)** está procesada (`VALID`) y disponible
+en pruebas internas (`IN_BETA_TESTING`) para el titular como único tester,
+con notas es-ES/en-US y sin enlace público: `testflight-verified.json`.
+`upload.json` conserva el SHA de fuente y del IPA aceptado por Apple.
+Los ocho secretos temporales del entorno GitHub `alarma-local-qa` se eliminaron
+y se releyó el entorno vacío: `credentials-cleanup.json`. Los originales locales
+se conservan. Instalación, noche física y batería pendientes. App Store solo
+tiene la ficha creada; no se ha enviado a revisión ni publicado.
+
+Apple rechazó el primer upload (36932439359) por familia iPad no deseada (90474)
+y texto de Salud ausente (90683). `35a7c56` cambia solo cuatro archivos de
+metadatos: familia iPhone en el target y NSHealthUpdateUsageDescription ES/EN,
+aclarando que esta versión no solicita escritura en Salud. El workflow verifica
+que el código, assets y pruebas siguen iguales a f9bfe70; comprueba el paquete
+firmado antes de subirlo. No se amplió la batería de pruebas.
 
 ## Diseño nativo implementado
 
@@ -66,7 +78,7 @@ los clips generados por el detector y escritor reales.
 
 La preparación USB queda como antecedente; no se ha generado un IPA firmado
 ad hoc ni se ha instalado en el teléfono. El objetivo actual es TestFlight.
-La automatización exportará para App Store, enviará a Apple y guardará solo
+La automatización exportó para App Store, envió a Apple y guardó solo
 un manifiesto de subida como artifact público. Las credenciales, perfiles,
 claves y audio personal quedan fuera de Git. Debe distinguirse la aceptación
 de la subida, el procesamiento y la disponibilidad interna o externa.

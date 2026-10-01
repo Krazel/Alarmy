@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-01T22:11:00.357Z",
+  "appId": "6818287946",
+  "appName": "Alarma de Krazel",
+  "bundleId": "com.krazel.alarmanext",
+  "version": "1.1",
+  "build": "1",
+  "buildId": "d3c23444-ee71-45d7-b8bc-ad18eae072a1",
+  "processingState": "VALID",
+  "uploadedDate": "2026-10-01T15:09:28-07:00",
+  "expirationDate": "2026-12-30T14:09:28-08:00",
+  "minimumOS": "16.0",
+  "usesNonExemptEncryption": false,
+  "internalBuildState": "IN_BETA_TESTING",
+  "externalBuildState": "READY_FOR_BETA_SUBMISSION",
+  "internalGroup": true,
+  "groupAssigned": true,
+  "ownerOnlyVerified": true,
+  "testerCount": 1,
+  "publicLinkEnabled": false,
+  "notes": {
+    "es-ES": "Alarma y diario del sueño reconstruidos para iPhone, en castellano e inglés. Prueba las alarmas, Empezar noche, sonidos locales y el diario con notas, ánimo, Salud y detalle de clips. Las grabaciones permanecen en el iPhone. En iOS 16–25 las alarmas usan notificaciones y dependen de los ajustes del sistema; desde iOS 26 usan AlarmKit. Pendiente probar una noche real con pantalla bloqueada y el consumo de batería.",
+    "en-US": "Alarma and sleep journal rebuilt for iPhone, in Spanish and English. Try alarms, Start night, local sounds, and the journal with notes, mood, Health stages and clip details. Recordings stay on the iPhone. On iOS 16–25 alarms use notifications and depend on system settings; iOS 26 and later use AlarmKit. An overnight test with the screen locked and battery measurement are still pending."
+  },
+  "appStorePublished": false
+}
