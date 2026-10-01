@@ -1,5 +1,8 @@
 name: Alarma signed local QA
 on:
+  push:
+    branches: [codex/native-sleep-rebuild]
+    paths: ['.github/workflows/sleep-next-local-qa.yml']
   workflow_dispatch:
     inputs:
       validation_run:
@@ -11,7 +14,7 @@ permissions:
   actions: read
 jobs:
   sign:
-    if: github.ref == 'refs/heads/codex/native-sleep-rebuild'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/native-sleep-rebuild'
     runs-on: macos-26
     environment: alarma-local-qa
     timeout-minutes: 25
@@ -26,9 +29,14 @@ jobs:
           python3 - <<'PY'
           import json,os
           r=json.load(open(os.environ['RUNNER_TEMP']+'/validation.json'))
-          assert r['head_sha']==os.environ['GITHUB_SHA'] and r['conclusion']=='success'
+          assert r['conclusion']=='success'
           assert r['path']=='.github/workflows/sleep-next.yml'
+          open(os.environ['RUNNER_TEMP']+'/validated-sha.txt','w').write(r['head_sha'])
           PY
+          VALIDATED_SHA=$(cat "$RUNNER_TEMP/validated-sha.txt")
+          git fetch origin "$VALIDATED_SHA" --depth=1
+          test "$(git rev-parse "$VALIDATED_SHA:sleep-next")" = "$(git rev-parse 'HEAD:sleep-next')"
+          test "$(git rev-parse "$VALIDATED_SHA:.github/workflows/sleep-next.yml")" = "$(git rev-parse 'HEAD:.github/workflows/sleep-next.yml')"
       - name: Install local QA signing identity
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
