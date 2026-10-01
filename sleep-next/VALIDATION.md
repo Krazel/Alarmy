@@ -1,6 +1,18 @@
 # Validación de AlarmaNext
 
-## Candidata 1.0.1 (build 1) — 21 de septiembre de 2026
+## Candidata 1.1 (build 1) — 1 de octubre de 2026
+
+El resultado vigente de CI, fuente, paquete, firma y biblioteca está en [ESTADO.md](../ESTADO.md). La versión pública sigue sin confirmarse. Se conserva la línea heredada 1.x; esta candidata no está aprobada para publicar.
+
+Se amplía el diario con detalle y navegación de clips, reproducción desplazable, sugerencias por intervalos, corrección y reintento. Se estabilizan el ruido sostenido, pausas y recuperación, el inicio y posponer ante errores de guardado, la eliminación de audio y los solapamientos de Salud.
+
+Además de los PCM sintéticos del detector, [22 fuentes reales CC0](Tests/Corpus/README.md) ejercitan captura y clasificación, con 66 casos de volumen y fondo. Los recortes y variantes no son personas independientes ni pruebas clínicas. El informe registra aciertos, abstenciones y confusiones; no deduce exactitud de una prueba que solo comprueba que el modelo termina.
+
+La firma para Local QA usa un perfil ad hoc propio de Alarma y los dispositivos ya registrados. El IPA se cifra antes de subirlo como artefacto público de GitHub. La compilación y firma se separan de una instalación física; no hay subida a TestFlight ni publicación por este encargo.
+
+Pendiente de verificar en iPhone: noche completa, batería, bloqueo/segundo plano, llamadas y rutas, calidad de captura en una habitación y alarmas tanto en iOS anterior a 26 como en iOS 26. El mínimo incorporado debe mantenerse en iOS 16 con AlarmKit opcional. Véase el protocolo del estado vigente.
+
+## Historial: candidata 1.0.1 (build 1) — 21 de septiembre de 2026
 
 Fuente validada: `0efac28e6a3621b47df75265c00ac70232793b09`. [CI completa](https://github.com/Krazel/Alarmy/actions/runs/35635101317): compilación de simulador e iPhone, **38 pruebas unitarias/integración y 3 de interfaz, cero fallos**.
 

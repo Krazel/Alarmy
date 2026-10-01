@@ -12,9 +12,9 @@ final class NativeFlowTests: XCTestCase {
         app.buttons["Next"].tap(); XCTAssertTrue(app.staticTexts["2 / 2"].exists)
         app.buttons["Previous"].tap(); XCTAssertTrue(app.staticTexts["1 / 2"].exists)
         app.swipeUp(); shot("17-en-clip-intervals")
-        app.buttons["correct-clip-label"].tap(); app.buttons["Cough"].tap(); XCTAssertTrue(app.buttons["correct-clip-label"].label.contains("Cough"))
+        app.buttons["correct-clip-label"].tap(); app.buttons["clip-label-cough"].tap(); XCTAssertTrue(app.buttons["correct-clip-label"].label.contains("Cough"))
         shot("18-en-clip-corrected")
-        app.buttons["Delete"].tap(); app.sheets.buttons["Delete"].tap()
+        app.buttons["delete-clip"].tap(); app.sheets.buttons["Delete"].tap()
         XCTAssertTrue(app.textViews["journal-note"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'clip-detail-'")).count, 1)
     }

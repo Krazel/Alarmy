@@ -52,11 +52,11 @@ struct ClipDetail: View {
                         PaperCard {
                             VStack(alignment: .leading, spacing: 14) {
                                 Text(store.words("correctLabel")).font(.headline)
-                                Menu { ForEach(SoundKind.allCases, id: \.self) { kind in Button(store.words(kind.rawValue)) { store.label(clip, kind: kind) } } } label: { Label(store.words(clip.kind.rawValue), systemImage: "pencil") }.accessibilityIdentifier("correct-clip-label")
+                                Menu { ForEach(SoundKind.allCases, id: \.self) { kind in Button(store.words(kind.rawValue)) { store.label(clip, kind: kind) }.accessibilityIdentifier("clip-label-\(kind.rawValue)") } } label: { Label(store.words(clip.kind.rawValue), systemImage: "pencil") }.accessibilityIdentifier("correct-clip-label")
                                 Text(store.words("clipHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                             }
                         }
-                        Button(store.words("delete"), role: .destructive) { deleting = true }.frame(maxWidth: .infinity).padding()
+                        Button(store.words("delete"), role: .destructive) { deleting = true }.frame(maxWidth: .infinity).padding().accessibilityIdentifier("delete-clip")
                     }.padding(22)
                 }
             }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust)
