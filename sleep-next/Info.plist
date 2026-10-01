@@ -16,6 +16,7 @@
 <key>UIBackgroundModes</key><array><string>audio</string></array>
 <key>NSMicrophoneUsageDescription</key><string>Save night sound clips on this iPhone when you enable recording.</string>
 <key>NSHealthShareUsageDescription</key><string>Show the sleep stages already recorded in Health in your journal.</string>
+<key>NSHealthUpdateUsageDescription</key><string>Alarma uses Health to show your sleep stages in the journal. This version does not request permission to write Health data.</string>
 <key>NSAlarmKitUsageDescription</key><string>Schedule your wake-up alarm so it can ring even when Alarma is closed.</string>
 <key>ITSAppUsesNonExemptEncryption</key><false/>
 </dict></plist>

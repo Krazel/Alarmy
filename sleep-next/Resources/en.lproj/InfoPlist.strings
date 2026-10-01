@@ -1,3 +1,4 @@
 "NSMicrophoneUsageDescription" = "Save night sound clips on this iPhone when you enable recording.";
 "NSHealthShareUsageDescription" = "Show the sleep stages already recorded in Health in your journal.";
+"NSHealthUpdateUsageDescription" = "Alarma uses Health to show your sleep stages in the journal. This version does not request permission to write Health data.";
 "NSAlarmKitUsageDescription" = "Schedule your wake-up alarm so it can ring even when Alarma is closed.";

@@ -1,3 +1,4 @@
 "NSMicrophoneUsageDescription" = "Guarda fragmentos de sonidos nocturnos en este iPhone cuando actives la grabación.";
 "NSHealthShareUsageDescription" = "Muestra en tu diario las fases de sueño ya registradas en Salud.";
+"NSHealthUpdateUsageDescription" = "Alarma utiliza Salud para mostrar tus fases de sueño en el diario. Esta versión no solicita permiso para escribir datos en Salud.";
 "NSAlarmKitUsageDescription" = "Programa tu alarma para que pueda sonar aunque Alarma esté cerrada.";

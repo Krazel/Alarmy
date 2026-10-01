@@ -37,7 +37,16 @@ jobs:
           PY
           VALIDATED_SHA=$(cat "$RUNNER_TEMP/validated-sha.txt")
           git fetch origin "$VALIDATED_SHA" --depth=1
-          test "$(git rev-parse "$VALIDATED_SHA:sleep-next")" = "$(git rev-parse 'HEAD:sleep-next')"
+          # Apple's first upload rejected only distribution metadata (90474, 90683).
+          # Permit those four metadata corrections; all app code/assets/tests remain validated.
+          export VALIDATED_SHA
+          python3 - <<'PY'
+          import os,subprocess
+          changed=set(subprocess.check_output(['git','diff','--name-only',os.environ['VALIDATED_SHA'],'HEAD','--','sleep-next'],text=True).splitlines())
+          allowed={'sleep-next/project.yml','sleep-next/Info.plist','sleep-next/Resources/es.lproj/InfoPlist.strings','sleep-next/Resources/en.lproj/InfoPlist.strings'}
+          assert changed <= allowed, f'Unvalidated app changes: {changed-allowed}'
+          print('Validated app code preserved; only approved distribution metadata may differ.')
+          PY
       - name: Install signing and upload credentials
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
@@ -89,6 +98,11 @@ jobs:
           xcodebuild archive -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/AlarmaNext.xcarchive" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER="$PROFILE" > "$RUNNER_TEMP/archive.log" 2>&1 || { tail -60 "$RUNNER_TEMP/archive.log"; exit 1; }
           python3 - <<'PY'
           import os,plistlib
+          info=plistlib.load(open(os.environ['RUNNER_TEMP']+'/AlarmaNext.xcarchive/Products/Applications/AlarmaNext.app/Info.plist','rb'))
+          assert info['UIDeviceFamily']==[1], 'Alarma is iPhone only'
+          assert info['NSHealthShareUsageDescription'] and info['NSHealthUpdateUsageDescription']
+          assert info['CFBundleIdentifier']=='com.krazel.alarmanext' and info['CFBundleShortVersionString']=='1.1' and info['CFBundleVersion']=='1'
+          assert info['MinimumOSVersion']=='16.0' and info['ITSAppUsesNonExemptEncryption']==False
           p=plistlib.load(open(os.environ['RUNNER_TEMP']+'/profile.plist','rb')); e=p['Entitlements']
           assert e['application-identifier'].endswith('.com.krazel.alarmanext') and e['com.apple.developer.healthkit']
           assert e['beta-reports-active'] and not e.get('get-task-allow',False) and not p.get('ProvisionedDevices')
