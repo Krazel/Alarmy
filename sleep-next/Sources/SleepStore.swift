@@ -14,6 +14,7 @@ final class SleepStore: ObservableObject {
     @Published var saving = false
     @Published var writeFailed = false
     @Published var selectedDay = Date()
+    @Published var analyzing = Set<UUID>()
     let audio = NightAudio()
     let repository: ArchiveRepository
     private let scheduler = WakeScheduler()
@@ -60,6 +61,17 @@ final class SleepStore: ObservableObject {
                     let begin = end.addingTimeInterval(-8*3600-5*60)
                     archive.sessions = [SleepSession(id: UUID(), start: begin, checkpoint: end, end: end, wake: end, alarmID: UUID(), soundID: "aurora")]
                     archive.pages[CalendarDay.key(Date())] = JournalPage(feeling: .peaceful, text: "Ejemplo de diseño: una mañana tranquila, luz en la ventana y un sueño junto al mar.")
+                    if ProcessInfo.processInfo.arguments.contains("--clip-fixture"), let tone = ToneLibrary.url("aurora", imported: []) {
+                        try FileManager.default.createDirectory(at: DiskLocation.clips, withIntermediateDirectories: true)
+                        for i in 0..<2 {
+                            let id = UUID(), filename = id.uuidString + ".wav"
+                            try FileManager.default.copyItem(at: tone, to: DiskLocation.clips.appendingPathComponent(filename))
+                            var clip = NightClip(id: id, created: begin.addingTimeInterval(Double(i+1)*3600), filename: filename, duration: 24)
+                            clip.kind = i == 0 ? .snore : .cough; clip.suggestion = true; clip.analysisDone = true; clip.analysisVersion = SoundTagger.version
+                            clip.events = [SoundEvent(start: 2, duration: 1.5, kind: clip.kind, confidence: 0.9)]
+                            archive.sessions[0].clips.append(clip)
+                        }
+                    }
                 }
                 let fixture = archive
                 _ = try await repository.update { $0 = fixture }
@@ -73,6 +85,11 @@ final class SleepStore: ObservableObject {
                 commit { value in
                     value.active?.capturePaused = true
                     if let count = value.active?.captureSpans?.count, count > 0 { value.active?.captureSpans?[count-1].reason = "recordRecovered" }
+                }
+                // An old recovered night must not ring days after its scheduled wake.
+                if let night = archive.active, Date().timeIntervalSince(night.wake) > 15*60 {
+                    commit { $0.active?.interrupted = true }
+                    await finish(at: min(night.checkpoint, night.wake))
                 }
             }
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in Task { @MainActor in self?.tick() } }
@@ -128,9 +145,10 @@ final class SleepStore: ObservableObject {
             if !testMode { try await scheduler.schedule(id: night.alarmID, date: wake, filename: ToneLibrary.filename(tone, imported: archive.tones), words: words) }
             guard await commit({ $0.active = night; $0.lastSound = tone }).value else { try? scheduler.cancel(id: night.alarmID); return }
             do { try beginRecordingIfNeeded() } catch {
-                try? scheduler.cancel(id: night.alarmID)
-                _ = await commit { $0.active = nil }.value
-                throw error
+                // Preserve the scheduled alarm and any recoverable audio if input fails.
+                audio.captureState = "recordError"
+                _ = await commit { $0.active?.capturePaused = true }.value
+                self.error = words("recordFailure") + " " + error.localizedDescription
             }
             tab = 0
         } catch WakeFailure.permission { error = words("permissionError") }
@@ -203,27 +221,45 @@ final class SleepStore: ObservableObject {
     func label(_ clip: NightClip, kind: SoundKind) {
         commit { archive in
             for i in archive.sessions.indices {
-                if let j = archive.sessions[i].clips.firstIndex(where: { $0.id == clip.id }) { archive.sessions[i].clips[j].kind = kind; archive.sessions[i].clips[j].analysisDone = true; archive.sessions[i].clips[j].suggestion = false }
+                if let j = archive.sessions[i].clips.firstIndex(where: { $0.id == clip.id }) {
+                    archive.sessions[i].clips[j].kind = kind
+                    archive.sessions[i].clips[j].analysisDone = true
+                    archive.sessions[i].clips[j].suggestion = false
+                    archive.sessions[i].clips[j].analysisVersion = SoundTagger.version
+                    archive.sessions[i].clips[j].analysisFailed = nil
+                }
             }
         }
     }
     func analyzeClips(for day: Date) async {
-        let pending = sessions(day).flatMap(\.clips).filter { !$0.analysisDone }
+        let pending = sessions(day).flatMap(\.clips).filter {
+            $0.analysisFailed != true && (!$0.analysisDone || ($0.suggestion && $0.analysisVersion != SoundTagger.version))
+        }
         for clip in pending {
-            guard !Task.isCancelled, let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) else { return }
-            let result = await SoundTagger.suggest(url: url)
             guard !Task.isCancelled else { return }
-            guard result.completed else { continue }
-            commit { value in
+            await analyze(clip)
+        }
+    }
+    func analyze(_ clip: NightClip) async {
+        guard !analyzing.contains(clip.id), let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) else { return }
+        analyzing.insert(clip.id); defer { analyzing.remove(clip.id) }
+        let result = await SoundTagger.suggest(url: url)
+        guard !Task.isCancelled else { return }
+        _ = await commit { value in
                 for i in value.sessions.indices {
-                    if let j = value.sessions[i].clips.firstIndex(where: { $0.id == clip.id }), !value.sessions[i].clips[j].analysisDone {
+                    if let j = value.sessions[i].clips.firstIndex(where: { $0.id == clip.id }),
+                       value.sessions[i].clips[j] == clip {
+                        // A manual correction or deletion made while analysing wins.
+                        value.sessions[i].clips[j].analysisFailed = !result.completed
+                        guard result.completed else { continue }
                         value.sessions[i].clips[j].kind = result.kind
                         value.sessions[i].clips[j].analysisDone = true
                         value.sessions[i].clips[j].suggestion = result.kind != .other
+                        value.sessions[i].clips[j].events = result.events
+                        value.sessions[i].clips[j].analysisVersion = SoundTagger.version
                     }
                 }
-            }
-        }
+        }.value
     }
     func delete(_ clip: NightClip) async {
         audio.stopPlayback()

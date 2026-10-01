@@ -6,6 +6,17 @@ struct Words {
     var locale: Locale { Locale(identifier: spanish ? "es_ES" : "en_GB") }
     func callAsFunction(_ key: String) -> String { Self.entries[key].map { $0[spanish ? 0 : 1] } ?? key }
     static let entries: [String: [String]] = [
+        "clipDetail":["Escuchar fragmento","Listen to clip"],
+        "playbackPosition":["Posición de reproducción","Playback position"],
+        "previousClip":["Anterior","Previous"], "nextClip":["Siguiente","Next"],
+        "recognizedIntervals":["Sonidos sugeridos","Suggested sounds"],
+        "intervalHint":["Toca un tramo para escucharlo. Los tiempos son aproximados y pueden solaparse; no identifican a una persona ni diagnostican el sueño.","Tap an interval to listen. Times are approximate and may overlap; they do not identify a person or diagnose sleep."],
+        "analyzing":["Analizando en este iPhone…","Analysing on this iPhone…"],
+        "analysisPending":["Pendiente de analizar","Awaiting analysis"],
+        "analysisError":["No se pudo analizar el audio. Puedes reintentarlo.","Audio analysis failed. You can retry."],
+        "unidentified":["Sin identificar con suficiente confianza","Not identified with enough confidence"],
+        "reanalyze":["Volver a analizar","Analyse again"], "correctLabel":["Tu etiqueta para el fragmento","Your label for this clip"],
+        "deleteClip":["¿Eliminar este fragmento de audio?","Delete this audio clip?"],
         "damagedClips":["Algunos fragmentos no se pudieron recuperar. Se han conservado los archivos y recuperado los demás.","Some clips could not be recovered. Their files were preserved and the other clips were recovered."],
         "recordNoInput":["No llega audio del micrófono · pulsa Reanudar","No microphone audio is arriving · tap Resume"],
         "savePending":["Hay cambios pendientes de guardar","Some changes have not been saved"],

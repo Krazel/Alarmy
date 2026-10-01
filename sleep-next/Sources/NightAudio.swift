@@ -8,6 +8,9 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var player: AVAudioPlayer?
     @Published var captureState = "recordOff"
     @Published var inputLevel = -100.0
+    @Published var playbackTime = 0.0
+    @Published var playbackDuration = 0.0
+    private var playbackTimer: Timer?
     private var engine: AVAudioEngine?
     private var worker: CaptureWorker?
     private var generation = UUID()
@@ -20,6 +23,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     private var ramp: Timer?
     var onFailure: ((Error) -> Void)?
+    var onDeadline: (() -> Void)?
     private let motion = CMMotionManager()
     private var previousBrightness: CGFloat?
     private var previousIdle: Bool?
@@ -61,6 +65,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             deadlineReached: { [weak self] in Task { @MainActor in
                 guard let self, self.generation == generation else { return }
                 await self.stopRecording(reason: "recordAlarm")
+                self.onDeadline?()
             } })
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
             guard let channel = buffer.floatChannelData?[0] else { return }
@@ -92,7 +97,12 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let audio = try AVAudioPlayer(contentsOf: url)
         audio.delegate = self; audio.numberOfLoops = loop ? -1 : 0; audio.volume = gradual ? 0.05 : 1
         guard audio.play() else { throw CocoaError(.fileReadUnknown) }
-        player = audio; playing = id
+        player = audio; playing = id; playbackTime = 0; playbackDuration = audio.duration
+        if !loop {
+            playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+                Task { @MainActor in self?.playbackTime = self?.player?.currentTime ?? 0 }
+            }
+        }
         if gradual {
             ramp = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
                 Task { @MainActor in
@@ -103,8 +113,11 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             }
         }
     }
-    func stopPlayback() { ramp?.invalidate(); ramp = nil; player?.stop(); player = nil; playing = nil }
-    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) { Task { @MainActor in self.stopPlayback() } }
+    func seek(to seconds: Double) { guard let player else { return }; player.currentTime = max(0, min(player.duration, seconds)); playbackTime = player.currentTime }
+    func stopPlayback() { ramp?.invalidate(); ramp = nil; playbackTimer?.invalidate(); playbackTimer = nil; player?.stop(); player = nil; playing = nil; playbackTime = 0; playbackDuration = 0 }
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in if self.player === player { self.stopPlayback() } }
+    }
     func watchMovement(action: @escaping () -> Void) {
         guard motion.isAccelerometerAvailable else { return }
         motion.accelerometerUpdateInterval = 0.2

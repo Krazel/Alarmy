@@ -1,10 +1,12 @@
 import Foundation
 import SoundAnalysis
+import AVFoundation
 
 struct SoundSuggestion {
     let kind: SoundKind
     let confidence: Double
     var completed = true
+    var events: [SoundEvent] = []
     static func kind(identifier: String, confidence: Double) -> SoundKind {
         guard confidence >= 0.65 else { return .other }
         switch identifier {
@@ -15,35 +17,76 @@ struct SoundSuggestion {
         default: return .other
         }
     }
+    static func coalesce(_ windows: [SoundEvent]) -> [SoundEvent] {
+        var events: [SoundEvent] = []
+        for kind in SoundKind.allCases where kind != .other {
+            for window in windows.filter({ $0.kind == kind }).sorted(by: { $0.start < $1.start }) {
+                if let index = events.indices.last, events[index].kind == kind,
+                   window.start <= events[index].start + events[index].duration + 0.05 {
+                    events[index].duration = max(events[index].duration, window.start + window.duration - events[index].start)
+                    events[index].confidence = max(events[index].confidence, window.confidence)
+                } else { events.append(window) }
+            }
+        }
+        return events.sorted { $0.start < $1.start }
+    }
 }
 private final class ClassificationObserver: NSObject, SNResultsObserving {
     private let lock = NSLock()
+    private let duration: Double
     private var finished = false
     private var failed = false
-    private var strongest = SoundSuggestion(kind: .other, confidence: 0)
+    private var windows: [SoundEvent] = []
+    init(duration: Double) { self.duration = duration }
     func request(_ request: SNRequest, didProduce result: SNResult) {
-        guard let result = result as? SNClassificationResult, let top = result.classifications.first else { return }
-        let kind = SoundSuggestion.kind(identifier: top.identifier, confidence: top.confidence)
-        guard kind != .other else { return }
+        guard let result = result as? SNClassificationResult else { return }
+        let start = max(0, result.timeRange.start.seconds), end = min(duration, result.timeRange.end.seconds)
+        guard start.isFinite, end.isFinite, end > start else { return }
         lock.lock(); defer { lock.unlock() }
-        if top.confidence > strongest.confidence { strongest = SoundSuggestion(kind: kind, confidence: top.confidence) }
+        for classification in result.classifications {
+            let kind = SoundSuggestion.kind(identifier: classification.identifier, confidence: classification.confidence)
+            if kind != .other { windows.append(SoundEvent(start: start, duration: end-start, kind: kind, confidence: classification.confidence)) }
+        }
     }
     func request(_ request: SNRequest, didFailWithError error: Error) { lock.lock(); failed = true; lock.unlock() }
     func requestDidComplete(_ request: SNRequest) { lock.lock(); finished = true; lock.unlock() }
-    func result() -> SoundSuggestion { lock.lock(); defer { lock.unlock() }; var value = strongest; value.completed = finished && !failed; return value }
+    func result() -> SoundSuggestion {
+        lock.lock(); defer { lock.unlock() }
+        let events = SoundSuggestion.coalesce(windows)
+        let strongest = events.max { $0.confidence < $1.confidence }
+        return SoundSuggestion(kind: strongest?.kind ?? .other, confidence: strongest?.confidence ?? 0,
+                               completed: finished && !failed, events: events)
+    }
 }
 struct SoundTagger {
+    static let version = 2
+    static func request() throws -> SNClassifySoundRequest {
+        let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
+        // A supported window near one second retains brief respiratory events.
+        switch request.windowDurationConstraint {
+        case .durationRange(let range):
+            let seconds = max(range.start.seconds, min(range.end.seconds, 1))
+            request.windowDuration = CMTime(seconds: seconds, preferredTimescale: 48000)
+        case .enumeratedDurations(let durations):
+            if let nearest = durations.min(by: { abs($0.seconds-1) < abs($1.seconds-1) }) { request.windowDuration = nearest }
+        @unknown default: break
+        }
+        request.overlapFactor = 0.5
+        return request
+    }
     // Run after the night, on demand in the diary. Raw audio never leaves the device.
     static func suggest(url: URL) async -> SoundSuggestion {
-        await Task.detached(priority: .utility) {
+        let task = Task.detached(priority: .utility) {
             do {
-                let observer = ClassificationObserver()
+                guard !Task.isCancelled else { return SoundSuggestion(kind: .other, confidence: 0, completed: false) }
+                let file = try AVAudioFile(forReading: url)
+                let observer = ClassificationObserver(duration: Double(file.length)/file.processingFormat.sampleRate)
                 let analyzer = try SNAudioFileAnalyzer(url: url)
-                let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
-                try analyzer.add(request, withObserver: observer)
+                try analyzer.add(request(), withObserver: observer)
                 analyzer.analyze()
                 return observer.result()
             } catch { return SoundSuggestion(kind: .other, confidence: 0, completed: false) }
-        }.value
+        }
+        return await withTaskCancellationHandler(operation: { await task.value }, onCancel: { task.cancel() })
     }
 }

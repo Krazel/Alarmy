@@ -1,6 +1,19 @@
 import XCTest
 
 final class NativeFlowTests: XCTestCase {
+    func testClipDetailPlaybackNavigationAndCorrection() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--english", "--design-fixture", "--clip-fixture"]; app.launch()
+        XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); app.tabBars.buttons["Journal"].tap()
+        let clip = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'clip-detail-'")).firstMatch
+        for _ in 0..<4 { if clip.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(clip.waitForExistence(timeout: 5)); clip.tap()
+        XCTAssertTrue(app.navigationBars["Listen to clip"].waitForExistence(timeout: 5)); shot("16-en-clip-detail")
+        app.buttons["Play"].firstMatch.tap(); XCTAssertTrue(app.buttons["Stop"].firstMatch.waitForExistence(timeout: 3))
+        app.buttons["Next"].tap(); XCTAssertTrue(app.staticTexts["2 / 2"].exists)
+        app.buttons["Previous"].tap(); XCTAssertTrue(app.staticTexts["1 / 2"].exists)
+        app.swipeUp(); shot("17-en-clip-intervals")
+        app.buttons["Done"].tap(); XCTAssertTrue(app.textViews["journal-note"].exists)
+    }
     override func setUpWithError() throws { continueAfterFailure = false }
     private func shot(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)

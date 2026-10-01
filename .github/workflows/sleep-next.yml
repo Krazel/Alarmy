@@ -59,7 +59,9 @@ jobs:
           mkdir -p package/Payload
           cp -R build/device/Build/Products/Release-iphoneos/AlarmaNext.app package/Payload/
           cd package
-          zip -qry ../AlarmaNext-1.0.1-build-1-${GITHUB_SHA::7}-unsigned-Local-QA.ipa Payload
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Payload/AlarmaNext.app/Info.plist)
+          BUILD=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' Payload/AlarmaNext.app/Info.plist)
+          zip -qry ../AlarmaNext-${VERSION}-build-${BUILD}-${GITHUB_SHA::7}-unsigned-Local-QA.ipa Payload
       - uses: actions/upload-artifact@v4
         if: always()
         with:

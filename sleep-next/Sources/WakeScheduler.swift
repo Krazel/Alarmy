@@ -63,7 +63,7 @@ struct WakeStopIntent: LiveActivityIntent {
     init(alarmID: String) { self.alarmID = alarmID }
     func perform() async throws -> some IntentResult {
         try FileManager.default.createDirectory(at: DiskLocation.root, withIntermediateDirectories: true)
-        try JSONEncoder().encode(WakeDismissal(alarmID: alarmID, date: Date())).write(to: WakeDismissal.file, options: .atomic)
+        try JSONEncoder().encode(WakeDismissal(alarmID: alarmID, date: Date())).write(to: WakeDismissal.file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         await MainActor.run { NotificationCenter.default.post(name: Notification.Name("WakeDismissed"), object: nil) }
         return .result()
     }

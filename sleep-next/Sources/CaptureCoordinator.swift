@@ -18,6 +18,7 @@ extension SleepStore {
             self.error = self.words("recordFailure") + " " + error.localizedDescription
             self.commit { $0.active?.capturePaused = true }
         }
+        audio.onDeadline = { [weak self] in Task { await self?.pauseCapture(reason: "recordAlarm") } }
         try audio.startRecording(nightID: night.id, wake: night.wake, margin: archive.preferences.sensitivity ?? 10, byteLimit: remaining,
             receive: { [weak self] receipt in self?.index(receipt) },
             progress: { [weak self] end in
@@ -87,7 +88,7 @@ extension SleepStore {
             audioInterrupted = false
             defer { resumeAfterInterruption = false }
             if shouldResume && resumeAfterInterruption && archive.preferences.record && archive.active != nil {
-                commit { $0.active?.capturePaused = false }
+                guard await commit({ $0.active?.capturePaused = false }).value else { return }
                 do { try beginRecordingIfNeeded() } catch { audio.captureState = "recordError"; self.error = error.localizedDescription }
             }
         }

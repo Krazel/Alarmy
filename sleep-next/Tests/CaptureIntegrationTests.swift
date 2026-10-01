@@ -3,6 +3,28 @@ import XCTest
 
 @MainActor
 final class CaptureIntegrationTests: XCTestCase {
+    func testMissingAudioAnalysisFailureIsVisibleAndRetryable() async throws {
+        let (store,_,receipt,url) = try await fixture(finished: true)
+        store.index(receipt); if let task = store.writeTail { _ = await task.value }
+        try FileManager.default.removeItem(at: url)
+        await store.analyze(receipt.clip)
+        let failed = store.archive.sessions[0].clips[0]
+        XCTAssertTrue(failed.analysisFailed == true); XCTAssertFalse(failed.analysisDone); XCTAssertTrue(store.analyzing.isEmpty)
+        store.label(failed, kind: .cough)
+        if let task = store.writeTail { _ = await task.value }
+        let restored = try await store.repository.load()
+        XCTAssertEqual(restored.sessions[0].clips[0].kind, .cough); XCTAssertNil(restored.sessions[0].clips[0].analysisFailed)
+        try ClipSpool.acknowledge(receipt, directory: DiskLocation.clips)
+    }
+    func testManualCorrectionWinsOverConcurrentAnalysis() async throws {
+        let (store,_,receipt,url) = try await fixture(finished: true)
+        defer { try? FileManager.default.removeItem(at: url); try? ClipSpool.acknowledge(receipt, directory: DiskLocation.clips) }
+        store.index(receipt); if let task = store.writeTail { _ = await task.value }
+        let task = Task { await store.analyze(receipt.clip) }
+        await Task.yield(); store.label(receipt.clip, kind: .cough); await task.value
+        if let write = store.writeTail { _ = await write.value }
+        XCTAssertEqual(store.archive.sessions[0].clips[0].kind, .cough); XCTAssertFalse(store.archive.sessions[0].clips[0].suggestion)
+    }
     func fixture(finished: Bool = false) async throws -> (SleepStore, SleepSession, ClipReceipt, URL) {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let repo=ArchiveRepository(file:root.appendingPathComponent("archive.json"))

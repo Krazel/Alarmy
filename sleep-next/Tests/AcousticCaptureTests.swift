@@ -15,6 +15,14 @@ final class CaptureResults: @unchecked Sendable {
     var reachedDeadline: Bool { lock.lock(); defer { lock.unlock() }; return deadline }
 }
 final class AcousticCaptureTests: XCTestCase {
+    func testEightHourSteadyNoiseStreamDoesNotAccumulateClips() throws {
+        var events = 0
+        let detector = AcousticSegmenter(sampleRate: 100) { if case .begin = $0 { events += 1 } }
+        let second = (0..<100).map { Float(sin(Double($0)*0.3))*0.002 }
+        for _ in 0..<(8*3600) { try detector.feed(second) }
+        try detector.finish()
+        XCTAssertTrue(detector.calibrated); XCTAssertEqual(events, 0); XCTAssertTrue(detector.noiseFloor.isFinite)
+    }
     let rate = 8000.0
     let origin = Date(timeIntervalSince1970: 1_800_000_000)
     func directory() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString) }

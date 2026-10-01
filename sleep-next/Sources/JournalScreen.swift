@@ -3,6 +3,7 @@ import SwiftUI
 struct JournalScreen: View {
     @EnvironmentObject var store: SleepStore
     @State private var calendar = false
+    @State private var openedClip: NightClip?
     @FocusState private var editingNote: Bool
     @State private var stages: [SleepStage] = []
     private var nights: [SleepSession] { store.sessions(store.selectedDay) }
@@ -36,6 +37,7 @@ struct JournalScreen: View {
                         .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { calendar = false } } }
                 }.presentationDetents([.medium, .large])
             }
+            .sheet(item: $openedClip) { ClipDetail(clipID: $0.id, audio: store.audio) }
             .task(id: CalendarDay.key(store.selectedDay)) { await store.analyzeClips(for: store.selectedDay) }
             .task(id: CalendarDay.key(store.selectedDay) + String(store.archive.preferences.health)) {
                 stages = []
@@ -139,7 +141,10 @@ struct JournalScreen: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack { Image(systemName: "waveform").foregroundStyle(Color.rust); Text(store.words("nightSounds")).font(.system(size: 21, design: .serif)); Spacer(); Text("\(clips.count)").font(.caption).foregroundStyle(Color.ink.opacity(0.5)) }
                 if clips.isEmpty { Text(store.words("noClips")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.55)) }
-                else { Text(store.words("clipHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.55)); ForEach(clips) { clip in ClipRow(clip: clip) } }
+                else {
+                    Text(store.words("clipHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.55))
+                    LazyVStack(spacing: 4) { ForEach(clips.sorted { $0.created < $1.created }) { clip in ClipRow(clip: clip) { openedClip = clip } } }
+                }
             }
         }
     }
@@ -158,16 +163,27 @@ struct JournalScreen: View {
 struct ClipRow: View {
     @EnvironmentObject var store: SleepStore
     let clip: NightClip
+    let open: () -> Void
+    @State private var deleting = false
     var body: some View {
         HStack(spacing: 12) {
             ClipPlay(clip: clip, audio: store.audio)
-            VStack(alignment: .leading, spacing: 3) { Text(clip.created, style: .time).font(.caption); Text("\(Int(clip.duration)) s").font(.caption2).foregroundStyle(Color.ink.opacity(0.5)) }
+            Button(action: open) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(clip.created, style: .time).font(.caption)
+                    Text("\(Int(clip.duration.rounded())) s · " + store.words("clipDetail")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5))
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }.accessibilityIdentifier("clip-detail-\(clip.id.uuidString)")
             Spacer()
+            if store.analyzing.contains(clip.id) { ProgressView().scaleEffect(0.7) }
             Menu {
                 ForEach(SoundKind.allCases, id: \.self) { kind in Button(store.words(kind.rawValue)) { store.label(clip, kind: kind) } }
-                Button(store.words("delete"), role: .destructive) { Task { await store.delete(clip) } }
+                Button(store.words("delete"), role: .destructive) { deleting = true }
             } label: { HStack { Text(store.words(clip.kind.rawValue)); if clip.suggestion { Image(systemName: "sparkle") }; Image(systemName: "chevron.down") }.font(.caption) }
         }.padding(.vertical, 6)
+        .confirmationDialog(store.words("deleteClip"), isPresented: $deleting, titleVisibility: .visible) {
+            Button(store.words("delete"), role: .destructive) { Task { await store.delete(clip) } }
+        }
     }
 }
 struct ClipPlay: View {

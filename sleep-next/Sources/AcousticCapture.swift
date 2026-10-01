@@ -14,7 +14,7 @@ final class AcousticSegmenter {
     private var quiet = 0
     private var length = 0
     private var active = false
-    private var continuing = false
+    private var floorUpdates = 0
     private(set) var noiseFloor = -65.0
     private(set) var level = -100.0
     private(set) var calibrated = false
@@ -36,11 +36,12 @@ final class AcousticSegmenter {
         let power = samples.reduce(0.0) { $0 + Double($1) * Double($1) } / Double(samples.count)
         level = max(-100, 10 * log10(max(1e-10, power)))
         if !active {
+            floorUpdates += 1
             floorSamples.append(level)
             if floorSamples.count > 500 { floorSamples.removeFirst() }
             if floorSamples.count >= 50 {
                 calibrated = true
-                if floorSamples.count % 5 == 0 {
+                if floorUpdates % 25 == 0 {
                     let ordered = floorSamples.sorted()
                     noiseFloor = min(-25, max(-85, ordered[ordered.count/5]))
                 }
@@ -52,7 +53,6 @@ final class AcousticSegmenter {
             quiet = loud ? 0 : quiet + samples.count
             if quiet >= Int(sampleRate * 2) || length >= Int(sampleRate * 30) {
                 try emit(.end); active = false; attack = 0
-                continuing = quiet < Int(sampleRate * 2)
                 ring.removeAll(); length = 0; quiet = 0
             }
         } else {
@@ -63,8 +63,8 @@ final class AcousticSegmenter {
                 let lead = ring.flatMap { $0 }
                 let begin = cursor - Int64(lead.count)
                 try emit(.begin(begin, lead)); length = lead.count
-                active = true; continuing = false; quiet = 0; ring.removeAll()
-            } else if !loud { continuing = false }
+                active = true; quiet = 0; ring.removeAll()
+            }
         }
     }
     func finish() throws {

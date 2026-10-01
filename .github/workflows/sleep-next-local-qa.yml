@@ -1,0 +1,85 @@
+name: Alarma signed local QA
+on:
+  workflow_dispatch:
+    inputs:
+      validation_run:
+        description: Successful native validation run for this exact commit
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  sign:
+    if: github.ref == 'refs/heads/codex/native-sleep-rebuild'
+    runs-on: macos-26
+    environment: alarma-local-qa
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require exact successful validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATION_RUN: ${{ inputs.validation_run }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" > "$RUNNER_TEMP/validation.json"
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/validation.json'))
+          assert r['head_sha']==os.environ['GITHUB_SHA'] and r['conclusion']=='success'
+          assert r['path']=='.github/workflows/sleep-next.yml'
+          PY
+      - name: Install local QA signing identity
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -e
+          printf %s "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/identity.p12"
+          printf %s "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/qa.mobileprovision"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/qa.keychain-db"
+          security set-keychain-settings -lut 3600 "$RUNNER_TEMP/qa.keychain-db"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/qa.keychain-db"
+          security import "$RUNNER_TEMP/identity.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$RUNNER_TEMP/qa.keychain-db" > /dev/null
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/qa.keychain-db" > /dev/null
+          security list-keychains -d user -s "$RUNNER_TEMP/qa.keychain-db"
+          security cms -D -i "$RUNNER_TEMP/qa.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/profile.plist")
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$RUNNER_TEMP/qa.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+      - name: Archive and export for registered devices
+        run: |
+          brew install xcodegen
+          (cd sleep-next && xcodegen generate)
+          PROFILE=$(/usr/libexec/PlistBuddy -c 'Print Name' "$RUNNER_TEMP/profile.plist")
+          TEAM=$(/usr/libexec/PlistBuddy -c 'Print TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
+          xcodebuild archive -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/AlarmaNext.xcarchive" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER="$PROFILE" > "$RUNNER_TEMP/archive.log" 2>&1 || { tail -60 "$RUNNER_TEMP/archive.log"; exit 1; }
+          python3 - <<'PY'
+          import os,plistlib
+          p=plistlib.load(open(os.environ['RUNNER_TEMP']+'/profile.plist','rb'))
+          assert p['Entitlements']['application-identifier'].endswith('.com.krazel.alarmanext')
+          assert p['Entitlements']['com.apple.developer.healthkit'] and not p['Entitlements'].get('get-task-allow',False)
+          assert len(p['ProvisionedDevices'])>0
+          options={'method':'release-testing','signingStyle':'manual','teamID':p['TeamIdentifier'][0], 'provisioningProfiles':{'com.krazel.alarmanext':p['Name']}}
+          plistlib.dump(options,open(os.environ['RUNNER_TEMP']+'/ExportOptions.plist','wb'))
+          PY
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/AlarmaNext.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" > "$RUNNER_TEMP/export.log" 2>&1 || { tail -60 "$RUNNER_TEMP/export.log"; exit 1; }
+          codesign --verify --deep --strict "$RUNNER_TEMP/AlarmaNext.xcarchive/Products/Applications/AlarmaNext.app"
+      - name: Encrypt device package before artifact upload
+        env:
+          QA_PACKAGE_KEY: ${{ secrets.QA_PACKAGE_KEY }}
+        run: node sleep-next/scripts/encrypt-qa.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AlarmaNext-local-qa-encrypted
+          path: |
+            local-qa/*.enc
+            local-qa/manifest.json
+          retention-days: 3
+      - name: Remove temporary signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/qa.keychain-db" || true
+          rm -f "$RUNNER_TEMP/identity.p12" "$RUNNER_TEMP/qa.mobileprovision" "$RUNNER_TEMP/profile.plist"

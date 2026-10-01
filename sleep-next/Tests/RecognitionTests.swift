@@ -49,12 +49,13 @@ final class RecognitionTests: XCTestCase {
             do { let output = try AVAudioFile(forWriting: url, settings: context.format.settings); try output.write(from: context) }
             let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
             let observer = ProbeObserver(), analyzer = try SNAudioFileAnalyzer(url: url)
-            try analyzer.add(request, withObserver: observer); analyzer.analyze()
+            try analyzer.add(request, withObserver: observer); _ = await analyzer.analyze()
             XCTAssertTrue(observer.complete && !observer.failed, source.filename)
             let suggestion = await SoundTagger.suggest(url: url)
             XCTAssertTrue(suggestion.completed, source.filename)
             rows.append(["file": source.filename, "expected": source.kind, "split": source.split,
                          "predicted": suggestion.kind.rawValue, "confidence": suggestion.confidence,
+                         "events": suggestion.events.map { ["start": $0.start, "duration": $0.duration, "kind": $0.kind.rawValue, "confidence": $0.confidence] as [String: Any] },
                          "defaultWindow": request.windowDuration.seconds, "constraint": String(describing: request.windowDurationConstraint),
                          "knownLabels": request.knownClassifications, "windows": observer.windows])
         }
@@ -62,5 +63,19 @@ final class RecognitionTests: XCTestCase {
         let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
         attachment.name = "real-recognition-benchmark.json"; attachment.lifetime = .keepAlways; add(attachment)
         XCTAssertGreaterThanOrEqual(rows.count, 20)
+    }
+    func testOverlappingWindowsMergeWithoutLosingDifferentSounds() {
+        let windows = [SoundEvent(start: 1, duration: 1, kind: .snore, confidence: 0.8),
+                       SoundEvent(start: 1.5, duration: 1, kind: .snore, confidence: 0.9),
+                       SoundEvent(start: 2, duration: 1, kind: .cough, confidence: 0.75),
+                       SoundEvent(start: 6, duration: 1, kind: .snore, confidence: 0.7)]
+        let events = SoundSuggestion.coalesce(windows)
+        XCTAssertEqual(events.count, 3); XCTAssertEqual(events[0].duration, 1.5)
+        XCTAssertEqual(events[0].confidence, 0.9); XCTAssertEqual(events[1].kind, .cough); XCTAssertEqual(events[2].start, 6)
+    }
+    func testLegacyClipDecodesWithoutRecognitionFields() throws {
+        let clip = NightClip(id: UUID(), created: Date(), filename: "legacy.wav", duration: 4)
+        let restored = try JSONDecoder().decode(NightClip.self, from: JSONEncoder().encode(clip))
+        XCTAssertEqual(restored, clip); XCTAssertNil(restored.events); XCTAssertNil(restored.analysisVersion)
     }
 }

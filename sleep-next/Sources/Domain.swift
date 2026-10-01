@@ -25,6 +25,13 @@ enum MorningFeeling: Int, Codable, CaseIterable, Identifiable {
     var key: String { ["exhausted", "tired", "steady", "peaceful", "bright"][rawValue] }
 }
 enum SoundKind: String, Codable, CaseIterable { case snore, breath, voice, cough, other }
+struct SoundEvent: Codable, Equatable, Identifiable {
+    let start: Double
+    var duration: Double
+    let kind: SoundKind
+    var confidence: Double
+    var id: String { "\(kind.rawValue)-\(start)" }
+}
 struct NightClip: Codable, Equatable, Identifiable {
     let id: UUID
     let created: Date
@@ -33,6 +40,9 @@ struct NightClip: Codable, Equatable, Identifiable {
     var kind: SoundKind = .other
     var analysisDone = false
     var suggestion = false
+    var events: [SoundEvent]?
+    var analysisVersion: Int?
+    var analysisFailed: Bool?
 }
 struct SleepSession: Codable, Equatable, Identifiable {
     let id: UUID

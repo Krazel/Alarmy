@@ -1,0 +1,13 @@
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process');
+const root=process.env.RUNNER_TEMP;
+const input=path.join(root,'export',fs.readdirSync(path.join(root,'export')).find(x=>x.endsWith('.ipa')));
+const app=path.join(root,'AlarmaNext.xcarchive/Products/Applications/AlarmaNext.app');
+const plist=key=>cp.execFileSync('/usr/libexec/PlistBuddy',['-c','Print '+key,path.join(app,'Info.plist')],{encoding:'utf8'}).trim();
+const version=plist('CFBundleShortVersionString'),build=plist('CFBundleVersion');
+const name=`AlarmaNext-${version}-build-${build}-${process.env.GITHUB_SHA.slice(0,7)}-signed-Local-QA.ipa`;
+const plain=fs.readFileSync(input),key=Buffer.from(process.env.QA_PACKAGE_KEY,'hex');
+if(key.length!==32)throw Error('Invalid encryption key');
+const nonce=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,nonce);
+const encrypted=Buffer.concat([nonce,cipher.update(plain),cipher.final(),cipher.getAuthTag()]);
+fs.mkdirSync('local-qa',{recursive:true});fs.writeFileSync(path.join('local-qa',name+'.enc'),encrypted);
+fs.writeFileSync('local-qa/manifest.json',JSON.stringify({name,version,build,sha:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,purpose:'Local-QA',minimumIOS:plist('MinimumOSVersion'),sha256:crypto.createHash('sha256').update(plain).digest('hex'),encryptedSHA256:crypto.createHash('sha256').update(encrypted).digest('hex'),encryption:'AES-256-GCM; 12-byte nonce + ciphertext + 16-byte tag'},null,2));
