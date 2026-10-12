@@ -39,8 +39,8 @@ extension SleepStore {
                 archive.active?.backupAlarmID = nil; archive.active?.smartTriggered = false
                 return
             }
-            if !testMode { try scheduler.cancel(id:original.alarmID) }
             await pauseCapture(reason:"recordAlarm")
+            if !testMode { try scheduler.cancel(id:original.alarmID) }
         } catch {
             // A cancellation failure leaves a tracked backup; finish/snooze will retry it.
             error = words("smartFallback") + " " + error.localizedDescription

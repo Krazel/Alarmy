@@ -43,6 +43,7 @@ if [[ "${VALIDATION_SCOPE:-october}" == "analysis" ]]; then
     -only-testing:AlarmaNextTests/HealthTimelineTests
     -only-testing:AlarmaNextTests/CaptureIntegrationTests
     -only-testing:AlarmaNextUITests/NativeFlowTests/testNightModesSwipeAndStatistics
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testEnglishExactNightAndAnalysisDiary
   )
 fi
 xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext \

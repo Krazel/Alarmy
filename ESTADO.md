@@ -1,5 +1,22 @@
 # Estado de Alarma — 12-10-2026
 
+## Candidata en preparación — noche y análisis 1.3 (1)
+
+Nuevo encargo del usuario: diseño de noche con ChatGPT Imágenes, onda real,
+terminar con gesto hacia arriba, tres modos de alarma y estadísticas completas.
+Implementación en `sleep-next`, ES/EN e iOS16+. Se mantienen fondo aprobado,
+diario A y barra inferior. Propuesta y decisiones en
+`sleep-next/Design/night-analysis-2026-10-12/README.md`.
+
+Análisis acústico local en épocas de 30 s, cobertura y reposo estimado; fases
+solo de Salud, calidad percibida del usuario. No se infieren fases clínicas con
+el micrófono. Clasificación de clips temporal aunque no se conserven; resúmenes
+persisten después de borrar/caducar audio. Ventana acústica experimental con
+alarma de hora límite como respaldo. Validación nativa enfocada en curso.
+
+La distribución interna vigente sigue siendo **1.2 (1)**. Esta candidata no se
+ha enviado a TestFlight ni a App Review. Prueba nocturna física/batería pendiente.
+
 ## Entrega completada — UI 1.2 (1)
 
 El usuario pide subir los nuevos cambios a TestFlight. Candidata **1.2 (1)**:

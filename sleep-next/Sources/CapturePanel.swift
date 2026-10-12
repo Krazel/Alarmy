@@ -10,11 +10,13 @@ struct CapturePanel: View {
             if audio.isRecording {
                 SoundWave(values: audio.waveform).frame(height: 60).accessibilityLabel(store.words("liveSound"))
                 Text("\(store.archive.active?.clips.count ?? 0) · " + store.words("nightSounds")).font(.caption2)
-                Button(store.words("pauseCapture")) { Task { await store.pauseCapture() } }.accessibilityIdentifier("pause-capture")
+                Button { Task { await store.pauseCapture() } } label: {
+                    Image(systemName:"pause.fill").font(.title3).frame(width:54,height:54).background(.white.opacity(0.15),in:Circle()).overlay(Circle().stroke(.white.opacity(0.35)))
+                }.accessibilityLabel(store.words("pauseCapture")).accessibilityIdentifier("pause-capture")
             } else if !store.ringing {
                 Button(store.words(audio.captureState == "recordOff" ? "enableCapture" : "resumeCapture")) { Task { await store.resumeCapture() } }.accessibilityIdentifier("resume-capture")
             }
             Text(store.words("recordLimits")).font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-        }.padding(16).frame(maxWidth: .infinity).background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 20))
+        }.padding(16).frame(maxWidth: .infinity)
     }
 }

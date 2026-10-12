@@ -1,6 +1,18 @@
 import XCTest
 
 final class NativeFlowTests: XCTestCase {
+    func testEnglishExactNightAndAnalysisDiary() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test","--reset-test","--english","--design-fixture"]; app.launch()
+        let start = app.buttons["begin-night"]
+        XCTAssertTrue(start.waitForExistence(timeout:10))
+        for _ in 0..<4 { if start.isHittable {break}; app.swipeUp() }
+        start.tap()
+        let slider = app.descendants(matching:.any).matching(identifier:"finish-night").firstMatch
+        XCTAssertTrue(slider.waitForExistence(timeout:5)); shot("35-en-exact-night")
+        slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.8)).press(forDuration:0.1,thenDragTo:slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.05)))
+        XCTAssertTrue(app.buttons["statistics"].waitForExistence(timeout:5)); shot("36-en-diary")
+        app.swipeUp(); app.swipeUp(); shot("37-en-night-analysis")
+    }
     func testNightModesSwipeAndStatistics() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test","--reset-test","--spanish","--design-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["edit-alarm"].waitForExistence(timeout:10))

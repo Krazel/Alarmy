@@ -80,7 +80,7 @@ struct StatisticsScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment:.leading,spacing:20) {
+                LazyVStack(alignment:.leading,spacing:20) {
                     Picker(words("period"),selection:$days) { ForEach([7,30,90,0],id:\.self) { n in Text(n == 0 ? words("allTime") : "\(n) " + words("days")).tag(n) } }.pickerStyle(.segmented)
                     if store.journalPreview { Text(words("exampleOnly")).font(.caption).foregroundStyle(Color.rust) }
                     if nights.isEmpty { Text(words("noNight")).padding(.vertical,32) }

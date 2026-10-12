@@ -24,11 +24,12 @@ struct NightScreen: View {
             NightLandscape()
             ScrollView {
                 VStack(spacing:22) {
-                    Image(systemName:store.ringing ? "sun.max" : "moon.stars").font(.system(size:30,weight:.ultraLight)).padding(.top,28)
-                    Text(store.words(store.ringing ? "morning" : (store.archive.active?.hasAlarm == false ? "yourPace" : "goodnight")))
-                        .font(.system(size:34,design:.serif)).multilineTextAlignment(.center)
+                    VStack(alignment:.leading,spacing:12) {
+                        Text(store.words((store.archive.active?.mode ?? .exact).rawValue)).font(.caption2).tracking(2).textCase(.uppercase)
+                        Text(store.words(store.ringing ? "morning" : (store.archive.active?.hasAlarm == false ? "yourPace" : "goodnight")))
+                            .font(.system(size:38,design:.serif)).frame(maxWidth:260,alignment:.leading)
+                    }.frame(maxWidth:.infinity,alignment:.leading).padding(.top,32).padding(.bottom,12)
                     if let night = store.archive.active {
-                        Text(store.words((night.mode ?? .exact).rawValue)).font(.caption).tracking(2).textCase(.uppercase)
                         if !night.hasAlarm {
                             TimelineView(.periodic(from:.now,by:1)) { context in
                                 Text(SleepMath.duration(context.date.timeIntervalSince(night.start))).font(.system(size:48,weight:.ultraLight,design:.rounded)).monospacedDigit()
@@ -71,7 +72,7 @@ struct SwipeToFinish: View {
             ZStack(alignment:.bottom) {
                 Capsule().fill(.black.opacity(0.24)).overlay(Capsule().stroke(.white.opacity(0.22))).frame(width:64,height:148)
                 Image(systemName:"chevron.up.chevron.up").font(.caption).opacity(0.6).offset(y:-107)
-                Image(systemName:"sun.horizon.fill").font(.title3).foregroundStyle(Color(red:0.2,green:0.3,blue:0.4))
+                Image(systemName:"chevron.up").font(.title3).foregroundStyle(Color(red:0.2,green:0.3,blue:0.4))
                     .frame(width:54,height:54).background(Color(red:0.94,green:0.91,blue:0.83),in:Circle()).padding(.bottom,5).offset(y:-lift)
             }.frame(width:110,height:148).contentShape(Rectangle())
                 .highPriorityGesture(DragGesture(minimumDistance:8)
