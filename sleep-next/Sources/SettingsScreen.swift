@@ -38,7 +38,6 @@ struct ToneRow: View {
 }
 struct SettingsScreen: View {
     @EnvironmentObject var store: SleepStore
-    @AppStorage("journalDeveloperMode") private var developerMode = false
     @State private var examples = false
     var body: some View {
         NavigationStack {
@@ -71,8 +70,8 @@ struct SettingsScreen: View {
                     Text(store.words("localHint")).font(.caption).foregroundStyle(.secondary)
                 } footer: { Text(store.words("about") + " · " + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")) }
                 Section {
-                    Toggle(store.words("developerMode"), isOn: $developerMode).accessibilityIdentifier("developer-mode")
-                    if developerMode {
+                    Toggle(store.words("developerMode"), isOn: $store.developerMode).accessibilityIdentifier("developer-mode")
+                    if store.developerMode {
                         Button { examples = true } label: { Label(store.words("journalExamples"), systemImage: "flask") }
                     }
                 } header: { Text(store.words("designExamples")) } footer: { Text(store.words("exampleOnly")) }

@@ -27,6 +27,7 @@ jobs:
           brew install xcodegen
           bash sleep-next/scripts/validate-october.sh
       - name: Record actual native test summary
+        if: always()
         env:
           VALIDATION_SCOPE: ${{ inputs.scope }}
         run: |
@@ -39,12 +40,20 @@ jobs:
           assert r['failedTests']==0 and r['passedTests']>=minimum, r
           print('Passed native tests:',r['passedTests'])
           PY
+      - name: Export native design screenshots
+        if: always() && inputs.scope == 'design'
+        run: |
+          RESULT=$(find sleep-next/Evidence/october-2026 -maxdepth 3 -type d -name Tests.xcresult -print -quit)
+          if [[ -n "$RESULT" ]]; then
+            xcrun xcresulttool export attachments --path "$RESULT" --output-path design-runtime
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: AlarmaNext-correction-validation
           path: |
             native-test-summary.json
+            design-runtime/
             sleep-next/Evidence/october-2026/native-*/compile.log
             sleep-next/Evidence/october-2026/native-*/Tests.xcresult
             sleep-next/Evidence/october-2026/native-*/test.log

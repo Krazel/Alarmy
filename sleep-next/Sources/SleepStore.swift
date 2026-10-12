@@ -16,6 +16,9 @@ final class SleepStore: ObservableObject {
     @Published var selectedDay = Date()
     @Published var analyzing = Set<UUID>()
     @Published var clipPresented = false
+    @Published var developerMode = UserDefaults.standard.bool(forKey: "journalDeveloperMode") {
+        didSet { if !journalPreview { UserDefaults.standard.set(developerMode, forKey: "journalDeveloperMode") } }
+    }
     let audio = NightAudio()
     let repository: ArchiveRepository
     // Design examples use a separate store. They never load, persist or touch audio files.

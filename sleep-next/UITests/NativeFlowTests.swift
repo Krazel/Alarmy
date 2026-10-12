@@ -9,6 +9,9 @@ final class NativeFlowTests: XCTestCase {
         for _ in 0..<6 { if mode.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(mode.isHittable)
         if mode.value as? String != "1" { mode.tap() }
+        XCTAssertTrue(mode.waitForExistence(timeout: 5))
+        XCTAssertEqual(mode.value as? String, "1")
+        shot("24-es-developer-mode-enabled")
         app.tabBars.buttons["Diario"].tap()
         let examples = app.buttons["journal-examples"]
         XCTAssertTrue(examples.waitForExistence(timeout: 5)); examples.tap()

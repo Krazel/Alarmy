@@ -5,7 +5,6 @@ struct JournalScreen: View {
     @State private var calendar = false
     @State private var openedClip: NightClip?
     @State private var examples = false
-    @AppStorage("journalDeveloperMode") private var developerMode = false
     @FocusState private var editingNote: Bool
     @State private var stages: [SleepStage] = []
     private var nights: [SleepSession] { store.sessions(store.selectedDay) }
@@ -18,7 +17,7 @@ struct JournalScreen: View {
                     header
                     if store.journalPreview {
                         Label(store.words("exampleOnly"), systemImage: "flask").font(.caption).foregroundStyle(Color.rust)
-                    } else if developerMode {
+                    } else if store.developerMode {
                         Button { examples = true } label: { Label(store.words("journalExamples"), systemImage: "flask") }.font(.subheadline).accessibilityIdentifier("journal-examples")
                     }
                     week
