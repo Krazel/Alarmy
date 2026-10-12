@@ -1,0 +1,45 @@
+{
+  "checkedAt": "2026-10-12T22:50:06.062020+00:00",
+  "candidate": "1.3 (1)",
+  "source": "f2fa3b613e21b9e69e3bf0fb40805e9d97b82ace",
+  "run": "https://github.com/Krazel/Alarmy/actions/runs/38317706859",
+  "result": "passed",
+  "passedTests": 4,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "releaseIPhoneBuild": true,
+  "device": {
+    "architecture": "arm64",
+    "deviceId": "4E3A6BB3-F417-4829-8DF5-0EA652541F40",
+    "deviceName": "iPhone 17 Pro",
+    "modelName": "iPhone 17 Pro",
+    "osBuildNumber": "23E254a",
+    "osVersion": "26.4.1",
+    "platform": "iOS Simulator"
+  },
+  "screenshots": [
+    {
+      "file": "runtime/41-en-category-player.png",
+      "test": "NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection()",
+      "sha256": "fec52bc9d75ec0552ddff96a894d134add3cd87fdbdfcbc406e8d7ce1da16f80"
+    },
+    {
+      "file": "runtime/40-en-sound-categories.png",
+      "test": "NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection()",
+      "sha256": "c7a45eb9f753a798462fa6515a450b9919737ea61685f2d7b97fe983d72ffe37"
+    },
+    {
+      "file": "runtime/43-es-night-category-player.png",
+      "test": "NativeFlowTests/testSpanishClipDetail()",
+      "sha256": "d7fa4c2968064e5ab85fa86c11cb8dbec5c328e66a6456a00e3f122a827f4309"
+    },
+    {
+      "file": "runtime/42-es-night-categories.png",
+      "test": "NativeFlowTests/testSpanishClipDetail()",
+      "sha256": "5802ec9d460fd7ed8db742d4aacb991d63c9f27581a790b7666098806c3a95cb"
+    }
+  ],
+  "visualReview": "ES nocturno: categorías completas y reproductor. EN claro: categorías con scroll parcial y reproductor completo. Jerarquía, contadores y traducciones correctos.",
+  "testflightCandidateUploaded": false,
+  "currentInternalTestFlight": "1.2 (1)"
+}

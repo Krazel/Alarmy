@@ -1,5 +1,20 @@
 # Estado de Alarma — 13-10-2026
 
+## Ampliación de la candidata — grabaciones por categoría
+
+Encargo 13/10: categorías con contador y escucha de un fragmento cada vez.
+Implementado en la misma candidata 1.3 (1), sin cambio de distribución: cinco
+categorías, flechas dentro del grupo, corrección/borrado con actualización de
+contadores y ejemplo de 30 clips (16 tos). ES/EN y diario A claro/nocturno.
+Fuente `f2fa3b6`; validación nativa enfocada correcta: **4 pruebas, 0 fallos/omitidas**,
+Release iPhone y cuatro capturas de simulador revisadas:
+https://github.com/Krazel/Alarmy/actions/runs/38317706859 .
+Diseño y evidencias: `sleep-next/Design/clip-categories-2026-10-13`.
+Biblioteca PR-019 guardada y releída por API, **revisión 15**; tracking,
+versión distribuida e historial conservados. Recibo junto a las capturas.
+TestFlight interno permanece en 1.2 (1); no se ha subido esta candidata.
+
+
 ## Candidata implementada y validada — noche y análisis 1.3 (1)
 
 Nuevo encargo del usuario: diseño de noche con ChatGPT Imágenes, onda real,
