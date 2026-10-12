@@ -130,7 +130,7 @@ final class NativeFlowTests: XCTestCase {
         let springboard=XCUIApplication(bundleIdentifier:"com.apple.springboard")
         let deny=springboard.buttons.matching(NSPredicate(format:"label CONTAINS[c] 'Allow' AND label != 'Allow'")).firstMatch
         if deny.waitForExistence(timeout:5) { deny.tap() }
-        XCTAssertTrue(app.staticTexts["Microphone permission is off. Turn recording off or allow it in Settings."].waitForExistence(timeout:5))
+        XCTAssertTrue(app.staticTexts["Microphone permission is off. Turn off sound analysis or allow the microphone in Settings."].waitForExistence(timeout:5))
         XCTAssertFalse(app.descendants(matching:.any).matching(identifier:"finish-night").firstMatch.exists)
         shot("15-microphone-denied")
     }

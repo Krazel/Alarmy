@@ -43,7 +43,7 @@ extension SleepStore {
             if !testMode { try scheduler.cancel(id:original.alarmID) }
         } catch {
             // A cancellation failure leaves a tracked backup; finish/snooze will retry it.
-            error = words("smartFallback") + " " + error.localizedDescription
+            self.error = words("smartFallback") + " " + error.localizedDescription
         }
     }
 }
