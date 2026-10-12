@@ -89,7 +89,8 @@ extension SleepStore {
         let end = await audio.stopRecording(reason: reason) ?? audio.lastCaptureEnd
         commit { value in
             if reason == "recordAlarm", value.active?.resumeCaptureAfterAlarm == nil {
-                value.active?.resumeCaptureAfterAlarm = value.preferences.record && value.active?.capturePaused != true
+                let shouldResume = value.preferences.record && value.active?.capturePaused != true
+                value.active?.resumeCaptureAfterAlarm = shouldResume
             }
             if reason != "recordAlarm", reason != "recordInterrupted" { value.active?.resumeCaptureAfterAlarm = false }
             value.active?.capturePaused = true

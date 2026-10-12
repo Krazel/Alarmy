@@ -34,6 +34,7 @@ jobs:
           name: AlarmaNext-correction-validation
           path: |
             native-test-summary.json
+            sleep-next/Evidence/october-2026/native-*/compile.log
             sleep-next/Evidence/october-2026/native-*/Tests.xcresult
             sleep-next/Evidence/october-2026/native-*/test.log
             sleep-next/Evidence/october-2026/native-*/release.log

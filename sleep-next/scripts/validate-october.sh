@@ -15,7 +15,13 @@ DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d
 if ! xcrun simctl list devices booted -j | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if any(x["udid"]==sys.argv[1] for ds in d["devices"].values() for x in ds) else 1)' "$DEVICE"; then
   xcrun simctl boot "$DEVICE"
 fi
-xcrun simctl bootstatus "$DEVICE" -b
+xcrun simctl bootstatus "$DEVICE" -b &
+BOOT_PID=$!
+trap 'kill "$BOOT_PID" 2>/dev/null || true' EXIT
+xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUN_DIR/build" \
+  CODE_SIGNING_ALLOWED=NO ARCHS="$(uname -m)" build-for-testing 2>&1 | tee "$RUN_DIR/compile.log"
+wait "$BOOT_PID"
 xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext \
   -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath "$RUN_DIR/build" \
   -resultBundlePath "$RUN_DIR/Tests.xcresult" -parallel-testing-enabled NO \
@@ -25,7 +31,7 @@ xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext \
   -only-testing:AlarmaNextTests/AcousticCaptureTests \
   -only-testing:AlarmaNextTests/RepositoryTests \
   -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection \
-  CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$RUN_DIR/test.log"
+  CODE_SIGNING_ALLOWED=NO test-without-building 2>&1 | tee "$RUN_DIR/test.log"
 xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath "$RUN_DIR/device" \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee "$RUN_DIR/release.log"
