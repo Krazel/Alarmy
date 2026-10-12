@@ -11,7 +11,7 @@ struct Words {
         "activeWindowDeadline":["Final de la ventana inteligente","End of the smart window"],
         "currentTime":[ "Hora actual","Current time"],
         "changeAlarmTime":["Cambiar hora de alarma","Change alarm time"],
-        "tonightOnly":["Solo esta noche. La grabación continúa.","Tonight only. Recording continues."],
+        "tonightOnly":["Solo esta noche. La sesión continúa.","Tonight only. Your session continues."],
         "analysisDisabled":["Análisis desactivado","Analysis off"],
         "alarmTooClose":["La alarma está a punto de sonar.","The alarm is about to ring."],
         "alarmChangeFailed":["No se ha cambiado la hora. Se conserva la alarma anterior.","The time was not changed. Your previous alarm is kept."],
