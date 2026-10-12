@@ -49,13 +49,17 @@ La automatización `.github/workflows/sleep-next.yml` compila para simulador e i
 
 Antes de una distribución final se necesita una prueba nocturna en iPhones físicos: iOS 16–25 y iOS 26, pantalla bloqueada, Silencio/Concentración, permisos denegados, interrupción del micrófono, cambio de ruta de audio, reinicio, volumen y consumo de batería. El simulador no demuestra la fiabilidad acústica en esas condiciones.
 
-La candidata **1.1 (1)** añade revisión por intervalos y completa la estabilización de captura y flujos. [Corpus real, procedencia y método](Tests/Corpus/README.md). Se conserva la línea heredada 1.x; «candidata» no implica aprobación para publicación. El estado de compilación y el paquete concreto se registran en [ESTADO.md](../ESTADO.md).
+La candidata **1.1.1 (1)** reúne las correcciones de octubre posteriores a la
+entrega 1.1 (1). [Corpus anterior, procedencia y método](Tests/Corpus/README.md).
+Se conserva la línea heredada 1.x; candidata no implica publicación comercial.
+El estado de compilación y paquete se registran en [ESTADO.md](../ESTADO.md).
 
 La entrega **1.1 (1)** fue aceptada por Apple el 02/10/2026 y está en TestFlight
 interno para el titular; el flujo separado está en
 `.github/workflows/sleep-next-testflight.yml`. No hay entrega externa ni publicación
-en App Store. Los cambios de octubre son un borrador local pendiente de Xcode y
-prueba física; no están incluidos en esa build. La validación GitHub actual es
-manual y exige repositorio privado y cuota/runners comprobados antes de habilitar
-`IOS_CI_APPROVED`. No se ha disparado CI ni repetido la subida. La firma ad hoc y
+en App Store. El usuario autorizó el 12/10 subir los cambios como 1.1.1 (1) y
+mantener este repositorio público para Actions estándar gratuitas, usando API
+y sin gastos. La validación es manual; firma/subida exigen un run nuevo correcto
+con el mismo árbol del proyecto. [Entrega actual](../QA-2026-10-12/README.md).
+La noche física sigue pendiente. La firma ad hoc y
 la [corrección 1.0.1](Evidence/recording-2026-09-21/README.md) quedan como historial.

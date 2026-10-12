@@ -1,5 +1,12 @@
 # Encargo vigente — Alarma PR-019
 
+Prioridad humana posterior del 12/10: **subir las correcciones a TestFlight**.
+El usuario exige API y repositorio Alarma público para Actions estándar gratuitas,
+sin gastos; la excepción prevalece para este producto. Preparada 1.1.1(1).
+Ver [entrega vigente](QA-2026-10-12/README.md). Las restricciones de nueva subida
+y privacidad del encargo inicial que siguen abajo quedan sustituidas por esa
+indicación; la noche física no se considera realizada.
+
 Avance local del 12/10: preparadas correcciones de retención/borrado persistente,
 recuperación, interrupciones y posponer. 15 regresiones XCTest nuevas pendientes
 de ejecutar con Xcode; metadatos/140 textos/13 recursos comprobados estáticamente.

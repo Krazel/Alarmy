@@ -2,6 +2,15 @@
 
 ## Encargo actual y correcciones locales
 
+**Actualización del encargo, 12/10:** el usuario solicita subir los cambios nuevos
+a TestFlight y ordena expresamente mantener **Krazel/Alarmy público**, usando API
+y Actions estándar gratuitas, sin gastos. Excepción de Alarma a la regla general
+de privado. Se revirtió por API el cambio a privado y se verificó PUBLIC.
+Candidata **1.1.1 (1)** preparada; falta completar validación/firma/subida y releer
+estado beta. La 1.1(1) anterior se conserva. [Entrega en curso](QA-2026-10-12/README.md).
+Esta autorización posterior sustituye los bloqueos de privacidad y la prohibición
+de nueva subida descritos abajo, que corresponden al encargo previo de cierre.
+
 Propietario PR-019: `01a0708e-0558-78b1-866c-801b9cf35996`. Continúa el cierre
 de octubre según `../.studio/coordination/cierre-octubre-20261012.md`; no repetir
 TestFlight ni enviar App Review automáticamente. SwiftUI iPhone iOS 16+, ES/EN,

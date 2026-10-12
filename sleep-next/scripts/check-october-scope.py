@@ -32,8 +32,8 @@ assert set(resources) == {p.relative_to(root).as_posix() for p in (root / "sleep
 workflow = yaml.safe_load((root / ".github/workflows/sleep-next.yml").read_text(encoding="utf-8"))
 triggers = workflow.get("on", workflow.get(True))
 assert "push" not in triggers
-assert "repository.private == true" in workflow["jobs"]["validate"]["if"]
-assert "IOS_CI_APPROVED" in workflow["jobs"]["validate"]["if"]
+assert "repository.private == false" in workflow["jobs"]["validate"]["if"]
+assert workflow["jobs"]["validate"]["runs-on"] == "macos-26"
 test_text = (root / "sleep-next/Tests/OctoberRecoveryTests.swift").read_text(encoding="utf-8")
 result = {
     "scopeChecks": "passed", "nativeCompiled": False, "xctestExecuted": False,
@@ -41,5 +41,7 @@ result = {
     "languageEntries": len(matches), "unchangedResourceFiles": len(resources),
     "iPhoneOnly": True, "minimumIOS": "16.0", "automaticCIOnPush": False,
     "lastDeliveredVersion": "1.1 (1)", "newTestFlightUpload": False,
+    "candidateVersion": project["settings"]["base"]["MARKETING_VERSION"],
+    "repositoryPublicByOwnerRequest": True,
 }
 print(json.dumps(result, ensure_ascii=False, indent=2))

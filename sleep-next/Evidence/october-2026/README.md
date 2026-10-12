@@ -1,5 +1,11 @@
 # Alarma — correcciones de octubre
 
+Este informe conserva el estado de preparación anterior al nuevo encargo humano
+de subir a TestFlight del mismo día. **Estado vigente:**
+[Alarma 1.1.1 (1)](../../../QA-2026-10-12/README.md). El usuario decidió repositorio
+Alarma público con Actions estándar gratuitas, API y sin gastos; esa excepción
+sustituye el bloqueo de privacidad descrito en este informe histórico.
+
 12/10/2026. Trabajo local posterior a `7fc068e`, sobre la entrega existente
 **1.1 (1)**. Esta carpeta no acredita una nueva build ni una noche física.
 

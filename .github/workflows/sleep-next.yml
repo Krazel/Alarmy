@@ -1,91 +1,42 @@
-name: Alarma from scratch validation
+name: Alarma native correction validation
 on:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: sleep-next-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   validate:
-    # Enable only after the owner verifies private-repo quota/runners without extra spend.
-    if: github.event.repository.private == true && vars.IOS_CI_APPROVED == 'true'
+    # Owner selected PUBLIC Alarma on 2026-10-12 for free standard Actions.
+    if: github.event.repository.private == false && github.ref == 'refs/heads/codex/native-sleep-rebuild'
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Generate project
+      - name: Generate and validate the correction candidate
         run: |
-          xcodebuild -version
           brew install xcodegen
-          cd sleep-next
-          xcodegen generate
-      - name: Start simulator
-        timeout-minutes: 8
+          bash sleep-next/scripts/validate-october.sh
+      - name: Record actual native test summary
         run: |
-          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if "iPhone" in x["name"]))')
-          echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
-          xcrun simctl boot "$DEVICE" || true
-      - name: Compile app and tests
-        run: |
-          set -o pipefail
-          xcodebuild -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO ARCHS="$(uname -m)" build-for-testing 2>&1 | tee build-compile.log
-      - name: Wait for simulator
-        timeout-minutes: 8
-        run: xcrun simctl bootstatus "$DEVICE" -b
-      - name: Test native app
-        run: |
-          set -o pipefail
-          xcodebuild -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build/simulator -resultBundlePath build/Tests.xcresult -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building 2>&1 | tee build-test.log
-      - name: Export UI evidence
-        if: always()
-        run: |
-          mkdir -p evidence
-          xcrun xcresulttool export attachments --path build/Tests.xcresult --output-path evidence || true
-      - name: Capture real simulator
-        run: |
-          xcrun simctl status_bar "$DEVICE" override --time '21:41' --batteryState charged --batteryLevel 100
-          xcrun simctl install "$DEVICE" build/simulator/Build/Products/Debug-iphonesimulator/AlarmaNext.app
-          xcrun simctl launch "$DEVICE" com.krazel.alarmanext
-          sleep 4
-          mkdir -p evidence
-          xcrun simctl io "$DEVICE" screenshot evidence/last-screen.png
-      - name: Build iPhone app
-        run: |
-          set -o pipefail
-          xcodebuild -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -configuration Release -sdk iphoneos -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee build-device.log
-          mkdir -p package/Payload
-          cp -R build/device/Build/Products/Release-iphoneos/AlarmaNext.app package/Payload/
-          cd package
-          VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Payload/AlarmaNext.app/Info.plist)
-          BUILD=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' Payload/AlarmaNext.app/Info.plist)
-          zip -qry ../AlarmaNext-${VERSION}-build-${BUILD}-${GITHUB_SHA::7}-unsigned-Local-QA.ipa Payload
-      - name: Check compact iPhone controls
-        timeout-minutes: 8
-        run: |
-          set -o pipefail
-          RUNTIME=$(xcrun simctl list devices available -j | python3 -c 'import json,sys,os; d=json.load(sys.stdin); print(next(r for r,ds in d["devices"].items() if any(x["udid"]==os.environ["DEVICE"] for x in ds)))')
-          COMPACT=$(xcrun simctl create 'Alarma compact QA' com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation "$RUNTIME")
-          xcrun simctl shutdown "$DEVICE"
-          xcrun simctl boot "$COMPACT"
-          xcrun simctl bootstatus "$COMPACT" -b
-          xcodebuild -project sleep-next/AlarmaNext.xcodeproj -scheme AlarmaNext -destination "platform=iOS Simulator,id=$COMPACT" -derivedDataPath build/simulator -resultBundlePath build/Compact.xcresult -only-testing:AlarmaNextUITests/NativeFlowTests/testCompactNightControls -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building 2>&1 | tee build-compact.log
-      - name: Export compact evidence
-        if: always()
-        run: |
-          mkdir -p evidence/compact
-          xcrun xcresulttool export attachments --path build/Compact.xcresult --output-path evidence/compact || true
+          RESULT=$(find sleep-next/Evidence/october-2026 -maxdepth 3 -type d -name Tests.xcresult -print -quit)
+          xcrun xcresulttool get test-results summary --path "$RESULT" > native-test-summary.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('native-test-summary.json'))
+          assert r['failedTests']==0 and r['passedTests']>=15, r
+          print('Passed native tests:',r['passedTests'])
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: AlarmaNext-validation
+          name: AlarmaNext-correction-validation
           path: |
-            AlarmaNext-*.ipa
-            evidence/
-            build/Tests.xcresult
-            build/Compact.xcresult
-            build-test.log
-            build-compile.log
-            build-device.log
-            build-compact.log
-          retention-days: 7
+            native-test-summary.json
+            sleep-next/Evidence/october-2026/native-*/Tests.xcresult
+            sleep-next/Evidence/october-2026/native-*/test.log
+            sleep-next/Evidence/october-2026/native-*/release.log
+            sleep-next/Evidence/october-2026/native-*/source.txt
+            sleep-next/Evidence/october-2026/native-*/xcode.txt
+          retention-days: 3
