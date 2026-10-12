@@ -23,7 +23,7 @@ final class SleepAnalysisTests: XCTestCase {
         clip.events = [SoundEvent(start:0,duration:30,kind:.snore,confidence:0.9),SoundEvent(start:20,duration:30,kind:.snore,confidence:0.9)]
         n.clips = [clip]; n.soundSummaries = [NightSoundSummary(clip:clip)]
         let m = NightMetrics(nights:[n,n])
-        XCTAssertEqual(m.inBed,100); XCTAssertEqual(m.soundSeconds(.snore),50)
+        XCTAssertEqual(m.inBed,100); XCTAssertEqual(m.soundSeconds(.snore),50); XCTAssertEqual(m.soundSeconds(.other),50)
         let stages = [SleepStage(id:UUID(),start:origin.addingTimeInterval(-50),end:origin.addingTimeInterval(150),key:"deep")]
         XCTAssertEqual(m.healthSeconds(stages),100)
         n.clips = []

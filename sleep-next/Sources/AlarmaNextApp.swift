@@ -94,7 +94,7 @@ struct AlarmScreen: View {
                                 Text(store.words(store.archive.plan.resolvedMode.rawValue)).font(.subheadline)
                                 if store.archive.plan.resolvedMode != .analysis {
                                 HStack { Image(systemName: "sunrise"); Text(store.words("wake")); Spacer(); Text(store.archive.plan.next(after: Date()) ?? Date(), style: .date).lineLimit(1).minimumScaleFactor(0.7) }.font(.caption).foregroundStyle(Color.ink.opacity(0.65))
-                                if store.archive.plan.resolvedMode == .smart { Text("\(store.archive.plan.window) min · " + store.words("windowBefore")).font(.caption) }
+                                if store.archive.plan.resolvedMode == .smart { Text("\(store.archive.plan.window) min Â· " + store.words("windowBefore")).font(.caption) }
                                 Divider()
                                 Button { music = true } label: { HStack(spacing: 12) { Image(systemName: "waveform"); Text(store.words("sounds")); Spacer(); Text("\(store.archive.plan.sounds.count) " + store.words("selected")).font(.caption); Image(systemName: "chevron.right").font(.caption2) } }.font(.subheadline).foregroundStyle(Color.ink).accessibilityIdentifier("sounds")
                                 }
@@ -103,7 +103,7 @@ struct AlarmScreen: View {
                         Toggle(store.words("analyzeSounds"), isOn: Binding(get: { store.archive.preferences.analysisEnabled }, set: { value in store.preferences { $0.analyze = value } })).font(.subheadline).padding(16).background(Color.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 18))
                         Toggle(isOn: Binding(get: { store.archive.preferences.record }, set: { value in store.preferences { $0.record = value } })) {
                             Label(store.words("record"), systemImage: "mic")
-                        }.font(.subheadline).padding(16).background(Color.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 18)).accessibilityIdentifier("record-toggle")
+                        }.font(.subheadline).padding(16).background(Color.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 18)).accessibilityIdentifier("record-toggle").disabled(!store.archive.preferences.analysisEnabled)
                         Button { Task { await store.start() } } label: { HStack { if store.busy { ProgressView() }; Image(systemName: "moon.zzz"); Text(store.words("start")) } }.buttonStyle(PrimaryButton()).disabled(store.busy).accessibilityIdentifier("begin-night")
                         Spacer(minLength: 160)
                     }.padding(.horizontal, 26)

@@ -49,7 +49,7 @@ struct SettingsScreen: View {
                 }
                 Section {
                     Toggle(store.words("analyzeSounds"), isOn: Binding(get: { store.archive.preferences.analysisEnabled }, set: { value in store.preferences { $0.analyze = value } }))
-                    Toggle(store.words("record"), isOn: Binding(get: { store.archive.preferences.record }, set: { value in store.preferences { $0.record = value } }))
+                    Toggle(store.words("record"), isOn: Binding(get: { store.archive.preferences.record }, set: { value in store.preferences { $0.record = value } })).disabled(!store.archive.preferences.analysisEnabled)
                     Picker(store.words("sensitivity"), selection: Binding(get: { store.archive.preferences.sensitivity ?? 10 }, set: { value in store.preferences { $0.sensitivity = value } })) {
                         Text(store.words("sensitive")).tag(6.0); Text(store.words("normalSensitivity")).tag(10.0); Text(store.words("lessSensitive")).tag(14.0)
                     }

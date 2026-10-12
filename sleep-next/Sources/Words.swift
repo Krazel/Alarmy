@@ -6,6 +6,7 @@ struct Words {
     var locale: Locale { Locale(identifier: spanish ? "es_ES" : "en_GB") }
     func callAsFunction(_ key: String) -> String { Self.entries[key].map { $0[spanish ? 0 : 1] } ?? key }
     static let entries: [String: [String]] = [
+        "soundActivity":["Actividad sobre el ruido de fondo","Activity above background noise"],
         "alarmMode":["Tipo de noche", "Night mode"],
         "analysis":["Sin alarma", "No alarm"],
         "exact":["Hora exacta", "Exact time"],
@@ -90,7 +91,7 @@ struct Words {
         "retrySave":["Reintentar guardado","Retry saving"],
         "recordOff":["Micrófono desactivado","Microphone off"],
         "recordCalibrating":["Ajustando al sonido de la habitación…","Calibrating room sound…"],
-        "recordListening":["Escuchando · grabación de eventos activa","Listening · event recording active"],
+        "recordListening":["Escuchando el ambiente","Listening to the room"],
         "recordPaused":["Grabación pausada por ti","Recording paused by you"],
         "recordInterrupted":["Grabación interrumpida por el sistema","Recording interrupted by the system"],
         "recordRecovered":["Sesión recuperada · micrófono detenido","Session recovered · microphone stopped"],
@@ -149,7 +150,7 @@ struct Words {
         "nativeExtra":["Para posponer, abre Alarma. El movimiento, la luz y el volumen progresivo funcionan con la app abierta.","To snooze, open Alarma. Motion, light and gradual volume work with the app open."],
         "local":["Tu noche se queda contigo","Your night stays with you"], "localHint":["Sin cuenta, sin anuncios y sin enviar grabaciones a un servidor.","No account, no ads, and no recordings sent to a server."],
         "error":["No se ha podido completar","Couldn’t complete that"], "permissionError":["Activa el permiso de alarmas o notificaciones en Ajustes para programar el despertar.","Enable alarm or notification permission in Settings to schedule your wake-up."],
-        "micError":["No hay permiso de micrófono. Puedes desactivar tanto el análisis como el guardado de sonidos, o permitir el micrófono en Ajustes.","Microphone permission is off. Turn off sound analysis and recording, or allow the microphone in Settings."],
+        "micError":["No hay permiso de micrófono. Puedes desactivar el análisis acústico o permitir el micrófono en Ajustes.","Microphone permission is off. Turn off sound analysis or allow the microphone in Settings."],
         "badAudio":["No se ha podido preparar ese audio. Prueba con un archivo de música sin protección.","Couldn’t prepare this audio. Try an unprotected music file."],
         "storageError":["No se pudo leer el archivo local. Se ha conservado para evitar perder datos.","The local archive could not be read. It has been preserved to avoid data loss."],
         "activeSettings":["Termina la noche para cambiar estos ajustes.","Finish the night to change these settings."],

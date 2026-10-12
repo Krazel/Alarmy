@@ -5,7 +5,7 @@ extension SleepStore {
     func beginRecordingIfNeeded() async throws {
         guard await acquireClipFiles() else { throw CancellationError() }
         defer { clipFilesBusy = false }
-        guard let night = archive.active, (archive.preferences.analysisEnabled || archive.preferences.record), night.capturePaused != true,
+        guard let night = archive.active, archive.preferences.analysisEnabled, night.capturePaused != true,
               !audio.isRecording, !ringing, !audioInterrupted, !writeFailed, !failed, !testMode else { return }
         guard Date() < night.wake else { audio.captureState = "recordAlarm"; return }
         let spanID = UUID(), now = Date()
@@ -91,7 +91,7 @@ extension SleepStore {
         let end = await audio.stopRecording(reason: reason) ?? audio.lastCaptureEnd
         commit { value in
             if reason == "recordAlarm", value.active?.resumeCaptureAfterAlarm == nil {
-                let shouldResume = (value.preferences.analysisEnabled || value.preferences.record) && value.active?.capturePaused != true
+                let shouldResume = value.preferences.analysisEnabled && value.active?.capturePaused != true
                 value.active?.resumeCaptureAfterAlarm = shouldResume
             }
             if reason != "recordAlarm", reason != "recordInterrupted" { value.active?.resumeCaptureAfterAlarm = false }
@@ -121,7 +121,7 @@ extension SleepStore {
         } else {
             audioInterrupted = false
             defer { resumeAfterInterruption = false }
-            if shouldResume && resumeAfterInterruption && (archive.preferences.analysisEnabled || archive.preferences.record) && archive.active != nil {
+            if shouldResume && resumeAfterInterruption && archive.preferences.analysisEnabled && archive.active != nil {
                 guard await commit({ $0.active?.capturePaused = false }).value else { return }
                 do { try await beginRecordingIfNeeded() } catch { audio.captureState = "recordError"; self.error = error.localizedDescription }
             }

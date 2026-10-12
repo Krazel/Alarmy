@@ -79,7 +79,7 @@ struct SoundTagger {
         request.overlapFactor = 0.5
         return request
     }
-    // Run after the night, on demand in the diary. Raw audio never leaves the device.
+    // Classify finalized event clips locally; temporary clips are removed after this completes.
     static func suggest(url: URL) async -> SoundSuggestion {
         let task = Task.detached(priority: .utility) {
             do {

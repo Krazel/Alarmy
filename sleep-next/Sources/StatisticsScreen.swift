@@ -35,6 +35,7 @@ struct NightAnalysisCard: View {
                 AcousticTimeline(metrics:metrics,words:words)
                 Text(words("restHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                 Divider()
+                MetricRow(title:words("soundActivity"),value:SleepMath.duration(metrics.activity))
                 ForEach(SoundKind.allCases,id:\.self) { kind in MetricRow(title:words(kind.rawValue),value:SleepMath.duration(metrics.soundSeconds(kind))) }
                 Text(words("soundStatsHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
             }
@@ -158,6 +159,7 @@ struct StatisticsScreen: View {
                 Text(words("soundTotals")).font(.system(size:23,design:.serif))
                 MetricRow(title:words("analysisCoverage"),value:metrics.coverage.map { "\(Int($0*100))%" } ?? "—")
                 MetricRow(title:words("captureTime"),value:metrics.epochs.isEmpty ? "—" : SleepMath.duration(metrics.observed))
+                MetricRow(title:words("soundActivity"),value:SleepMath.duration(metrics.activity))
                 ForEach(SoundKind.allCases,id:\.self) { kind in MetricRow(title:words(kind.rawValue),value:SleepMath.duration(metrics.soundSeconds(kind))) }
                 Text(words("soundStatsHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
             }

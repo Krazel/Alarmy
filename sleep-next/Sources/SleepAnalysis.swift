@@ -20,9 +20,23 @@ struct NightSoundSummary: Codable, Equatable, Identifiable {
     init(clip: NightClip) {
         id = clip.id; start = clip.created; duration = clip.duration
         completed = clip.analysisDone && clip.analysisFailed != true
-        events = !clip.suggestion && completed
-            ? [SoundEvent(start: 0, duration: clip.duration, kind: clip.kind, confidence: 1)]
-            : (clip.events ?? [])
+        if !clip.suggestion && completed {
+            events = [SoundEvent(start:0,duration:clip.duration,kind:clip.kind,confidence:1)]
+        } else {
+            let labelled = clip.events ?? []
+            let covered = SleepMath.union(labelled.compactMap { event -> DateInterval? in
+                let a = max(0,event.start), b = min(clip.duration,event.start+event.duration)
+                return b > a ? DateInterval(start:clip.created.addingTimeInterval(a),duration:b-a) : nil
+            })
+            var unknown: [SoundEvent] = []; var cursor = clip.created
+            for range in covered {
+                if range.start > cursor { unknown.append(SoundEvent(start:cursor.timeIntervalSince(clip.created),duration:range.start.timeIntervalSince(cursor),kind:.other,confidence:0)) }
+                cursor = max(cursor,range.end)
+            }
+            let end = clip.created.addingTimeInterval(clip.duration)
+            if end > cursor { unknown.append(SoundEvent(start:cursor.timeIntervalSince(clip.created),duration:end.timeIntervalSince(cursor),kind:.other,confidence:0)) }
+            events = labelled + unknown
+        }
     }
 }
 
@@ -67,7 +81,7 @@ struct NightMetrics {
     let nights: [SleepSession]
     var bed: [DateInterval] { SleepMath.union(nights.compactMap { n in n.duration > 0 ? DateInterval(start: n.start, duration: n.duration) : nil }) }
     var inBed: Double { SleepMath.seconds(bed) }
-    var epochs: [AcousticEpoch] { nights.flatMap { $0.acousticEpochs ?? [] }.sorted { $0.start < $1.start } }
+    var epochs: [AcousticEpoch] { Dictionary(grouping:nights.flatMap { $0.acousticEpochs ?? [] },by: \.id).values.compactMap(\.first).sorted { $0.start < $1.start } }
     func clipped(_ ranges: [DateInterval]) -> [DateInterval] {
         SleepMath.union(ranges.flatMap { a in bed.compactMap { b in
             let start = max(a.start,b.start), end = min(a.end,b.end)
@@ -75,6 +89,13 @@ struct NightMetrics {
         } })
     }
     var observed: Double { SleepMath.seconds(clipped(epochs.map { DateInterval(start: $0.start, duration: max(0,$0.duration)) })) }
+    var activity: Double? {
+        guard !epochs.isEmpty else { return nil }
+        return epochs.reduce(0) { total, epoch in
+            let visible = SleepMath.seconds(clipped([DateInterval(start:epoch.start,duration:max(0,epoch.duration))]))
+            return total + (epoch.duration > 0 ? min(epoch.duration,max(0,epoch.activeSeconds))*visible/epoch.duration : 0)
+        }
+    }
     var coverage: Double? { inBed > 0 && !epochs.isEmpty ? min(1, observed/inBed) : nil }
     var quietRuns: [DateInterval] {
         // Only contiguous, observed epochs count. Pauses never become quiet time.
@@ -89,7 +110,7 @@ struct NightMetrics {
             let a = max(begin,epoch.start), b = min(rest.start,epoch.end)
             return b > a ? DateInterval(start:a,end:b) : nil
         })
-        return missing <= 35 ? prefix.duration : nil
+        return missing <= 2 ? prefix.duration : nil
     }
     func healthSeconds(_ stages: [SleepStage], key: String? = nil) -> Double? {
         let all = clipped(stages.map { DateInterval(start:$0.start,end:$0.end) })
@@ -102,7 +123,7 @@ struct NightMetrics {
         // Do not turn unobserved Health time before the first record into wakefulness.
         let prefix = first.start.timeIntervalSince(begin)
         let observedPrefix = SleepMath.seconds(clipped(stages.filter { $0.end <= first.start }.map { DateInterval(start:$0.start,end:$0.end) }))
-        return prefix - observedPrefix <= 60 ? prefix : nil
+        return prefix - observedPrefix <= 2 ? prefix : nil
     }
     var summaries: [NightSoundSummary] {
         var result: [UUID:NightSoundSummary] = [:]

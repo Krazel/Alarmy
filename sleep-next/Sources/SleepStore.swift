@@ -162,7 +162,7 @@ final class SleepStore: ObservableObject {
         guard !journalPreview else { return }
         guard !busy, archive.active == nil, !failed else { return }; busy = true; defer { busy = false }
         do {
-            if (archive.preferences.analysisEnabled || archive.preferences.record) && !testMode {
+            if archive.preferences.analysisEnabled && !testMode {
                 guard await audio.microphoneAllowed() else { error = words("micError"); return }
             }
             guard let wake = archive.plan.next(after: Date()) else { return }
