@@ -59,7 +59,7 @@ struct JournalCalendar: View {
                 }.padding(20)
             }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust)
                 .navigationTitle(store.words("calendar")).navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { dismiss() }.accessibilityIdentifier("close-journal-calendar") } }
         }
     }
     private func move(_ value: Int) {

@@ -55,7 +55,7 @@ struct JournalScreen: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(store.words("journal")).font(.system(size: 35, weight: .regular, design: .serif))
                 Spacer()
-                Button { calendar = true } label: { Image(systemName: "calendar").font(.system(size: 19)).padding(12).background(Color.card, in: Circle()) }.accessibilityIdentifier("calendar").accessibilityLabel(store.words("calendar"))
+                Button { calendar = true } label: { Image(systemName: "calendar").font(.system(size: 19)).padding(12).background(Color.card, in: Circle()) }.accessibilityIdentifier(store.journalPreview ? "example-calendar" : "calendar").accessibilityLabel(store.words("calendar"))
             }
             Text(store.words("yourNight")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.6))
         }

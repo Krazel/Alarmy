@@ -18,10 +18,10 @@ final class NativeFlowTests: XCTestCase {
         let examples = app.buttons["journal-examples"]
         XCTAssertTrue(examples.waitForExistence(timeout: 5)); examples.tap()
         XCTAssertTrue(app.buttons["example-scenario"].waitForExistence(timeout: 5)); shot("21-es-journal-examples")
-        app.buttons["calendar"].tap()
+        app.buttons["example-calendar"].tap()
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'calendar-day-'")).firstMatch.waitForExistence(timeout: 5))
         shot("22-es-mood-calendar")
-        app.buttons["Listo"].firstMatch.tap()
+        app.buttons["close-journal-calendar"].tap()
         app.buttons["close-journal-examples"].tap()
         XCTAssertTrue(app.buttons["feeling-3"].waitForExistence(timeout: 5))
         for _ in 0..<3 { if app.textViews["journal-note"].isHittable { break }; app.swipeUp() }
