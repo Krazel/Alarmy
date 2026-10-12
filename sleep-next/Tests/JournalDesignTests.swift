@@ -37,6 +37,9 @@ final class JournalDesignTests: XCTestCase {
         XCTAssertEqual(Set(week.pages.values.compactMap { $0.feeling?.rawValue }), Set(0..<5))
         let (sounds, _) = JournalScenario.sounds.archive(words: words)
         XCTAssertEqual(Set(sounds.sessions[0].clips.map { $0.kind }), Set(SoundKind.allCases))
+        XCTAssertEqual(sounds.sessions[0].clips.count, 30)
+        XCTAssertEqual(sounds.sessions[0].clips.filter { $0.kind == .cough }.count, 16)
+        XCTAssertTrue(sounds.sessions[0].clips.allSatisfy { $0.created >= sounds.sessions[0].start && $0.created < sounds.sessions[0].end! })
         let (interrupted, _) = JournalScenario.interrupted.archive(words: words)
         XCTAssertEqual(interrupted.sessions[0].captureSpans?.count, 2)
     }

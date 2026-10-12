@@ -83,27 +83,55 @@ final class NativeFlowTests: XCTestCase {
     func testClipDetailPlaybackNavigationAndCorrection() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--english", "--design-fixture", "--clip-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); app.tabBars.buttons["Journal"].tap()
-        let clip = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'clip-detail-'")).firstMatch
-        for _ in 0..<4 { if clip.isHittable { break }; app.swipeUp() }
-        XCTAssertTrue(clip.waitForExistence(timeout: 5)); clip.tap()
-        XCTAssertTrue(app.navigationBars["Listen to clip"].waitForExistence(timeout: 5)); shot("16-en-clip-detail")
+        let cough = app.buttons["clip-category-cough"]
+        reveal(cough, in: app)
+        XCTAssertEqual(cough.value as? String, "16 saved clips")
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'clip-category-'")).count, 5)
+        shot("40-en-sound-categories"); cough.tap()
+        XCTAssertTrue(app.navigationBars["Cough"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["clip-position"].label, "1 / 16")
+        XCTAssertFalse(app.buttons["previous-clip"].isEnabled)
         app.buttons["Play"].firstMatch.tap(); XCTAssertTrue(app.buttons["Stop"].firstMatch.waitForExistence(timeout: 3))
-        app.buttons["Next"].tap(); XCTAssertTrue(app.staticTexts["2 / 2"].exists)
-        app.buttons["Previous"].tap(); XCTAssertTrue(app.staticTexts["1 / 2"].exists)
-        app.swipeUp(); shot("17-en-clip-intervals")
-        app.buttons["correct-clip-label"].tap(); app.buttons["clip-label-cough"].tap(); XCTAssertTrue(app.buttons["correct-clip-label"].label.contains("Cough"))
-        shot("18-en-clip-corrected")
+        app.buttons["next-clip"].tap(); XCTAssertEqual(app.staticTexts["clip-position"].label, "2 / 16")
+        XCTAssertTrue(app.buttons["Play"].firstMatch.exists)
+        XCTAssertFalse(app.buttons["Stop"].firstMatch.exists)
+        app.buttons["previous-clip"].tap(); shot("41-en-category-player")
+        reveal(app.buttons["correct-clip-label"], in: app)
+        app.buttons["correct-clip-label"].tap(); app.buttons["clip-label-snore"].tap()
+        // Correcting a label moves that recording out of this category and keeps
+        // its next neighbour open, instead of leaving an empty detail screen.
+        XCTAssertTrue(app.buttons["correct-clip-label"].label.contains("Cough"))
+        reveal(app.buttons["delete-clip"], in: app)
         app.buttons["delete-clip"].tap(); app.sheets.buttons["Delete"].tap()
-        XCTAssertTrue(app.textViews["journal-note"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'clip-detail-'")).count, 1)
+        for _ in 0..<5 { if app.buttons["previous-clip"].isHittable { break }; app.swipeDown() }
+        XCTAssertEqual(app.staticTexts["clip-position"].label, "1 / 14")
+        app.buttons["Done"].tap(); reveal(cough, in: app)
+        XCTAssertEqual(cough.value as? String, "14 saved clips")
+        XCTAssertEqual(app.buttons["clip-category-snore"].value as? String, "8 saved clips")
+        // Deleting a category's last clip returns to the diary and removes it.
+        let other = app.buttons["clip-category-other"]; reveal(other, in: app); other.tap()
+        XCTAssertTrue(app.navigationBars["Unlabelled"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["next-clip"].isEnabled)
+        reveal(app.buttons["delete-clip"], in: app)
+        app.buttons["delete-clip"].tap(); app.sheets.buttons["Delete"].tap()
+        XCTAssertTrue(cough.waitForExistence(timeout: 5))
+        XCTAssertFalse(other.exists)
     }
     func testSpanishClipDetail() {
-        let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--spanish", "--design-fixture", "--clip-fixture"]; app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--spanish", "--design-fixture", "--clip-fixture", "--night-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); app.tabBars.buttons["Diario"].tap()
-        let clip = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'clip-detail-'")).firstMatch
-        for _ in 0..<4 { if clip.isHittable { break }; app.swipeUp() }
-        clip.tap(); XCTAssertTrue(app.navigationBars["Escuchar fragmento"].waitForExistence(timeout: 5)); shot("19-es-clip-detail")
-        app.buttons["Siguiente"].tap(); XCTAssertTrue(app.staticTexts["2 / 2"].exists); app.buttons["Listo"].tap()
+        let cough = app.buttons["clip-category-cough"]; reveal(cough, in: app)
+        XCTAssertEqual(cough.value as? String, "16 fragmentos guardados"); shot("42-es-night-categories")
+        cough.tap(); XCTAssertTrue(app.navigationBars["Tos"].waitForExistence(timeout: 5))
+        app.buttons["next-clip"].tap(); XCTAssertEqual(app.staticTexts["clip-position"].label, "2 / 16"); shot("43-es-night-category-player")
+        for _ in 0..<14 { app.buttons["next-clip"].tap() }
+        XCTAssertEqual(app.staticTexts["clip-position"].label, "16 / 16")
+        XCTAssertFalse(app.buttons["next-clip"].isEnabled)
+        app.buttons["Listo"].tap()
+    }
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<8 { if element.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(element.isHittable)
     }
     override func setUpWithError() throws { continueAfterFailure = false }
     private func shot(_ name: String) {

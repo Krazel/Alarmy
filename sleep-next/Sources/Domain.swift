@@ -30,7 +30,18 @@ enum MorningFeeling: Int, Codable, CaseIterable, Identifiable {
     var id: Int { rawValue }
     var key: String { ["exhausted", "tired", "steady", "peaceful", "bright"][rawValue] }
 }
-enum SoundKind: String, Codable, CaseIterable { case snore, breath, voice, cough, other }
+enum SoundKind: String, Codable, CaseIterable {
+    case snore, breath, voice, cough, other
+    var symbol: String {
+        switch self {
+        case .snore: return "zzz"
+        case .breath: return "wind"
+        case .voice: return "bubble.left"
+        case .cough: return "waveform.path"
+        case .other: return "waveform"
+        }
+    }
+}
 struct SoundEvent: Codable, Equatable, Identifiable {
     let start: Double
     var duration: Double

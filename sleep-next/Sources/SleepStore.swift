@@ -68,7 +68,7 @@ final class SleepStore: ObservableObject {
             #if DEBUG
             if testMode && archive.revision == 0 {
                 archive.preferences.language = ProcessInfo.processInfo.arguments.contains("--spanish") ? "es" : "en"
-                archive.preferences.appearance = "dawn"
+                archive.preferences.appearance = ProcessInfo.processInfo.arguments.contains("--night-fixture") ? "night" : "dawn"
                 if ProcessInfo.processInfo.arguments.contains("--design-fixture") {
                     let end = Calendar.current.date(bySettingHour: 7, minute: 15, second: 0, of: Date())!
                     let begin = end.addingTimeInterval(-8*3600-5*60)
@@ -76,11 +76,12 @@ final class SleepStore: ObservableObject {
                     archive.pages[CalendarDay.key(Date())] = JournalPage(feeling: .peaceful, text: "Ejemplo de diseño: una mañana tranquila, luz en la ventana y un sueño junto al mar.")
                     if ProcessInfo.processInfo.arguments.contains("--clip-fixture"), let tone = ToneLibrary.url("aurora", imported: []) {
                         try FileManager.default.createDirectory(at: DiskLocation.clips, withIntermediateDirectories: true)
-                        for i in 0..<2 {
+                        let kinds = Array(repeating: SoundKind.cough, count: 16) + Array(repeating: .snore, count: 7) + Array(repeating: .breath, count: 4) + [.voice, .voice, .other]
+                        for (i, kind) in kinds.enumerated() {
                             let id = UUID(), filename = id.uuidString + ".wav"
                             try FileManager.default.copyItem(at: tone, to: DiskLocation.clips.appendingPathComponent(filename))
-                            var clip = NightClip(id: id, created: begin.addingTimeInterval(Double(i+1)*3600), filename: filename, duration: 24)
-                            clip.kind = i == 0 ? .snore : .cough; clip.suggestion = true; clip.analysisDone = true; clip.analysisVersion = SoundTagger.version
+                            var clip = NightClip(id: id, created: begin.addingTimeInterval(Double(i+1)*900), filename: filename, duration: 24)
+                            clip.kind = kind; clip.suggestion = true; clip.analysisDone = true; clip.analysisVersion = SoundTagger.version
                             clip.events = [SoundEvent(start: 2, duration: 1.5, kind: clip.kind, confidence: 0.9)]
                             archive.sessions[0].clips.append(clip)
                         }

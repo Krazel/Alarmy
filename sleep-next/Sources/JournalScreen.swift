@@ -43,7 +43,7 @@ struct JournalScreen: View {
             }
             .sheet(isPresented: $statistics) { StatisticsScreen() }
             .sheet(isPresented: $examples) { JournalExamples(language: store.archive.preferences.language, appearance: store.archive.preferences.appearance) }
-            .sheet(item: $openedClip) { ClipDetail(clipID: $0.id, audio: store.audio) }
+            .sheet(item: $openedClip) { ClipDetail(clipID: $0.id, category: $0.kind, day: store.selectedDay, audio: store.audio) }
             .task(id: CalendarDay.key(store.selectedDay)) { await store.analyzeClips(for: store.selectedDay) }
             .task(id: CalendarDay.key(store.selectedDay) + String(store.archive.preferences.health)) {
                 stages = []
@@ -155,8 +155,24 @@ struct JournalScreen: View {
                 HStack { Image(systemName: "waveform").foregroundStyle(Color.rust); Text(store.words("nightSounds")).font(.system(size: 21, design: .serif)); Spacer(); Text("\(clips.count)").font(.caption).foregroundStyle(Color.ink.opacity(0.5)) }
                 if clips.isEmpty { Text(store.words("noClips")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.55)) }
                 else {
-                    Text(store.words("clipHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.55))
-                    LazyVStack(spacing: 4) { ForEach(clips.sorted { $0.created < $1.created }) { clip in ClipRow(clip: clip) { openedClip = clip } } }
+                    Text(store.words("categoryHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.55))
+                    VStack(spacing: 4) {
+                        ForEach(SoundKind.allCases, id: \.self) { kind in
+                            let group = clips.filter { $0.kind == kind }.sorted { $0.created < $1.created }
+                            if let first = group.first {
+                                Button { openedClip = first } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: kind.symbol).font(.system(size: 18)).foregroundStyle(Color.rust).frame(width: 36, height: 36).background(Color.rust.opacity(0.08), in: Circle())
+                                        Text(store.words(kind.rawValue)).font(.subheadline)
+                                        Spacer()
+                                        Text("\(group.count)").font(.system(.subheadline, design: .rounded).weight(.semibold)).monospacedDigit().padding(.horizontal, 10).padding(.vertical, 5).background(Color.rust.opacity(0.08), in: Capsule())
+                                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(Color.ink.opacity(0.4))
+                                    }.foregroundStyle(Color.ink).padding(.vertical, 5).contentShape(Rectangle())
+                                }.buttonStyle(.plain).accessibilityIdentifier("clip-category-\(kind.rawValue)")
+                                    .accessibilityLabel(store.words(kind.rawValue)).accessibilityValue("\(group.count) " + store.words("savedClips"))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -170,32 +186,6 @@ struct JournalScreen: View {
                     if !store.archive.preferences.health && !store.journalPreview { Button(store.words("connectHealth")) { Task { do { try await HealthReader().authorize(); store.preferences { $0.health = true } } catch { store.error = error.localizedDescription } } }.font(.subheadline) }
                 } else { StageChart(stages: stages, words: store.words); Text(store.words("healthHint")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5)) }
             }
-        }
-    }
-}
-struct ClipRow: View {
-    @EnvironmentObject var store: SleepStore
-    let clip: NightClip
-    let open: () -> Void
-    @State private var deleting = false
-    var body: some View {
-        HStack(spacing: 12) {
-            ClipPlay(clip: clip, audio: store.audio)
-            Button(action: open) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(clip.created, style: .time).font(.caption)
-                    Text("\(Int(clip.duration.rounded())) s · " + store.words("clipDetail")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5))
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            }.accessibilityIdentifier("clip-detail-\(clip.id.uuidString)")
-            Spacer()
-            if store.analyzing.contains(clip.id) { ProgressView().scaleEffect(0.7) }
-            Menu {
-                ForEach(SoundKind.allCases, id: \.self) { kind in Button(store.words(kind.rawValue)) { store.label(clip, kind: kind) } }
-                Button(store.words("delete"), role: .destructive) { deleting = true }
-            } label: { HStack { Text(store.words(clip.kind.rawValue)); if clip.suggestion { Image(systemName: "sparkle") }; Image(systemName: "chevron.down") }.font(.caption) }
-        }.padding(.vertical, 6)
-        .confirmationDialog(store.words("deleteClip"), isPresented: $deleting, titleVisibility: .visible) {
-            Button(store.words("delete"), role: .destructive) { Task { await store.delete(clip) } }
         }
     }
 }

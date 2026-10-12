@@ -46,6 +46,14 @@ if [[ "${VALIDATION_SCOPE:-october}" == "analysis" ]]; then
     -only-testing:AlarmaNextUITests/NativeFlowTests/testEnglishExactNightAndAnalysisDiary
   )
 fi
+if [[ "${VALIDATION_SCOPE:-october}" == "categories" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/JournalDesignTests/testExamplesCoverFeelingsClipsAndGapsWithoutActiveAlarm
+    -only-testing:AlarmaNextTests/JournalPreviewIsolationTests
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testSpanishClipDetail
+  )
+fi
 xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext \
   -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath "$RUN_DIR/build" \
   -resultBundlePath "$RUN_DIR/Tests.xcresult" -parallel-testing-enabled NO \

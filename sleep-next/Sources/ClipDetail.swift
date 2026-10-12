@@ -5,9 +5,14 @@ struct ClipDetail: View {
     @Environment(\.dismiss) private var dismiss
     @State private var clipID: UUID
     @State private var deleting = false
+    @State private var lastIndex = 0
+    let category: SoundKind
+    let day: Date
     @ObservedObject var audio: NightAudio
-    init(clipID: UUID, audio: NightAudio) { _clipID = State(initialValue: clipID); self.audio = audio }
-    private var clips: [NightClip] { store.sessions(store.selectedDay).flatMap(\.clips).sorted { $0.created < $1.created } }
+    init(clipID: UUID, category: SoundKind, day: Date, audio: NightAudio) {
+        _clipID = State(initialValue: clipID); self.category = category; self.day = day; self.audio = audio
+    }
+    private var clips: [NightClip] { store.sessions(day).flatMap(\.clips).filter { $0.kind == category }.sorted { $0.created < $1.created } }
     private var clip: NightClip? { clips.first { $0.id == clipID } }
     private var index: Int { clips.firstIndex { $0.id == clipID } ?? 0 }
     private func clock(_ seconds: Double) -> String { let s = max(0, Int(seconds)); return String(format: "%02d:%02d", s/60, s%60) }
@@ -25,9 +30,9 @@ struct ClipDetail: View {
                                     .disabled(audio.playing != clip.id.uuidString).accessibilityLabel(store.words("playbackPosition"))
                                 HStack { Text(clock(audio.playing == clip.id.uuidString ? audio.playbackTime : 0)); Spacer(); Text(clock(clip.duration)) }.font(.caption).monospacedDigit()
                                 HStack {
-                                    Button { move(-1) } label: { Label(store.words("previousClip"), systemImage: "backward.end") }.disabled(index == 0)
-                                    Spacer(); Text("\(index+1) / \(clips.count)").font(.caption); Spacer()
-                                    Button { move(1) } label: { Label(store.words("nextClip"), systemImage: "forward.end") }.disabled(index+1 >= clips.count)
+                                    Button { move(-1) } label: { Label(store.words("previousClip"), systemImage: "backward.end") }.disabled(index == 0).accessibilityIdentifier("previous-clip")
+                                    Spacer(); Text("\(index+1) / \(clips.count)").font(.caption).monospacedDigit().accessibilityIdentifier("clip-position"); Spacer()
+                                    Button { move(1) } label: { Label(store.words("nextClip"), systemImage: "forward.end") }.disabled(index+1 >= clips.count).accessibilityIdentifier("next-clip")
                                 }.font(.caption)
                             }
                         }
@@ -61,23 +66,34 @@ struct ClipDetail: View {
                     }.padding(22)
                 }
             }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust)
-            .navigationTitle(store.words("clipDetail")).navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(store.words(category.rawValue)).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { dismiss() } } }
             .confirmationDialog(store.words("deleteClip"), isPresented: $deleting, titleVisibility: .visible) {
-                Button(store.words("delete"), role: .destructive) { if let clip { Task { if await store.delete(clip) { dismiss() } } } }
+                Button(store.words("delete"), role: .destructive) { if let clip { Task { _ = await store.delete(clip) } } }
             }
             .alert(store.words("error"), isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
                 if store.writeFailed { Button(store.words("retrySave")) { Task { await store.retrySaving() } } }
                 Button(store.words("done")) { store.error = nil }
             } message: { Text(store.error ?? "") }
-            .onAppear { store.clipPresented = true }
+            .onAppear { store.clipPresented = true; reconcile() }
+            .onChange(of: clips) { _ in reconcile() }
             .onDisappear { store.clipPresented = false; if audio.playing == clipID.uuidString { audio.stopPlayback() } }
         }
+    }
+    // Classification, deletion and retention can change the open group. Stay in
+    // the category, preserving the current clip or selecting its nearest neighbour.
+    private func reconcile() {
+        if let current = clips.firstIndex(where: { $0.id == clipID }) { lastIndex = current; return }
+        if !store.journalPreview { audio.stopPlayback() }
+        guard !clips.isEmpty else { dismiss(); return }
+        lastIndex = min(lastIndex, clips.count - 1)
+        clipID = clips[lastIndex].id
     }
     private func move(_ delta: Int) {
         let next = index + delta
         guard clips.indices.contains(next) else { return }
         if !store.journalPreview { audio.stopPlayback() }
         clipID = clips[next].id
+        lastIndex = next
     }
 }

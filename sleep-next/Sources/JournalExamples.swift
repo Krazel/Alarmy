@@ -30,8 +30,9 @@ enum JournalScenario: String, CaseIterable, Identifiable {
             value.pages[key] = JournalPage(feeling: .exhausted, text: words("exampleNoteShort"))
         case .sounds:
             let start = value.sessions[0].start
-            value.sessions[0].clips = SoundKind.allCases.enumerated().map { index, kind in
-                var clip = NightClip(id: UUID(), created: start.addingTimeInterval(Double(index+1)*3600), filename: "example-\(index).demo", duration: Double([18,24,12,8,16][index]))
+            let kinds = Array(repeating: SoundKind.cough, count: 16) + Array(repeating: .snore, count: 7) + Array(repeating: .breath, count: 4) + [.voice, .voice, .other]
+            value.sessions[0].clips = kinds.enumerated().map { index, kind in
+                var clip = NightClip(id: UUID(), created: start.addingTimeInterval(Double(index+1)*900), filename: "example-\(index).demo", duration: Double([18,24,12,8,16][index % 5]))
                 clip.kind = kind; clip.analysisDone = true; clip.suggestion = true
                 clip.analysisVersion = SoundTagger.version
                 clip.events = [SoundEvent(start: 2, duration: 4, kind: kind, confidence: 0.8)]
