@@ -17,7 +17,12 @@ El fondo conserva el NightBackground aprobado. La propuesta no es evidencia nati
 - Los tres botones inferiores se conservan. Estadísticas se abre desde Diario.
 - Horarios se calculan en círculo alrededor de medianoche; datos ausentes no son ceros.
 
-Validación de simulador/Xcode pendiente. Prueba nocturna física, consumo y despertar
+Validación enfocada correcta: **23 pruebas pasadas, 0 fallos y 0 omitidas**, más
+compilación Release iPhone. Fuente `b02b7d4bea6a4b3d449d11849d50f9e4dc961b84`.
+[Run nativo](https://github.com/Krazel/Alarmy/actions/runs/38315535656) ·
+[Recibo](validation.json). Simulador iPhone 17 Pro, iOS 26.4.1.
+
+Prueba nocturna física, consumo y despertar
 con pantalla bloqueada pendientes. No se ha subido esta candidata a TestFlight;
 la entrega interna vigente continúa siendo 1.2 (1).
 
@@ -29,3 +34,22 @@ la entrega interna vigente continúa siendo 1.2 (1).
 El botón principal de análisis controla el micrófono. Guardar grabaciones es una
 opción subordinada, deshabilitada al apagar el análisis. El consentimiento del
 micrófono se solicita al empezar la primera noche con análisis habilitado.
+
+## Capturas nativas revisadas
+
+- [30-es-analysis-mode](runtime/30-es-analysis-mode.png)
+- [31-es-analysis-night](runtime/31-es-analysis-night.png)
+- [32-es-statistics](runtime/32-es-statistics.png)
+- [33-es-smart-mode](runtime/33-es-smart-mode.png)
+- [34-es-smart-night](runtime/34-es-smart-night.png)
+- [35-en-exact-night](runtime/35-en-exact-night.png)
+- [36-en-diary](runtime/36-en-diary.png)
+- [37-en-night-analysis](runtime/37-en-night-analysis.png)
+
+El gesto parcial mantiene la sesión y el completo la termina, comprobado por UI.
+Los tests de UI desactivan el hardware: estas capturas no prueban la onda con
+micrófono real ni una alarma del sistema bloqueada. Las pruebas deterministas
+verifican la acumulación de épocas, huecos, intervalos sin duplicados, ventana y archivo antiguo.
+La primera ejecución falló por cierre de Xcode; se normalizó UTF-8 y se corrigió
+un sombreado de variable encontrado al compilar. Una ejecución intermedia fue
+cancelada al sustituirla por la candidata final. No se ocultan como pruebas pasadas.

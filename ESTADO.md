@@ -1,6 +1,6 @@
-# Estado de Alarma — 12-10-2026
+# Estado de Alarma — 13-10-2026
 
-## Candidata en preparación — noche y análisis 1.3 (1)
+## Candidata implementada y validada — noche y análisis 1.3 (1)
 
 Nuevo encargo del usuario: diseño de noche con ChatGPT Imágenes, onda real,
 terminar con gesto hacia arriba, tres modos de alarma y estadísticas completas.
@@ -12,7 +12,15 @@ Análisis acústico local en épocas de 30 s, cobertura y reposo estimado; fases
 solo de Salud, calidad percibida del usuario. No se infieren fases clínicas con
 el micrófono. Clasificación de clips temporal aunque no se conserven; resúmenes
 persisten después de borrar/caducar audio. Ventana acústica experimental con
-alarma de hora límite como respaldo. Validación nativa enfocada en curso.
+alarma de hora límite como respaldo. Validación nativa enfocada correcta:
+23 pruebas pasadas, 0 fallos/omitidas, Release iPhone y ocho capturas revisadas.
+Fuente `b02b7d4bea6a4b3d449d11849d50f9e4dc961b84`, run
+[38315535656](https://github.com/Krazel/Alarmy/actions/runs/38315535656).
+Simulador iPhone 17 Pro/iOS26.4.1; gesto parcial/completo y UI ES/EN verificados.
+No acredita micrófono físico, batería, Salud del dispositivo ni despertar bloqueado.
+
+Biblioteca PR-019 actualizada y releída por API, **revisión 14**; conserva versión
+1.2/build1, tracking e historial. Recibo junto al diseño.
 
 La distribución interna vigente sigue siendo **1.2 (1)**. Esta candidata no se
 ha enviado a TestFlight ni a App Review. Prueba nocturna física/batería pendiente.
