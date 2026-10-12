@@ -8,7 +8,9 @@ final class NativeFlowTests: XCTestCase {
         let mode = app.switches["developer-mode"]
         for _ in 0..<6 { if mode.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(mode.isHittable)
-        if mode.value as? String != "1" { mode.tap() }
+        // SwiftUI exposes this form row as one Switch; its centre is the label.
+        // Hit the actual native switch on the trailing side of the observed row.
+        if mode.value as? String != "1" { mode.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
         XCTAssertTrue(mode.waitForExistence(timeout: 5))
         XCTAssertEqual(mode.value as? String, "1")
         shot("24-es-developer-mode-enabled")
@@ -22,6 +24,7 @@ final class NativeFlowTests: XCTestCase {
         app.buttons["Listo"].firstMatch.tap()
         app.buttons["close-journal-examples"].tap()
         XCTAssertTrue(app.buttons["feeling-3"].waitForExistence(timeout: 5))
+        for _ in 0..<3 { if app.textViews["journal-note"].isHittable { break }; app.swipeUp() }
         XCTAssertTrue(app.textViews["journal-note"].value as? String == "Ejemplo de diseño: una mañana tranquila, luz en la ventana y un sueño junto al mar.")
         shot("23-es-journal-mood-week")
     }

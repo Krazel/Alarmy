@@ -77,6 +77,7 @@ struct ClipDetail: View {
     private func move(_ delta: Int) {
         let next = index + delta
         guard clips.indices.contains(next) else { return }
-        audio.stopPlayback(); clipID = clips[next].id
+        if !store.journalPreview { audio.stopPlayback() }
+        clipID = clips[next].id
     }
 }

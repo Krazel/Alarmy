@@ -135,7 +135,9 @@ struct JournalScreen: View {
                     if store.page(store.selectedDay).text.isEmpty { Text(store.words("notesHint")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.4)).padding(.top, 8).padding(.leading, 5).allowsHitTesting(false) }
                     TextEditor(text: Binding(get: { store.page(store.selectedDay).text }, set: { store.note($0, day: store.selectedDay) })).font(.system(size: 16)).lineSpacing(6).scrollContentBackground(.hidden).frame(minHeight: 120).focused($editingNote).accessibilityIdentifier("journal-note")
                 }
-                HStack { Rectangle().fill(Color.ink.opacity(0.1)).frame(height: 1); Text(store.words(store.writeFailed ? "savePending" : (store.saving ? "saving" : "saved"))).font(.system(size: 9)).foregroundStyle(Color.ink.opacity(0.4)) }
+                if !store.journalPreview {
+                    HStack { Rectangle().fill(Color.ink.opacity(0.1)).frame(height: 1); Text(store.words(store.writeFailed ? "savePending" : (store.saving ? "saving" : "saved"))).font(.system(size: 9)).foregroundStyle(Color.ink.opacity(0.4)) }
+                }
             }
         }
     }
