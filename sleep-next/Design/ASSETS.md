@@ -1,5 +1,17 @@
 # Recursos y diseño originales
 
+## Recuperación del fondo nocturno — 12/10/2026
+
+Por petición explícita del usuario se recupera la imagen nocturna aprobada del
+rebuild anterior: `native-ios/Resources/Assets.xcassets/NightBackground.imageset/night-background.png`.
+Copiada íntegra a `Resources/Assets.xcassets/NightBackground.imageset`;
+SHA-256 igual en ambos: `1343cbed98f6624d7afef12aa5bcab3be667cb82152ce3236bc5e5f82118c0c4`.
+Lago azul, luna llena y cielo estrellado; no se regenera ni se modifica el archivo.
+Sustituye el paisaje Canvas nocturno descrito en el historial de abajo.
+El fondo DawnArtwork de día y las cinco caras vectoriales se conservan.
+
+[Propuestas de todas las pantallas y diario](proposals-2026-10-12/README.md).
+
 ## Diario
 
 Papel cálido, tinta azul grisácea, acento terracota y tipografía de sistema con títulos serif. Calendario semanal con día activo oscuro; tarjeta de tiempo en cama; cinco caras vectoriales con un aro de selección; cuaderno para escribir; clips y fases de Salud debajo. El modo oscuro conserva la jerarquía y usa fondos azul noche.

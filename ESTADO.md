@@ -1,5 +1,22 @@
 # Estado de Alarma — 12-10-2026
 
+## Encargo posterior — UI y ejemplos del diario
+
+Propuestas con ChatGPT Imágenes de principal día/noche, editor, sonidos, noche
+activa, alarma sonando, diario, calendario, clips, ajustes y ejemplos, más opciones
+del diario. Conservada la barra inferior Alarma / Diario / Ajustes. Se recupera
+el fondo nocturno aprobado original (SHA idéntico); fondo de día conservado.
+Preparados seis escenarios en modo desarrollador, aislados en memoria; semana y
+calendario con caras de despertar y retención de 90 días por defecto, conservando
+elecciones previas. [Propuestas y uso](sleep-next/Design/proposals-2026-10-12/README.md).
+El usuario ha elegido **A · Cuaderno actual, con versión nocturna**; se conserva
+su distribución y tema oscuro adaptativo. Verificación nativa enfocada correcta:
+5 pruebas pasadas, 0 fallos/omitidas y Release iPhone, fuente `2edfbcd`.
+[Resultado y capturas](sleep-next/Design/proposals-2026-10-12/validation.json).
+Estos cambios aún no están en TestFlight: entrega vigente sigue en 1.1.1 (1).
+Biblioteca PR-019 actualizada y releída en revisión 12; elección A, galería,
+validación y próximo paso registrados, manteniendo versión y tracking.
+
 ## Encargo actual y correcciones locales
 
 **Actualización del encargo, 12/10:** el usuario solicita subir los cambios nuevos

@@ -1,0 +1,54 @@
+{
+  "nativeScreenshot": false,
+  "tool": "ChatGPT Images (built-in image_gen)",
+  "approvedNightBackgroundSha256": "1343cbed98f6624d7afef12aa5bcab3be667cb82152ce3236bc5e5f82118c0c4",
+  "assets": [
+    {
+      "status": "Proposal for human review",
+      "sha256": "fdedb1680de4f82fcf3911736a0a3579e546162f6589984816d19041a9f63de6",
+      "date": "2026-10-12",
+      "platform": "iPhone mockup",
+      "language": "es",
+      "file": "01-alarma-borrador.png"
+    },
+    {
+      "status": "Proposal for human review",
+      "sha256": "80b61150966aca767a36eb0c7aa9b2e9a24508d51bff326155d7a9620c51b2eb",
+      "date": "2026-10-12",
+      "platform": "iPhone mockup",
+      "language": "es",
+      "file": "01-alarma.png"
+    },
+    {
+      "status": "Proposal for human review",
+      "sha256": "9cf0ae0e298d23c17934f4f45ee5eab1d7a2b613dfb4066fcc369a692550fccd",
+      "date": "2026-10-12",
+      "platform": "iPhone mockup",
+      "language": "es",
+      "file": "02-diario-calendario.png"
+    },
+    {
+      "status": "Proposal for human review",
+      "sha256": "ec8b2d7747c4b2caf267ec4659e575d0f41643769d80e78202c4301405179dde",
+      "date": "2026-10-12",
+      "platform": "iPhone mockup",
+      "language": "es",
+      "file": "03-noche-ajustes-ejemplos.png"
+    },
+    {
+      "status": "Proposal for human review",
+      "sha256": "bab6360076ebf9a682497beef115ca53de795b21f8202cb15207afc2d499efad",
+      "date": "2026-10-12",
+      "platform": "iPhone mockup",
+      "language": "es",
+      "file": "04-opciones-diario.png"
+    }
+  ],
+  "humanDecision": {
+    "date": "2026-10-12",
+    "selected": "A · Cuaderno actual, con versión nocturna",
+    "evidence": "Respuesta humana en esta tarea",
+    "scope": "Distribución del cuaderno actual y colores adaptativos claro/oscuro",
+    "nativeScreenshot": false
+  }
+}

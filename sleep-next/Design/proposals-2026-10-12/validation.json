@@ -1,0 +1,45 @@
+{
+  "checkedAt": "2026-10-12T20:46:37.2353366Z",
+  "source": "2edfbcd52eaf6de315071e5903310a4a18838969",
+  "runId": 38305125429,
+  "url": "https://github.com/Krazel/Alarmy/actions/runs/38305125429",
+  "conclusion": "success",
+  "passedTests": 5,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "releaseIPhone": "BUILD SUCCEEDED; unsigned compilation only",
+  "screenshots": [
+    {
+      "file": "runtime/23-es-journal-mood-week.png",
+      "nativeScreenshot": true,
+      "sha256": "237945ef738148f7adbd3ef18e54f58b68599eb3e064a717a8e4f87921c86d4b",
+      "originalAttachmentName": "23-es-journal-mood-week_0_CFFFF9C9-FB5A-42D1-85C8-7FC3CF85528D.png",
+      "device": "iPhone 17 Pro"
+    },
+    {
+      "file": "runtime/22-es-mood-calendar.png",
+      "nativeScreenshot": true,
+      "sha256": "98236f810a166a348a774e581dd55209df7cf1af014871c6dd0f1ebcb454d487",
+      "originalAttachmentName": "22-es-mood-calendar_0_5FD2E382-667F-4E03-B008-F0127D265487.png",
+      "device": "iPhone 17 Pro"
+    },
+    {
+      "file": "runtime/21-es-journal-examples.png",
+      "nativeScreenshot": true,
+      "sha256": "133a013edd6e10081dfdc0f5c9858f987e42ecad035e0683c0b65b2ec0d43591",
+      "originalAttachmentName": "21-es-journal-examples_0_89C55D0B-5898-4342-8F34-413ADC530EF0.png",
+      "device": "iPhone 17 Pro"
+    },
+    {
+      "file": "runtime/24-es-developer-mode-enabled.png",
+      "nativeScreenshot": true,
+      "sha256": "27ffeb1d059363b79cede496df3fb4c6c25830289c643534479893a8c98b604c",
+      "originalAttachmentName": "24-es-developer-mode-enabled_0_1500E238-DE68-47F9-BBDD-A15F7DE204CC.png",
+      "device": "iPhone 17 Pro"
+    }
+  ],
+  "testflightUploaded": false,
+  "device": "iPhone 17 Pro Simulator, iOS 26.4.1",
+  "physicalNight": "Pending",
+  "olderIOSExecution": "Pending iOS 16–25"
+}
