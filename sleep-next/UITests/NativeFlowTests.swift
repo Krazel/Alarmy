@@ -1,6 +1,27 @@
 import XCTest
 
 final class NativeFlowTests: XCTestCase {
+    func testJournalExamplesAndMoodCalendar() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--spanish", "--design-fixture"]; app.launch()
+        XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["Ajustes"].tap()
+        let mode = app.switches["developer-mode"]
+        for _ in 0..<6 { if mode.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(mode.isHittable)
+        if mode.value as? String != "1" { mode.tap() }
+        app.tabBars.buttons["Diario"].tap()
+        let examples = app.buttons["journal-examples"]
+        XCTAssertTrue(examples.waitForExistence(timeout: 5)); examples.tap()
+        XCTAssertTrue(app.buttons["example-scenario"].waitForExistence(timeout: 5)); shot("21-es-journal-examples")
+        app.buttons["calendar"].tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'calendar-day-'")).firstMatch.waitForExistence(timeout: 5))
+        shot("22-es-mood-calendar")
+        app.buttons["Listo"].firstMatch.tap()
+        app.buttons["close-journal-examples"].tap()
+        XCTAssertTrue(app.buttons["feeling-3"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textViews["journal-note"].value as? String == "Ejemplo de diseño: una mañana tranquila, luz en la ventana y un sueño junto al mar.")
+        shot("23-es-journal-mood-week")
+    }
     func testCompactNightControls() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--spanish"]; app.launch()
         let start = app.buttons["begin-night"]

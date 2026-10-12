@@ -1,6 +1,12 @@
 name: Alarma native correction validation
 on:
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Focused verification scope
+        type: choice
+        options: [october, design]
+        default: october
 permissions:
   contents: read
 concurrency:
@@ -15,17 +21,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Generate and validate the correction candidate
+        env:
+          VALIDATION_SCOPE: ${{ inputs.scope }}
         run: |
           brew install xcodegen
           bash sleep-next/scripts/validate-october.sh
       - name: Record actual native test summary
+        env:
+          VALIDATION_SCOPE: ${{ inputs.scope }}
         run: |
           RESULT=$(find sleep-next/Evidence/october-2026 -maxdepth 3 -type d -name Tests.xcresult -print -quit)
           xcrun xcresulttool get test-results summary --path "$RESULT" > native-test-summary.json
           python3 - <<'PY'
-          import json
+          import json,os
           r=json.load(open('native-test-summary.json'))
-          assert r['failedTests']==0 and r['passedTests']>=15, r
+          minimum=5 if os.environ.get('VALIDATION_SCOPE')=='design' else 15
+          assert r['failedTests']==0 and r['passedTests']>=minimum, r
           print('Passed native tests:',r['passedTests'])
           PY
       - uses: actions/upload-artifact@v4

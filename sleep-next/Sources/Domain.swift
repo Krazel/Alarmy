@@ -86,7 +86,7 @@ struct Preferences: Codable, Equatable {
     var appearance = "auto"
     var record = false
     var sensitivity: Double?
-    var keepDays = 30
+    var keepDays = 90
     var openJournal = true
     var health = false
 }
@@ -122,6 +122,17 @@ enum CalendarDay {
         let start = calendar.startOfDay(for: day)
         let offset = (calendar.component(.weekday, from: start) + 5) % 7
         return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0-offset, to: start) }
+    }
+    static func month(around day: Date, calendar: Calendar = .current) -> [Date?] {
+        guard let start = calendar.dateInterval(of: .month, for: day)?.start,
+              let days = calendar.range(of: .day, in: .month, for: day) else { return [] }
+        let offset = (calendar.component(.weekday, from: start) + 5) % 7
+        let count = ((offset + days.count + 6) / 7) * 7
+        return (0..<count).map { index in
+            let dayIndex = index - offset
+            guard (0..<days.count).contains(dayIndex) else { return nil }
+            return calendar.date(byAdding: .day, value: dayIndex, to: start)
+        }
     }
 }
 enum DiskLocation {

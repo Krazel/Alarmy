@@ -22,15 +22,25 @@ xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext -sdk iphonesimulator
   -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUN_DIR/build" \
   CODE_SIGNING_ALLOWED=NO ARCHS="$(uname -m)" build-for-testing 2>&1 | tee "$RUN_DIR/compile.log"
 wait "$BOOT_PID"
+FILTERS=(
+  -only-testing:AlarmaNextTests/OctoberRecoveryTests
+  -only-testing:AlarmaNextTests/OctoberStoreRecoveryTests
+  -only-testing:AlarmaNextTests/CaptureIntegrationTests
+  -only-testing:AlarmaNextTests/AcousticCaptureTests
+  -only-testing:AlarmaNextTests/RepositoryTests
+  -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection
+)
+if [[ "${VALIDATION_SCOPE:-october}" == "design" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/JournalDesignTests
+    -only-testing:AlarmaNextTests/JournalPreviewIsolationTests
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testJournalExamplesAndMoodCalendar
+  )
+fi
 xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext \
   -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath "$RUN_DIR/build" \
   -resultBundlePath "$RUN_DIR/Tests.xcresult" -parallel-testing-enabled NO \
-  -only-testing:AlarmaNextTests/OctoberRecoveryTests \
-  -only-testing:AlarmaNextTests/OctoberStoreRecoveryTests \
-  -only-testing:AlarmaNextTests/CaptureIntegrationTests \
-  -only-testing:AlarmaNextTests/AcousticCaptureTests \
-  -only-testing:AlarmaNextTests/RepositoryTests \
-  -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection \
+  "${FILTERS[@]}" \
   CODE_SIGNING_ALLOWED=NO test-without-building 2>&1 | tee "$RUN_DIR/test.log"
 xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath "$RUN_DIR/device" \

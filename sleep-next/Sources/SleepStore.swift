@@ -18,6 +18,8 @@ final class SleepStore: ObservableObject {
     @Published var clipPresented = false
     let audio = NightAudio()
     let repository: ArchiveRepository
+    // Design examples use a separate store. They never load, persist or touch audio files.
+    let journalPreview: Bool
     private let scheduler = WakeScheduler()
     var writeTail: Task<Bool, Never>?
     private var timer: Timer?
@@ -35,7 +37,8 @@ final class SleepStore: ObservableObject {
         return false
         #endif
     }
-    init(repository: ArchiveRepository? = nil) {
+    init(repository: ArchiveRepository? = nil, journalPreview: Bool = false) {
+        self.journalPreview = journalPreview
         if let repository { self.repository = repository; return }
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--reset-test") {
@@ -51,6 +54,7 @@ final class SleepStore: ObservableObject {
     }
     func load() async {
         guard !loaded else { return }
+        guard !journalPreview else { loaded = true; return }
         do {
             archive = try await repository.load()
             do { archive = try await repository.prune() } catch {
@@ -105,6 +109,7 @@ final class SleepStore: ObservableObject {
     }
     @discardableResult
     func commit(_ change: @escaping @Sendable (inout AppArchive) -> Void) -> Task<Bool, Never> {
+        if journalPreview { change(&archive); return Task { true } }
         guard !failed else { return Task { false } }
         change(&archive); writesPending += 1; saving = true
         let snapshot = archive
@@ -149,6 +154,7 @@ final class SleepStore: ObservableObject {
     func feeling(_ feeling: MorningFeeling, day: Date) { let key = CalendarDay.key(day); commit { $0.pages[key, default: JournalPage()].feeling = feeling } }
     func sessions(_ day: Date) -> [SleepSession] { archive.sessions.filter { Calendar.current.isDate($0.end ?? $0.start, inSameDayAs: day) } }
     func start() async {
+        guard !journalPreview else { return }
         guard !busy, archive.active == nil, !failed else { return }; busy = true; defer { busy = false }
         do {
             if archive.preferences.record && !testMode {
@@ -274,6 +280,7 @@ final class SleepStore: ObservableObject {
         }
     }
     func analyzeClips(for day: Date) async {
+        guard !journalPreview else { return }
         let pending = sessions(day).flatMap(\.clips).filter {
             $0.analysisFailed != true && (!$0.analysisDone || ($0.suggestion && $0.analysisVersion != SoundTagger.version))
         }
@@ -283,6 +290,7 @@ final class SleepStore: ObservableObject {
         }
     }
     func analyze(_ clip: NightClip) async {
+        guard !journalPreview else { return }
         guard !analyzing.contains(clip.id), let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) else { return }
         analyzing.insert(clip.id); defer { analyzing.remove(clip.id) }
         let result = await SoundTagger.suggest(url: url)
@@ -305,6 +313,10 @@ final class SleepStore: ObservableObject {
     }
     @discardableResult
     func delete(_ clip: NightClip) async -> Bool {
+        if journalPreview {
+            for index in archive.sessions.indices { archive.sessions[index].clips.removeAll { $0.id == clip.id } }
+            return true
+        }
         audio.stopPlayback()
         guard archive.sessions.contains(where: { $0.clips.contains(where: { $0.id == clip.id }) }) else { return false }
         guard await commit({ $0.queueClipDeletion([clip.filename]) }).value else { return false }
@@ -325,11 +337,13 @@ final class SleepStore: ObservableObject {
         if let error = result.error { self.error = error.localizedDescription }
     }
     func flush() async {
+        guard !journalPreview else { return }
         let token = UIApplication.shared.beginBackgroundTask(withName: "Save journal")
         if let writeTail { _ = await writeTail.value }
         if token != .invalid { UIApplication.shared.endBackgroundTask(token) }
     }
     func prune() async {
+        guard !journalPreview else { return }
         if archive.preferences.keepDays > 0 {
             let cutoff = Date().addingTimeInterval(-Double(archive.preferences.keepDays)*86400)
             let expired = (archive.sessions.flatMap(\.clips) + (archive.active?.clips ?? [])).filter { $0.created < cutoff }

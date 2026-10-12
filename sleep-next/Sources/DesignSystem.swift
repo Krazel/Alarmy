@@ -49,24 +49,9 @@ struct FeelingFace: View {
 struct NightLandscape: View {
     var body: some View {
         GeometryReader { geo in
-            ZStack {
-                LinearGradient(colors: [Color(red: 0.07, green: 0.12, blue: 0.19), Color(red: 0.22, green: 0.29, blue: 0.36)], startPoint: .top, endPoint: .bottom)
-                Canvas { ctx, s in
-                    for i in 0..<48 {
-                        let x = CGFloat((i*79+31)%997)/997*s.width, y = CGFloat((i*113+23)%691)/1000*s.height
-                        let r: CGFloat = i%7 == 0 ? 1.6 : 0.8
-                        ctx.fill(Path(ellipseIn: CGRect(x: x, y: y, width: r*2, height: r*2)), with: .color(.white.opacity(i%3 == 0 ? 0.65 : 0.28)))
-                    }
-                    ctx.fill(Path(ellipseIn: CGRect(x: s.width*0.73, y: s.height*0.12, width: 42, height: 42)), with: .color(Color(red: 0.95, green: 0.88, blue: 0.70)))
-                    for layer in 0..<3 {
-                        let base = 0.76 + Double(layer)*0.085
-                        var p = Path(); p.move(to: CGPoint(x: 0, y: s.height))
-                        for i in 0...12 { let x = CGFloat(i)/12*s.width; let peak = Double((i*7+layer*3)%9)/65; p.addLine(to: CGPoint(x: x, y: s.height*(base-peak))) }
-                        p.addLine(to: CGPoint(x: s.width, y: s.height)); p.closeSubpath()
-                        ctx.fill(p, with: .color(Color(red: 0.10-Double(layer)*0.02, green: 0.19-Double(layer)*0.035, blue: 0.24-Double(layer)*0.04)))
-                    }
-                }
-            }.frame(width: geo.size.width, height: geo.size.height)
+            Image("NightBackground").resizable().scaledToFill()
+                .frame(width: geo.size.width, height: geo.size.height).clipped()
+                .overlay(Color.black.opacity(0.12))
         }.ignoresSafeArea().accessibilityHidden(true)
     }
 }

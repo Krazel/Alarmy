@@ -16,6 +16,7 @@ struct ClipDetail: View {
             ScrollView {
                 if let clip {
                     VStack(alignment: .leading, spacing: 24) {
+                        if store.journalPreview { Text(store.words("exampleAudio")).font(.caption).foregroundStyle(Color.rust) }
                         Text(clip.created.formatted(.dateTime.day().month(.wide).hour().minute().locale(store.words.locale))).font(.system(size: 25, design: .serif))
                         PaperCard {
                             VStack(spacing: 20) {
@@ -45,9 +46,9 @@ struct ClipDetail: View {
                                     } catch { store.error = error.localizedDescription }
                                 } label: {
                                     HStack { Image(systemName: "play.circle"); Text(store.words(event.kind.rawValue)); Spacer(); Text(clock(event.start) + " – " + clock(event.start+event.duration)).monospacedDigit() }.font(.subheadline).padding(14).background(Color.card, in: RoundedRectangle(cornerRadius: 14))
-                                }
+                                }.disabled(store.journalPreview)
                             }
-                            Button(store.words("reanalyze")) { Task { await store.analyze(clip) } }.disabled(store.analyzing.contains(clip.id)).accessibilityIdentifier("reanalyze-clip")
+                            Button(store.words("reanalyze")) { Task { await store.analyze(clip) } }.disabled(store.journalPreview || store.analyzing.contains(clip.id)).accessibilityIdentifier("reanalyze-clip")
                         }
                         PaperCard {
                             VStack(alignment: .leading, spacing: 14) {

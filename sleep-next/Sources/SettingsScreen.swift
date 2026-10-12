@@ -38,6 +38,8 @@ struct ToneRow: View {
 }
 struct SettingsScreen: View {
     @EnvironmentObject var store: SleepStore
+    @AppStorage("journalDeveloperMode") private var developerMode = false
+    @State private var examples = false
     var body: some View {
         NavigationStack {
             Form {
@@ -68,7 +70,14 @@ struct SettingsScreen: View {
                     Label(store.words("local"), systemImage: "lock.shield")
                     Text(store.words("localHint")).font(.caption).foregroundStyle(.secondary)
                 } footer: { Text(store.words("about") + " · " + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")) }
+                Section {
+                    Toggle(store.words("developerMode"), isOn: $developerMode).accessibilityIdentifier("developer-mode")
+                    if developerMode {
+                        Button { examples = true } label: { Label(store.words("journalExamples"), systemImage: "flask") }
+                    }
+                } header: { Text(store.words("designExamples")) } footer: { Text(store.words("exampleOnly")) }
             }.scrollContentBackground(.hidden).background(Color.paper).navigationTitle(store.words("settings")).toolbarBackground(.visible, for: .tabBar)
+                .sheet(isPresented: $examples) { JournalExamples(language: store.archive.preferences.language, appearance: store.archive.preferences.appearance) }
         }
     }
 }

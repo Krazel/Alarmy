@@ -4,6 +4,8 @@ struct JournalScreen: View {
     @EnvironmentObject var store: SleepStore
     @State private var calendar = false
     @State private var openedClip: NightClip?
+    @State private var examples = false
+    @AppStorage("journalDeveloperMode") private var developerMode = false
     @FocusState private var editingNote: Bool
     @State private var stages: [SleepStage] = []
     private var nights: [SleepSession] { store.sessions(store.selectedDay) }
@@ -14,13 +16,18 @@ struct JournalScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     header
+                    if store.journalPreview {
+                        Label(store.words("exampleOnly"), systemImage: "flask").font(.caption).foregroundStyle(Color.rust)
+                    } else if developerMode {
+                        Button { examples = true } label: { Label(store.words("journalExamples"), systemImage: "flask") }.font(.subheadline).accessibilityIdentifier("journal-examples")
+                    }
                     week
                     summary
                     feeling
                     notes
                     soundCard
                     healthCard
-                    HStack { Spacer(); Image(systemName: "lock"); Text(store.words(store.writeFailed ? "savePending" : (store.saving ? "saving" : "saved"))); Spacer() }.font(.caption2).foregroundStyle(Color.ink.opacity(0.5)).padding(.bottom, 18)
+                    HStack { Spacer(); Image(systemName: store.journalPreview ? "flask" : "lock"); Text(store.words(store.journalPreview ? "exampleOnly" : (store.writeFailed ? "savePending" : (store.saving ? "saving" : "saved")))); Spacer() }.font(.caption2).foregroundStyle(Color.ink.opacity(0.5)).padding(.bottom, 18)
                 }.padding(.horizontal, 22).padding(.top, 18)
             }.scrollIndicators(.hidden).background(Color.paper)
             .overlay(alignment: .top) {
@@ -31,17 +38,14 @@ struct JournalScreen: View {
             .toolbar(.hidden, for: .navigationBar).toolbarBackground(.visible, for: .tabBar)
             .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(store.words("done")) { editingNote = false } } }
             .sheet(isPresented: $calendar) {
-                NavigationStack {
-                    DatePicker(store.words("calendar"), selection: $store.selectedDay, in: ...Date(), displayedComponents: .date).datePickerStyle(.graphical).padding().background(Color.paper)
-                        .navigationTitle(store.words("calendar")).navigationBarTitleDisplayMode(.inline)
-                        .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { calendar = false } } }
-                }.presentationDetents([.medium, .large])
+                JournalCalendar(month: store.selectedDay).presentationDetents([.large])
             }
+            .sheet(isPresented: $examples) { JournalExamples(language: store.archive.preferences.language, appearance: store.archive.preferences.appearance) }
             .sheet(item: $openedClip) { ClipDetail(clipID: $0.id, audio: store.audio) }
             .task(id: CalendarDay.key(store.selectedDay)) { await store.analyzeClips(for: store.selectedDay) }
             .task(id: CalendarDay.key(store.selectedDay) + String(store.archive.preferences.health)) {
                 stages = []
-                if store.archive.preferences.health {
+                if store.archive.preferences.health && !store.journalPreview {
                     do { let values = try await HealthReader().stages(for: store.selectedDay); if !Task.isCancelled { stages = values } } catch { store.error = error.localizedDescription }
                 }
             }
@@ -73,9 +77,9 @@ struct JournalScreen: View {
                         VStack(spacing: 10) {
                             Text(day.formatted(.dateTime.weekday(.narrow).locale(store.words.locale))).font(.system(size: 10, weight: .medium))
                             Text(day.formatted(.dateTime.day())).font(.system(size: 17, weight: selected ? .semibold : .regular, design: .rounded))
-                            Circle().fill(store.sessions(day).isEmpty && store.page(day).text.isEmpty && store.page(day).feeling == nil ? .clear : (selected ? Color.paper : Color.rust)).frame(width: 4, height: 4)
+                            DayFeeling(feeling: store.page(day).feeling).frame(width: 24, height: 24)
                         }.frame(maxWidth: .infinity).padding(.vertical, 13).foregroundStyle(selected ? Color.paper : Color.ink.opacity(day > Date() ? 0.25 : 0.7)).background(selected ? Color.ink : Color.clear, in: Capsule())
-                    }.disabled(Calendar.current.startOfDay(for: day) > Calendar.current.startOfDay(for: Date())).accessibilityLabel(day.formatted(date: .complete, time: .omitted))
+                    }.disabled(Calendar.current.startOfDay(for: day) > Calendar.current.startOfDay(for: Date())).accessibilityLabel(day.formatted(date: .complete, time: .omitted) + ", " + store.words(store.page(day).feeling?.key ?? "unrated")).accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
         }.padding(.vertical, 4)
@@ -154,7 +158,7 @@ struct JournalScreen: View {
                 Label(store.words("health"), systemImage: "heart").font(.system(size: 21, design: .serif))
                 if stages.isEmpty {
                     Text(store.words(store.archive.preferences.health ? "healthEmpty" : "healthHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
-                    if !store.archive.preferences.health { Button(store.words("connectHealth")) { Task { do { try await HealthReader().authorize(); store.preferences { $0.health = true } } catch { store.error = error.localizedDescription } } }.font(.subheadline) }
+                    if !store.archive.preferences.health && !store.journalPreview { Button(store.words("connectHealth")) { Task { do { try await HealthReader().authorize(); store.preferences { $0.health = true } } catch { store.error = error.localizedDescription } } }.font(.subheadline) }
                 } else { StageChart(stages: stages, words: store.words); Text(store.words("healthHint")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5)) }
             }
         }
@@ -194,7 +198,7 @@ struct ClipPlay: View {
         Button {
             if audio.playing == clip.id.uuidString { audio.stopPlayback() }
             else if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) { do { try audio.play(url: url, id: clip.id.uuidString) } catch { store.error = error.localizedDescription } }
-        } label: { Image(systemName: audio.playing == clip.id.uuidString ? "stop.fill" : "play.fill").font(.caption).frame(width: 38, height: 38).background(Color.rust.opacity(0.09), in: Circle()) }.accessibilityLabel(store.words(audio.playing == clip.id.uuidString ? "stop" : "play"))
+        } label: { Image(systemName: audio.playing == clip.id.uuidString ? "stop.fill" : "play.fill").font(.caption).frame(width: 38, height: 38).background(Color.rust.opacity(0.09), in: Circle()) }.disabled(store.journalPreview).accessibilityLabel(store.words(store.journalPreview ? "exampleAudio" : (audio.playing == clip.id.uuidString ? "stop" : "play")))
     }
 }
 struct StageChart: View {
