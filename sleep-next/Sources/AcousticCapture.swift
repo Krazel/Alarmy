@@ -129,8 +129,8 @@ final class ClipSpool {
     private func finalize(_ value: OpenClip) throws -> ClipReceipt? {
         let raw = url(value.id, ".pcm")
         guard FileManager.default.fileExists(atPath: raw.path) else {
-            if FileManager.default.fileExists(atPath: url(value.id, ".receipt.json").path) { try FileManager.default.removeItem(at: url(value.id, ".open.json")) }
-            return nil
+            guard FileManager.default.fileExists(atPath: url(value.id, ".receipt.json").path) else { throw CocoaError(.fileReadNoSuchFile) }
+            try FileManager.default.removeItem(at: url(value.id, ".open.json")); return nil
         }
         var pcm = try Data(contentsOf: raw); if pcm.count % 2 != 0 { pcm.removeLast() }
         if pcm.isEmpty { try FileManager.default.removeItem(at: raw); try FileManager.default.removeItem(at: url(value.id, ".open.json")); return nil }

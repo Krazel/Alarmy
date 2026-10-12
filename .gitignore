@@ -13,5 +13,8 @@ dist/
 *.log
 *.ipa
 *.xcarchive
+*.xcresult/
+/sleep-next/Evidence/october-2026/native-*/build/
+/sleep-next/Evidence/october-2026/native-*/device/
 artifact/
 .DS_Store

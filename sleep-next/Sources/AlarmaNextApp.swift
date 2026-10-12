@@ -63,7 +63,7 @@ struct RootScreen: View {
             }
         }.tint(.rust).foregroundStyle(Color.ink)
         .alert(store.words("error"), isPresented: Binding(get: { store.error != nil && store.archive.active == nil && !store.clipPresented }, set: { if !$0 && store.archive.active == nil && !store.clipPresented { store.error = nil } })) {
-            if store.writeFailed { Button(store.words("retrySave")) { Task { _ = await store.commit { _ in }.value } } }
+            if store.writeFailed { Button(store.words("retrySave")) { Task { await store.retrySaving() } } }
             Button(store.words("done")) { store.error = nil }
         } message: { Text(store.error ?? "") }
         .fullScreenCover(isPresented: Binding(get: { store.archive.active != nil }, set: { _ in })) { NightScreen().environmentObject(store).environment(\.locale, store.words.locale) }
@@ -161,7 +161,7 @@ struct NightScreen: View {
             Button(store.words("cancel"), role: .cancel) { }
         } message: { Text(store.words("endHint")) }
         .alert(store.words("error"), isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
-            if store.writeFailed { Button(store.words("retrySave")) { Task { _ = await store.commit { _ in }.value } } }
+            if store.writeFailed { Button(store.words("retrySave")) { Task { await store.retrySaving() } } }
             Button(store.words("done")) { store.error = nil }
         } message: { Text(store.error ?? "") }
     }

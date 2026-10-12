@@ -30,6 +30,13 @@ Seleccionar el equipo de desarrollo para instalar en un iPhone. Identificador in
 
 `Domain.swift` contiene los datos serializables. `ArchiveRepository` es el único escritor del archivo JSON: valida el esquema y publica cada cambio después de escribir atómicamente. `SleepStore` coordina transacciones ordenadas, alarma y sesión; conserva el estado ante un relanzamiento. Los servicios de alarmas, audio y Salud están separados de SwiftUI.
 
+Las correcciones locales de octubre incorporan una cola de borrado persistente:
+se guarda la intención, se eliminan WAV y auxiliares y se confirma la retirada
+del índice. Recuperación, borrado e inicio de captura ordenan el acceso a archivos.
+Posponer espera al cierre de captura y solo recupera el micrófono que detuvo la
+alarma; conserva pausas voluntarias. Detener desde AlarmKit se reconoce después
+de guardar la noche. [Entrega y verificaciones pendientes](Evidence/october-2026/README.md).
+
 Las notas y el ánimo pertenecen a un día civil. Las noches se agrupan por la fecha de finalización. El tiempo en cama mide el intervalo de la sesión iniciada por la persona; no equivale a tiempo dormido. Los clips se activan por cambios sobre el nivel de fondo y reciben sugerencias locales de SoundAnalysis al abrir el diario. El modelo debe puntuar al menos 0,65 para sugerir una categoría: esa puntuación no es un porcentaje de exactitud. Los intervalos son aproximados y corregibles; el fallo de análisis es visible y permite reintentar. No existe clasificación médica automática.
 
 ## Recursos nuevos
@@ -44,4 +51,11 @@ Antes de una distribución final se necesita una prueba nocturna en iPhones fís
 
 La candidata **1.1 (1)** añade revisión por intervalos y completa la estabilización de captura y flujos. [Corpus real, procedencia y método](Tests/Corpus/README.md). Se conserva la línea heredada 1.x; «candidata» no implica aprobación para publicación. El estado de compilación y el paquete concreto se registran en [ESTADO.md](../ESTADO.md).
 
-La firma local está separada de la validación y exige árboles idénticos del proyecto y del flujo de pruebas. Usa un perfil ad hoc propio para dispositivos registrados, secretos restringidos a la rama autorizada y un IPA cifrado en el artefacto de CI. No hay pasos de TestFlight ni App Store. La [corrección 1.0.1](Evidence/recording-2026-09-21/README.md) se conserva como historial.
+La entrega **1.1 (1)** fue aceptada por Apple el 02/10/2026 y está en TestFlight
+interno para el titular; el flujo separado está en
+`.github/workflows/sleep-next-testflight.yml`. No hay entrega externa ni publicación
+en App Store. Los cambios de octubre son un borrador local pendiente de Xcode y
+prueba física; no están incluidos en esa build. La validación GitHub actual es
+manual y exige repositorio privado y cuota/runners comprobados antes de habilitar
+`IOS_CI_APPROVED`. No se ha disparado CI ni repetido la subida. La firma ad hoc y
+la [corrección 1.0.1](Evidence/recording-2026-09-21/README.md) quedan como historial.

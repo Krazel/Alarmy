@@ -1,4 +1,44 @@
-# Estado de Alarma — 02-10-2026
+# Estado de Alarma — 12-10-2026
+
+## Encargo actual y correcciones locales
+
+Propietario PR-019: `01a0708e-0558-78b1-866c-801b9cf35996`. Continúa el cierre
+de octubre según `../.studio/coordination/cierre-octubre-20261012.md`; no repetir
+TestFlight ni enviar App Review automáticamente. SwiftUI iPhone iOS 16+, ES/EN,
+audio local y diseños aprobados conservados.
+
+Correcciones posteriores a `7fc068e`: borrado/retención con intención persistente
+y eliminación de auxiliares de recuperación; recuperación y acceso a archivos
+ordenados; posponer espera al cierre de captura y respeta la pausa manual;
+interrupciones ordenadas; recibo de detener alarma reconocido después de guardar
+la noche; sesión de reproducción liberada al terminar/fallar. Se preparan
+15 regresiones XCTest; **no compiladas ni ejecutadas con Xcode todavía**.
+
+[Entrega revisable y límites](sleep-next/Evidence/october-2026/README.md) ·
+[Prueba nocturna/batería y formulario](sleep-next/Evidence/october-2026/PHYSICAL-NIGHT.md).
+Comprobación estática correcta: 140 textos ES/EN, 13 recursos conservados,
+iPhone/iOS 16 y CI sin trigger de push. No acredita funcionamiento nativo.
+
+La entrega interna **1.1 (1)** del 02/10 permanece como último binario entregado.
+Los metadatos del borrador siguen en 1.1 (1); no usarlo para otra subida con esa
+combinación. Antes de una nueva candidata, agrupar estas correcciones en la
+decisión de versión (prevista 1.1.1, build 1) y comprobar App Store Connect.
+
+Bloqueos: Windows sin Swift/Xcode; terminal sin conexión con GitHub. Conector
+confirma repositorio público el 12/10; conciliar privacidad y comprobar cuota,
+runners y acceso de CI sin gastos antes de subir estos cambios. Validación
+GitHub manual y condicionada a privado/`IOS_CI_APPROVED`; no se habilita ni ejecuta.
+
+Biblioteca PR-019 leída en **revisión 10**, `2026-10-12T12:29:40.832Z`.
+Esta entrega **pendiente de guardado**: fallo de conexión del API y acceso de
+navegador rechazado por permiso denegado. [Actualización pendiente](sleep-next/Evidence/october-2026/library-update-pending.json),
+con lectura fresca/mezcla/verificación obligatorias y tracking conservado.
+
+Siguiente paso: compilar/regresiones en Mac o CI privada con cuota comprobada;
+después prueba nocturna física con el titular. No se promete fecha de finalización
+ni se afirma autonomía o fiabilidad nocturna sin resultados reales.
+
+## Historial de entrega — 02-10-2026
 
 - Producto: PR-019. Tarea propietaria: `01a0708e-0558-78b1-866c-801b9cf35996`.
 - Implementación vigente: `sleep-next`, SwiftUI, iPhone iOS 16+, castellano e inglés. `Alarma`, `sleep-native` y `native-ios` se conservan como antecedentes.

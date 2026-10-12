@@ -1,0 +1,15 @@
+{
+  "id": "PR-019",
+  "observedRevision": 10,
+  "observedUpdatedAt": "2026-10-12T12:29:40.832Z",
+  "status": "pending_access",
+  "reason": "Terminal API fetch failed; browser access rejected because permission was denied. No write performed.",
+  "proposedChanges": {
+    "detail": "Alarma nativa SwiftUI iPhone iOS16+ ES/EN. Se conserva TestFlight interno 1.1(1). Correcciones locales posteriores para borrado/retención persistente, recuperación, pausas/interrupciones y posponer. 15 regresiones XCTest preparadas; Xcode pendiente. Comprobación estática de plataforma/140 textos/13 recursos correcta. Noche física y batería pendientes.",
+    "next": "Conciliar privacidad de Krazel/Alarmy y verificar cuota/runners de CI sin gastos; compilar correcciones y ejecutar regresiones. Después prueba de noche/batería con el titular. Sin nueva subida TestFlight ni App Review automática.",
+    "sourceAppend": "Entrega local: AlarmaNative/sleep-next/Evidence/october-2026/README.md y PHYSICAL-NIGHT.md. Sin nueva build/publicación. Biblioteca pendiente de escritura/verificación."
+  },
+  "applyInstructions": "Read fresh full PR-019 through the supported library API or interface. Preserve ID, current revision, tracking, links, version/build, releases and unrelated fields. Merge sourceAppend into full existing source. Apply changes with fresh revision and reread to verify. Never blindly submit observedRevision or replace from a truncated table payload.",
+  "trackingChanged": false,
+  "verifiedSaved": false
+}

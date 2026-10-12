@@ -4,7 +4,8 @@ import Foundation
 actor ArchiveRepository {
     private let file: URL
     private var current: AppArchive?
-    init(file: URL = DiskLocation.root.appendingPathComponent("archive.json")) { self.file = file }
+    private let clipsDirectory: URL
+    init(file: URL = DiskLocation.root.appendingPathComponent("archive.json"), clipsDirectory: URL = DiskLocation.clips) { self.file = file; self.clipsDirectory = clipsDirectory }
     func load() throws -> AppArchive {
         if let current { return current }
         try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -34,16 +35,20 @@ actor ArchiveRepository {
     }
     func prune(now: Date = Date()) throws -> AppArchive {
         let archive = try load()
-        guard archive.preferences.keepDays > 0 else { return archive }
-        let cutoff = now.addingTimeInterval(-Double(archive.preferences.keepDays) * 86400)
-        let expired = (archive.sessions.flatMap(\.clips) + (archive.active?.clips ?? [])).filter { $0.created < cutoff }
-        guard !expired.isEmpty else { return archive }
-        for clip in expired {
-            if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips), FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+        let expired: [NightClip]
+        if archive.preferences.keepDays > 0 {
+            let cutoff = now.addingTimeInterval(-Double(archive.preferences.keepDays) * 86400)
+            expired = (archive.sessions.flatMap(\.clips) + (archive.active?.clips ?? [])).filter { $0.created < cutoff }
+        } else { expired = [] }
+        var staged = archive
+        if !expired.isEmpty { staged = try update { $0.queueClipDeletion(expired.map(\.filename)) } }
+        guard let pending = staged.pendingClipDeletions, !pending.isEmpty else { return staged }
+        let removal = ClipDeletionQueue.remove(pending, directory: clipsDirectory)
+        var result = staged
+        if !removal.completed.isEmpty {
+            result = try update { $0.completeClipDeletion(removal.completed) }
         }
-        return try update { value in
-            for i in value.sessions.indices { value.sessions[i].clips.removeAll { $0.created < cutoff } }
-            value.active?.clips.removeAll { $0.created < cutoff }
-        }
+        if let error = removal.error { throw error }
+        return result
     }
 }

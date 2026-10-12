@@ -44,14 +44,17 @@ struct WakeScheduler {
     }
 }
 
-struct WakeDismissal: Codable {
+struct WakeDismissal: Codable, Equatable {
     let alarmID: String
     let date: Date
     static var file: URL { DiskLocation.root.appendingPathComponent("dismissal.json") }
-    static func take() -> WakeDismissal? {
-        guard let data = try? Data(contentsOf: file), let value = try? JSONDecoder().decode(Self.self, from: data) else { return nil }
-        try? FileManager.default.removeItem(at: file)
-        return value
+    static func pending(at file: URL = WakeDismissal.file) -> WakeDismissal? {
+        guard let data = try? Data(contentsOf: file) else { return nil }
+        return try? JSONDecoder().decode(Self.self, from: data)
+    }
+    static func acknowledge(_ dismissal: WakeDismissal, at file: URL = WakeDismissal.file) throws {
+        guard pending(at: file) == dismissal else { return }
+        try FileManager.default.removeItem(at: file)
     }
 }
 @available(iOS 26.0, *)

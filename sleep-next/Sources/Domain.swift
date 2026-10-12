@@ -56,7 +56,15 @@ struct SleepSession: Codable, Equatable, Identifiable {
     var clips: [NightClip] = []
     var capturePaused: Bool?
     var captureSpans: [CaptureSpan]?
+    var resumeCaptureAfterAlarm: Bool?
     var duration: TimeInterval { max(0, (end ?? checkpoint).timeIntervalSince(start)) }
+    func snoozed(until wake: Date) -> SleepSession {
+        var next = self
+        next.alarmID = UUID(); next.wake = wake
+        if resumeCaptureAfterAlarm == true { next.capturePaused = false }
+        next.resumeCaptureAfterAlarm = nil
+        return next
+    }
 }
 struct CaptureSpan: Codable, Equatable, Identifiable {
     let id: UUID
@@ -92,6 +100,18 @@ struct AppArchive: Codable, Equatable {
     var pages: [String: JournalPage] = [:]
     var tones: [ImportedTone] = []
     var lastSound: String?
+    // Optional for archives created by 1.1(1). Persist deletion intent before touching audio.
+    var pendingClipDeletions: [String]?
+    mutating func queueClipDeletion(_ filenames: [String]) {
+        pendingClipDeletions = Array(Set((pendingClipDeletions ?? []) + filenames)).sorted()
+    }
+    mutating func completeClipDeletion(_ filenames: [String]) {
+        let removed = Set(filenames)
+        for i in sessions.indices { sessions[i].clips.removeAll { removed.contains($0.filename) } }
+        active?.clips.removeAll { removed.contains($0.filename) }
+        pendingClipDeletions?.removeAll { removed.contains($0) }
+        if pendingClipDeletions?.isEmpty == true { pendingClipDeletions = nil }
+    }
 }
 enum CalendarDay {
     static func key(_ date: Date, calendar: Calendar = .current) -> String {

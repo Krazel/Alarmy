@@ -1,0 +1,13 @@
+{
+  "scopeChecks": "passed",
+  "nativeCompiled": false,
+  "xctestExecuted": false,
+  "regressionsPrepared": 15,
+  "languageEntries": 140,
+  "unchangedResourceFiles": 13,
+  "iPhoneOnly": true,
+  "minimumIOS": "16.0",
+  "automaticCIOnPush": false,
+  "lastDeliveredVersion": "1.1 (1)",
+  "newTestFlightUpload": false
+}

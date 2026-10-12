@@ -63,9 +63,10 @@ struct ClipDetail: View {
             .navigationTitle(store.words("clipDetail")).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { dismiss() } } }
             .confirmationDialog(store.words("deleteClip"), isPresented: $deleting, titleVisibility: .visible) {
-                Button(store.words("delete"), role: .destructive) { if let clip { Task { await store.delete(clip); dismiss() } } }
+                Button(store.words("delete"), role: .destructive) { if let clip { Task { if await store.delete(clip) { dismiss() } } } }
             }
             .alert(store.words("error"), isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
+                if store.writeFailed { Button(store.words("retrySave")) { Task { await store.retrySaving() } } }
                 Button(store.words("done")) { store.error = nil }
             } message: { Text(store.error ?? "") }
             .onAppear { store.clipPresented = true }

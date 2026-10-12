@@ -26,6 +26,7 @@ final class SleepStore: ObservableObject {
     private var writesPending = 0
     var captureBusy = false
     var resumeAfterInterruption = false
+    var clipFilesBusy = false
     var words: Words { Words(language: archive.preferences.language) }
     var testMode: Bool {
         #if DEBUG
@@ -52,7 +53,10 @@ final class SleepStore: ObservableObject {
         guard !loaded else { return }
         do {
             archive = try await repository.load()
-            do { archive = try await repository.prune() } catch { self.error = error.localizedDescription }
+            do { archive = try await repository.prune() } catch {
+                archive = try await repository.load()
+                self.error = error.localizedDescription
+            }
             #if DEBUG
             if testMode && archive.revision == 0 {
                 archive.preferences.language = ProcessInfo.processInfo.arguments.contains("--spanish") ? "es" : "en"
@@ -85,6 +89,7 @@ final class SleepStore: ObservableObject {
                 audio.captureState = "recordRecovered"
                 commit { value in
                     value.active?.capturePaused = true
+                    value.active?.resumeCaptureAfterAlarm = false
                     if let count = value.active?.captureSpans?.count, count > 0,
                        value.active?.captureSpans?[count-1].reason == "recordListening" { value.active?.captureSpans?[count-1].reason = "recordRecovered" }
                 }
@@ -116,6 +121,8 @@ final class SleepStore: ObservableObject {
                 self.error = error.localizedDescription; self.writeFailed = true
                 self.writesPending -= 1; self.saving = self.writesPending > 0
                 self.archive.active?.capturePaused = true
+                self.archive.active?.resumeCaptureAfterAlarm = false
+                self.resumeAfterInterruption = false
                 let end = await self.audio.stopRecording(reason: "recordError")
                 if let count = self.archive.active?.captureSpans?.count, count > 0,
                    self.archive.active?.captureSpans?[count-1].reason == "recordListening" {
@@ -157,7 +164,7 @@ final class SleepStore: ObservableObject {
                 archive.active = nil; archive.lastSound = previousSound
                 return
             }
-            do { try beginRecordingIfNeeded() } catch {
+            do { try await beginRecordingIfNeeded() } catch {
                 // Preserve the scheduled alarm and any recoverable audio if input fails.
                 audio.captureState = "recordError"
                 _ = await commit { $0.active?.capturePaused = true }.value
@@ -168,10 +175,19 @@ final class SleepStore: ObservableObject {
         catch { self.error = error.localizedDescription }
     }
     func resume() async {
-        guard loaded, archive.active != nil, !failed, !audioInterrupted else { return }
-        if let dismissal = WakeDismissal.take(), dismissal.alarmID == archive.active?.alarmID.uuidString {
-            await finish(at: dismissal.date); return
+        guard loaded, !failed, !audioInterrupted else { return }
+        if let dismissal = WakeDismissal.pending() {
+            if dismissal.alarmID == archive.active?.alarmID.uuidString {
+                if await finish(at: dismissal.date) {
+                    do { try WakeDismissal.acknowledge(dismissal) } catch { self.error = error.localizedDescription }
+                }
+                return
+            }
+            if !writeFailed, !saving, archive.sessions.contains(where: { $0.alarmID.uuidString == dismissal.alarmID }) {
+                do { try WakeDismissal.acknowledge(dismissal) } catch { self.error = error.localizedDescription }
+            }
         }
+        guard archive.active != nil else { return }
         if audio.isRecording && AVAudioSession.sharedInstance().recordPermission != .granted { await pauseCapture(reason: "recordDenied") }
         tick()
     }
@@ -195,6 +211,8 @@ final class SleepStore: ObservableObject {
     }
     private func ring(_ night: SleepSession) async {
             await pauseCapture(reason: "recordAlarm")
+            guard archive.active?.id == night.id, archive.active?.alarmID == night.alarmID,
+                  ringing, !busy, !audioInterrupted else { return }
             if !testMode { try? scheduler.cancel(id: night.alarmID) }
             do {
                 guard let url = ToneLibrary.url(night.soundID, imported: archive.tones) ?? ToneLibrary.url("aurora", imported: []) else { throw CocoaError(.fileNoSuchFile) }
@@ -203,29 +221,38 @@ final class SleepStore: ObservableObject {
             } catch { self.error = error.localizedDescription }
     }
     func snooze() async {
-        guard !busy, var night = archive.active else { return }; busy = true; defer { busy = false }
+        guard !busy, archive.active != nil else { return }; busy = true; defer { busy = false }
+        // The alarm's stop may still be flushing. Snapshot only after its final clips and pause decision.
+        await pauseCapture(reason: "recordAlarm")
+        guard var night = archive.active else { return }
         let original = night
-        let old = night.alarmID; night.alarmID = UUID(); night.wake = Date().addingTimeInterval(Double(archive.plan.snoozeMinutes * 60))
+        let old = night.alarmID; night = night.snoozed(until: Date().addingTimeInterval(Double(archive.plan.snoozeMinutes * 60)))
         do {
             if !testMode { try await scheduler.schedule(id: night.alarmID, date: night.wake, filename: ToneLibrary.filename(night.soundID, imported: archive.tones), words: words) }
             let updated = night
-            guard await commit({ $0.active = updated }).value else { try? scheduler.cancel(id: night.alarmID); archive.active = original; return }
+            guard await commit({ $0.active = updated }).value else {
+                try? scheduler.cancel(id: night.alarmID)
+                archive.active = original; archive.active?.resumeCaptureAfterAlarm = false
+                return
+            }
             if !testMode { try? scheduler.cancel(id: old) }
             audio.stopPlayback(); audio.restoreScreen(); ringing = false
-            try beginRecordingIfNeeded()
+            try await beginRecordingIfNeeded()
         } catch { self.error = error.localizedDescription }
     }
-    func finish(at end: Date = Date()) async {
-        guard !busy, archive.active != nil else { return }; busy = true; defer { busy = false }
+    @discardableResult
+    func finish(at end: Date = Date()) async -> Bool {
+        guard !busy, archive.active != nil else { return false }; busy = true; defer { busy = false }
             if let id = archive.active?.alarmID, !testMode { do { try scheduler.cancel(id: id) } catch { self.error = error.localizedDescription } }
             await pauseCapture(reason: "recordOff")
             await audio.stopAll(); ringing = false
             // stopAll flushes the last clip before we snapshot the session.
-            guard var night = archive.active else { return }
+            guard var night = archive.active else { return false }
             night.end = max(night.start, end); night.checkpoint = max(night.start, end); let finished = night
-            guard await commit({ $0.sessions.insert(finished, at: 0); $0.active = nil }).value else { return }
+            guard await commit({ $0.sessions.insert(finished, at: 0); $0.active = nil }).value else { return false }
             selectedDay = night.end ?? Date()
             if archive.preferences.openJournal { tab = 1 }
+            return true
     }
     func importTone(_ url: URL) async {
         do {
@@ -276,22 +303,26 @@ final class SleepStore: ObservableObject {
                 }
         }.value
     }
-    func delete(_ clip: NightClip) async {
+    @discardableResult
+    func delete(_ clip: NightClip) async -> Bool {
         audio.stopPlayback()
-        guard let owner = archive.sessions.first(where: { $0.clips.contains(where: { $0.id == clip.id }) }) else { return }
-        // Save the removal before deleting the audio. Failed writes preserve the file.
-        guard await commit({ value in for i in value.sessions.indices { value.sessions[i].clips.removeAll { $0.id == clip.id } } }).value else { return }
-        do {
-            try await Task.detached {
-                if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips), FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
-            }.value
-        } catch {
-            let message = error.localizedDescription
-            _ = await commit { value in
-                if let i = value.sessions.firstIndex(where: { $0.id == owner.id }), !value.sessions[i].clips.contains(where: { $0.id == clip.id }) { value.sessions[i].clips.append(clip) }
-            }.value
-            self.error = message
-        }
+        guard archive.sessions.contains(where: { $0.clips.contains(where: { $0.id == clip.id }) }) else { return false }
+        guard await commit({ $0.queueClipDeletion([clip.filename]) }).value else { return false }
+        await completePendingClipDeletions()
+        return !archive.sessions.contains(where: { $0.clips.contains(where: { $0.id == clip.id }) }) && !writeFailed
+    }
+    func retrySaving() async {
+        guard await commit({ _ in }).value else { return }
+        await completePendingClipDeletions()
+    }
+    private func completePendingClipDeletions() async {
+        guard await acquireClipFiles() else { return }; defer { clipFilesBusy = false }
+        guard let pending = archive.pendingClipDeletions, !pending.isEmpty else { return }
+        // A failed optimistic edit may still be in memory. Persist this exact queue first.
+        guard await commit({ _ in }).value else { return }
+        let result = await Task.detached { ClipDeletionQueue.remove(pending, directory: DiskLocation.clips) }.value
+        if !result.completed.isEmpty { _ = await commit { $0.completeClipDeletion(result.completed) }.value }
+        if let error = result.error { self.error = error.localizedDescription }
     }
     func flush() async {
         let token = UIApplication.shared.beginBackgroundTask(withName: "Save journal")
@@ -299,19 +330,13 @@ final class SleepStore: ObservableObject {
         if token != .invalid { UIApplication.shared.endBackgroundTask(token) }
     }
     func prune() async {
-        guard archive.preferences.keepDays > 0 else { return }
-        let cutoff = Date().addingTimeInterval(-Double(archive.preferences.keepDays)*86400)
-        let expired = (archive.sessions.flatMap(\.clips) + (archive.active?.clips ?? [])).filter { $0.created < cutoff }
-        guard !expired.isEmpty else { return }
-        let ids = Set(expired.map(\.id))
-        do {
-            for clip in expired {
-                if let url = DiskLocation.child(clip.filename, of: DiskLocation.clips), FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+        if archive.preferences.keepDays > 0 {
+            let cutoff = Date().addingTimeInterval(-Double(archive.preferences.keepDays)*86400)
+            let expired = (archive.sessions.flatMap(\.clips) + (archive.active?.clips ?? [])).filter { $0.created < cutoff }
+            if !expired.isEmpty {
+                guard await commit({ $0.queueClipDeletion(expired.map(\.filename)) }).value else { return }
             }
-            _ = await commit { value in
-                for i in value.sessions.indices { value.sessions[i].clips.removeAll { ids.contains($0.id) } }
-                value.active?.clips.removeAll { ids.contains($0.id) }
-            }.value
-        } catch { self.error = error.localizedDescription }
+        }
+        await completePendingClipDeletions()
     }
 }

@@ -1,8 +1,5 @@
 name: Alarma from scratch validation
 on:
-  push:
-    branches: [codex/native-sleep-rebuild]
-    paths: ['sleep-next/**', '.github/workflows/sleep-next.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,7 +8,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   validate:
-    if: github.event.repository.private == false
+    # Enable only after the owner verifies private-repo quota/runners without extra spend.
+    if: github.event.repository.private == true && vars.IOS_CI_APPROVED == 'true'
     runs-on: macos-26
     timeout-minutes: 30
     steps:

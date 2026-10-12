@@ -100,9 +100,15 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let session = AVAudioSession.sharedInstance()
         if !isRecording { try session.setCategory(.playback, mode: .default) }
         try session.setActive(true)
-        let audio = try AVAudioPlayer(contentsOf: url)
-        audio.delegate = self; audio.numberOfLoops = loop ? -1 : 0; audio.volume = gradual ? 0.05 : 1
-        guard audio.play() else { throw CocoaError(.fileReadUnknown) }
+        let audio: AVAudioPlayer
+        do {
+            audio = try AVAudioPlayer(contentsOf: url)
+            audio.delegate = self; audio.numberOfLoops = loop ? -1 : 0; audio.volume = gradual ? 0.05 : 1
+            guard audio.play() else { throw CocoaError(.fileReadUnknown) }
+        } catch {
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            throw error
+        }
         player = audio; playing = id; playbackTime = 0; playbackDuration = audio.duration
         if !loop {
             playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
@@ -120,7 +126,11 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
     func seek(to seconds: Double) { guard let player else { return }; player.currentTime = max(0, min(player.duration, seconds)); playbackTime = player.currentTime }
-    func stopPlayback() { ramp?.invalidate(); ramp = nil; playbackTimer?.invalidate(); playbackTimer = nil; player?.stop(); player = nil; playing = nil; playbackTime = 0; playbackDuration = 0 }
+    func stopPlayback() {
+        ramp?.invalidate(); ramp = nil; playbackTimer?.invalidate(); playbackTimer = nil
+        player?.stop(); player = nil; playing = nil; playbackTime = 0; playbackDuration = 0
+        if !hasCapture { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+    }
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in if self.player === player { self.stopPlayback() } }
     }
