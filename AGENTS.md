@@ -9,7 +9,8 @@ No extender la excepción a otros productos ni habilitar runners/planes de pago.
 
 App nativa SwiftUI, solo iPhone iOS16+, castellano/inglés, diseños aprobados y
 audio personal local. Mantener sleep-next como implementación vigente.
-TestFlight interno para el titular: nueva entrega 1.1.1(1) autorizada el 12/10.
+TestFlight interno para el titular: nueva entrega UI 1.2(1) autorizada el 12/10,
+después de la entrega previa 1.1.1(1) del mismo día.
 No iniciar App Review externo ni publicación comercial por esa autorización.
 
 Firma en el entorno existente alarma-local-qa, limitado a codex/native-sleep-rebuild.

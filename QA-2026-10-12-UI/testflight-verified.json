@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-12T21:16:57.382Z",
+  "appId": "6818287946",
+  "appName": "Alarma de Krazel",
+  "bundleId": "com.krazel.alarmanext",
+  "version": "1.2",
+  "build": "1",
+  "buildId": "77b4588d-6a9a-404c-b55f-7453391ea508",
+  "processingState": "VALID",
+  "uploadedDate": "2026-10-12T14:15:00-07:00",
+  "expirationDate": "2027-01-10T13:15:00-08:00",
+  "minimumOS": "16.0",
+  "usesNonExemptEncryption": false,
+  "internalBuildState": "IN_BETA_TESTING",
+  "externalBuildState": "READY_FOR_BETA_SUBMISSION",
+  "internalGroup": true,
+  "groupAssigned": true,
+  "ownerOnlyVerified": true,
+  "testerCount": 1,
+  "publicLinkEnabled": false,
+  "notes": {
+    "es-ES": "Diario tipo cuaderno, con versión nocturna. Fondo de noche original recuperado. Las caras de Agotado, Cansado, Normal, En calma y Renovado aparecen en semana y calendario. Activa Modo desarrollador en Ajustes y abre Probar noches de ejemplo: seis escenarios, sin afectar al diario real. Grabaciones a 90 días por defecto para configuraciones nuevas; se conservan tus elecciones anteriores. iPhone iOS 16+, castellano e inglés. Pendiente la prueba nocturna física y batería.",
+    "en-US": "Notebook journal with a night theme. Original night background restored. Exhausted, Tired, Normal, Peaceful and Refreshed faces appear in the week and calendar. Enable Developer mode in Settings and open Try sample nights: six scenarios that do not affect your real journal. Recordings default to 90 days for new configurations; existing choices are preserved. iPhone iOS 16+, Spanish and English. Physical overnight and battery testing remain pending."
+  },
+  "appStorePublished": false
+}

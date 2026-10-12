@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-10-12T21:11:32.7686870Z",
+  "version": "1.2",
+  "build": "1",
+  "source": "ebf86c537bc3c55b6c9a70a42c55b59c600356a4",
+  "runId": 38307811714,
+  "url": "https://github.com/Krazel/Alarmy/actions/runs/38307811714",
+  "passedTests": 5,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "releaseIPhone": "BUILD SUCCEEDED",
+  "device": "iPhone 17 Pro Simulator iOS 26.4.1",
+  "physicalNight": "Pending",
+  "olderIOSExecution": "Pending iOS 16–25"
+}

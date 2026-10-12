@@ -59,11 +59,15 @@ Capturas de simulador iPhone 17 Pro, iOS 26.4.1:
 
 Estas capturas son nativas y contienen datos sintéticos de prueba. No equivalen
 a una noche en dispositivo físico ni verifican la ejecución en iOS 16–25.
-No se ha solicitado ni realizado otra subida: TestFlight permanece en 1.1.1 (1),
-entregada antes de estos cambios. La noche física y la batería siguen pendientes.
+Tras presentar las propuestas, el usuario solicitó subir los cambios. Ya están
+en **1.2 (1), TestFlight interno disponible** para el titular; API Apple confirma
+VALID / IN_BETA_TESTING. [Entrega y recibos](../../../QA-2026-10-12-UI/README.md).
+La noche física y la batería siguen pendientes.
 
 Biblioteca PR-019 actualizada y releída por API, revisión 12; recibo
 `library-receipt.json`, conservando versión, distribución e historial.
+La entrega posterior 1.2 (1) quedó conciliada en revisión 13, con su recibo
+separado en `QA-2026-10-12-UI/library-receipt.json` desde la raíz del producto.
 
 ![Principal, editor y sonidos](01-alarma.png)
 

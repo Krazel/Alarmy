@@ -1,0 +1,11 @@
+{
+  "appId": "6818287946",
+  "bundleId": "com.krazel.alarmanext",
+  "version": "1.2",
+  "build": "1",
+  "source": "ebf86c537bc3c55b6c9a70a42c55b59c600356a4",
+  "run": "38309075753",
+  "purpose": "TestFlight",
+  "uploadAccepted": true,
+  "sha256": "a57d835cbaaabbd9236acc421a2ed7a12b4f2e3801d2548a0c5970d4f163b01c"
+}

@@ -1,5 +1,24 @@
 # Estado de Alarma — 12-10-2026
 
+## Entrega completada — UI 1.2 (1)
+
+El usuario pide subir los nuevos cambios a TestFlight. Candidata **1.2 (1)**:
+diario A cuaderno claro/nocturno, fondo nocturno original, caras en semana y
+calendario, seis ejemplos aislados y retención nueva 90 días. iPhone iOS16+, ES/EN.
+Fuente `ebf86c537bc3c55b6c9a70a42c55b59c600356a4`, compilación enfocada
+[38307811714](https://github.com/Krazel/Alarmy/actions/runs/38307811714) correcta:
+5 pruebas pasadas, 0 fallos/omitidas y Release iPhone. Subida firmada
+[38309075753](https://github.com/Krazel/Alarmy/actions/runs/38309075753) correcta.
+**1.2 (1) disponible en TestFlight interno para el titular**: API confirma
+VALID / IN_BETA_TESTING, build `77b4588d-6a9a-404c-b55f-7453391ea508`.
+Notas ES/EN guardadas y releídas; grupo interno existente con un único titular.
+Se reutiliza firma/perfil existente y los siete secretos temporales en el mismo
+entorno `alarma-local-qa`, rama `codex/native-sleep-rebuild`. Siete secretos
+eliminados y entorno releído vacío. No se amplían testers ni se envía App Review.
+Recibos nuevos separados en `QA-2026-10-12-UI`; no sobrescribir la entrega previa.
+Biblioteca PR-019 guardada y releída por API, **revisión 13**, versión 1.2,
+build 1, TestFlight Interno; tracking, URLs e historial conservados.
+
 ## Encargo posterior — UI y ejemplos del diario
 
 Propuestas con ChatGPT Imágenes de principal día/noche, editor, sonidos, noche
@@ -13,11 +32,12 @@ El usuario ha elegido **A · Cuaderno actual, con versión nocturna**; se conser
 su distribución y tema oscuro adaptativo. Verificación nativa enfocada correcta:
 5 pruebas pasadas, 0 fallos/omitidas y Release iPhone, fuente `2edfbcd`.
 [Resultado y capturas](sleep-next/Design/proposals-2026-10-12/validation.json).
-Estos cambios aún no están en TestFlight: entrega vigente sigue en 1.1.1 (1).
+La preparación del diseño se cerró antes de otra subida. Por instrucción posterior
+se ha entregado 1.2 (1) con estos cambios: véase la entrega UI arriba.
 Biblioteca PR-019 actualizada y releída en revisión 12; elección A, galería,
 validación y próximo paso registrados, manteniendo versión y tracking.
 
-## Encargo actual y correcciones locales
+## Historial — entrega de correcciones 1.1.1 (1)
 
 **Actualización del encargo, 12/10:** el usuario solicita subir los cambios nuevos
 a TestFlight y ordena expresamente mantener **Krazel/Alarmy público**, usando API
