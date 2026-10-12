@@ -28,10 +28,13 @@ struct HealthReader {
         try await store.requestAuthorization(toShare: [], read: [type])
     }
     func stages(for day: Date) async throws -> [SleepStage] {
-        guard HKHealthStore.isHealthDataAvailable(), let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return [] }
         let noon = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: day)!
         let start = Calendar.current.date(byAdding: .day, value: -1, to: noon)!
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: noon, options: [])
+        return try await stages(from: start, to: noon)
+    }
+    func stages(from start: Date, to end: Date) async throws -> [SleepStage] {
+        guard end > start, HKHealthStore.isHealthDataAvailable(), let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return [] }
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
         let samples: [HKCategorySample] = try await withCheckedThrowingContinuation { continuation in
             store.execute(HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]) { _, samples, error in
                 if let error { continuation.resume(throwing: error) }
@@ -50,7 +53,7 @@ struct HealthReader {
             case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue: key = "asleep"
             default: return nil
             }
-            let a = max(start, sample.startDate), b = min(noon, sample.endDate)
+            let a = max(start, sample.startDate), b = min(end, sample.endDate)
             return b > a ? SleepStage(id: sample.uuid, start: a, end: b, key: key) : nil
         }) }
         // Compare union durations; duplicated records from the same source do not win.

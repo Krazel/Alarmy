@@ -1,6 +1,33 @@
 import XCTest
 
 final class NativeFlowTests: XCTestCase {
+    func testNightModesSwipeAndStatistics() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test","--reset-test","--spanish","--design-fixture"]; app.launch()
+        XCTAssertTrue(app.buttons["edit-alarm"].waitForExistence(timeout:10))
+        app.buttons["edit-alarm"].tap()
+        app.buttons["Sin alarma"].tap(); shot("30-es-analysis-mode")
+        app.buttons["Listo"].tap()
+        let start = app.buttons["begin-night"]
+        for _ in 0..<4 { if start.isHittable {break}; app.swipeUp() }
+        start.tap()
+        let slider = app.descendants(matching:.any).matching(identifier:"finish-night").firstMatch
+        XCTAssertTrue(slider.waitForExistence(timeout:5)); shot("31-es-analysis-night")
+        let bottom = slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.8))
+        bottom.press(forDuration:0.1,thenDragTo:slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.6)))
+        XCTAssertTrue(slider.exists)
+        bottom.press(forDuration:0.1,thenDragTo:slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.05)))
+        XCTAssertTrue(app.buttons["statistics"].waitForExistence(timeout:5))
+        app.buttons["statistics"].tap(); XCTAssertTrue(app.navigationBars["Estadísticas"].waitForExistence(timeout:5)); shot("32-es-statistics")
+        app.buttons["Listo"].tap()
+        app.tabBars.buttons["Alarma"].tap()
+        for _ in 0..<3 { if app.buttons["edit-alarm"].isHittable {break}; app.swipeDown() }
+        app.buttons["edit-alarm"].tap(); app.buttons["Ventana inteligente"].tap(); shot("33-es-smart-mode")
+        app.buttons["Listo"].tap()
+        for _ in 0..<4 { if start.isHittable {break}; app.swipeUp() }
+        start.tap(); XCTAssertTrue(slider.waitForExistence(timeout:5)); shot("34-es-smart-night")
+        slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.8)).press(forDuration:0.1,thenDragTo:slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.05)))
+        XCTAssertTrue(app.buttons["statistics"].waitForExistence(timeout:5))
+    }
     func testJournalExamplesAndMoodCalendar() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--spanish", "--design-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10))
@@ -34,11 +61,11 @@ final class NativeFlowTests: XCTestCase {
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         for _ in 0..<3 { if start.isHittable { break }; app.swipeUp() }
         start.tap()
-        let end = app.buttons["finish-night"]
+        let end = app.descendants(matching:.any).matching(identifier:"finish-night").firstMatch
         XCTAssertTrue(end.waitForExistence(timeout: 5))
         for _ in 0..<3 { if end.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(end.isHittable); shot("20-es-compact-night-controls")
-        end.tap(); app.sheets.buttons["Terminar noche"].tap()
+        end.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.8)).press(forDuration:0.1,thenDragTo:end.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.05)))
         XCTAssertTrue(app.textViews["journal-note"].waitForExistence(timeout: 5))
     }
     func testClipDetailPlaybackNavigationAndCorrection() {
@@ -75,8 +102,8 @@ final class NativeFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); shot("01-en-home")
         app.buttons["edit-alarm"].tap(); XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5)); shot("02-en-alarm-editor"); app.buttons["Done"].tap()
         app.buttons["sounds"].tap(); XCTAssertTrue(app.navigationBars["Sounds"].waitForExistence(timeout: 5)); shot("03-en-sounds"); app.buttons["Done"].tap()
-        app.buttons["begin-night"].tap(); XCTAssertTrue(app.buttons["finish-night"].waitForExistence(timeout: 5)); shot("04-en-active-night")
-        app.buttons["finish-night"].tap(); app.sheets.buttons["Finish night"].tap()
+        app.buttons["begin-night"].tap(); XCTAssertTrue(app.descendants(matching:.any).matching(identifier:"finish-night").firstMatch.waitForExistence(timeout: 5)); shot("04-en-active-night")
+        let slider = app.descendants(matching:.any).matching(identifier:"finish-night").firstMatch; slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.8)).press(forDuration:0.1,thenDragTo:slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.05)))
         XCTAssertTrue(app.textViews["journal-note"].waitForExistence(timeout: 5)); app.buttons["feeling-3"].tap(); shot("05-en-journal")
         app.swipeUp(); app.textViews["journal-note"].tap(); app.textViews["journal-note"].typeText("Example note: a quiet morning.")
         app.buttons["Done"].tap(); app.tabBars.buttons["Settings"].tap(); XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5)); shot("06-en-settings")
@@ -92,7 +119,7 @@ final class NativeFlowTests: XCTestCase {
         let deny=springboard.buttons.matching(NSPredicate(format:"label CONTAINS[c] 'Allow' AND label != 'Allow'")).firstMatch
         if deny.waitForExistence(timeout:5) { deny.tap() }
         XCTAssertTrue(app.staticTexts["Microphone permission is off. Turn recording off or allow it in Settings."].waitForExistence(timeout:5))
-        XCTAssertFalse(app.buttons["finish-night"].exists)
+        XCTAssertFalse(app.descendants(matching:.any).matching(identifier:"finish-night").firstMatch.exists)
         shot("15-microphone-denied")
     }
     func testSpanishDiaryDesign() {

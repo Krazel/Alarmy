@@ -5,7 +5,7 @@ extension SleepStore {
     func beginRecordingIfNeeded() async throws {
         guard await acquireClipFiles() else { throw CancellationError() }
         defer { clipFilesBusy = false }
-        guard let night = archive.active, archive.preferences.record, night.capturePaused != true,
+        guard let night = archive.active, (archive.preferences.analysisEnabled || archive.preferences.record), night.capturePaused != true,
               !audio.isRecording, !ringing, !audioInterrupted, !writeFailed, !failed, !testMode else { return }
         guard Date() < night.wake else { audio.captureState = "recordAlarm"; return }
         let spanID = UUID(), now = Date()
@@ -23,6 +23,7 @@ extension SleepStore {
         }
         audio.onDeadline = { [weak self] in Task { await self?.pauseCapture(reason: "recordAlarm") } }
         try audio.startRecording(nightID: night.id, wake: night.wake, margin: archive.preferences.sensitivity ?? 10, byteLimit: remaining,
+            epoch: { [weak self] epoch in self?.observe(epoch, nightID: night.id) },
             receive: { [weak self] receipt in self?.index(receipt) },
             progress: { [weak self] end in
                 guard let self else { return }
@@ -52,7 +53,8 @@ extension SleepStore {
                 value.sessions[i].clips.append(receipt.clip)
             }
         }
-        Task { if await write.value { do { try ClipSpool.acknowledge(receipt, directory: DiskLocation.clips) } catch { self.error = error.localizedDescription } } }
+        Task { if await write.value { do { try ClipSpool.acknowledge(receipt, directory: DiskLocation.clips); let owner = self.archive.active?.id == receipt.nightID ? self.archive.active : self.archive.sessions.first { $0.id == receipt.nightID }
+                    if owner?.retainAudio != nil { await self.analyze(receipt.clip) } } catch { self.error = error.localizedDescription } } }
     }
     func recoverClips() async {
         guard !audio.hasCapture, await acquireClipFiles() else { return }
@@ -89,7 +91,7 @@ extension SleepStore {
         let end = await audio.stopRecording(reason: reason) ?? audio.lastCaptureEnd
         commit { value in
             if reason == "recordAlarm", value.active?.resumeCaptureAfterAlarm == nil {
-                let shouldResume = value.preferences.record && value.active?.capturePaused != true
+                let shouldResume = (value.preferences.analysisEnabled || value.preferences.record) && value.active?.capturePaused != true
                 value.active?.resumeCaptureAfterAlarm = shouldResume
             }
             if reason != "recordAlarm", reason != "recordInterrupted" { value.active?.resumeCaptureAfterAlarm = false }
@@ -106,7 +108,7 @@ extension SleepStore {
         guard !captureBusy, archive.active != nil, !ringing, !audioInterrupted, !failed else { return }
         captureBusy = true; defer { captureBusy = false }
         guard await audio.microphoneAllowed() else { audio.captureState = "recordDenied"; error = words("micError"); return }
-        guard await commit({ $0.preferences.record = true; $0.active?.capturePaused = false; $0.active?.resumeCaptureAfterAlarm = nil }).value else { return }
+        guard await commit({ $0.preferences.analyze = true; $0.active?.capturePaused = false; $0.active?.resumeCaptureAfterAlarm = nil }).value else { return }
         do { try await beginRecordingIfNeeded() } catch { audio.captureState = "recordError"; self.error = words("recordFailure") + " " + error.localizedDescription }
     }
     func interruption(began: Bool, shouldResume: Bool = false) async {
@@ -119,7 +121,7 @@ extension SleepStore {
         } else {
             audioInterrupted = false
             defer { resumeAfterInterruption = false }
-            if shouldResume && resumeAfterInterruption && archive.preferences.record && archive.active != nil {
+            if shouldResume && resumeAfterInterruption && (archive.preferences.analysisEnabled || archive.preferences.record) && archive.active != nil {
                 guard await commit({ $0.active?.capturePaused = false }).value else { return }
                 do { try await beginRecordingIfNeeded() } catch { audio.captureState = "recordError"; self.error = error.localizedDescription }
             }

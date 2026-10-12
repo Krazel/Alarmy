@@ -49,6 +49,15 @@ enum JournalScenario: String, CaseIterable, Identifiable {
         case .empty:
             value.sessions.removeFirst(); value.pages.removeValue(forKey: key)
         }
+        for i in value.sessions.indices {
+            let night = value.sessions[i]
+            value.sessions[i].acousticEpochs = stride(from:0,to:Int(night.duration),by:30).compactMap { offset in
+                if self == .interrupted && i == 0 && offset >= 10800 && offset < 14400 { return nil }
+                let active = offset < 900 || offset % 5400 < 90
+                return AcousticEpoch(id:UUID(),start:night.start.addingTimeInterval(Double(offset)),duration:min(30,night.duration-Double(offset)),activeSeconds:active ? 12 : 0,meanDBFS:active ? -32 : -65)
+            }
+            value.sessions[i].soundSummaries = night.clips.map { NightSoundSummary(clip:$0) }
+        }
         return (value, day)
     }
 }

@@ -1,0 +1,7 @@
+{
+  "image": "01-noche-gesto.png",
+  "sha256": "08dc6a0ecf2d6ae66998d5d62f4e5c2c3f2546551b29eb326d964546923ab492",
+  "tool": "image_gen",
+  "status": "Propuesta implementada bajo delegación de diseño; no aprobación humana de píxeles",
+  "reference": "NightBackground aceptado; reutilizado sin modificaciones"
+}

@@ -7,6 +7,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var playing: String?
     private var player: AVAudioPlayer?
     @Published var captureState = "recordOff"
+    @Published var waveform: [Double] = []
     @Published var inputLevel = -100.0
     @Published var playbackTime = 0.0
     @Published var playbackDuration = 0.0
@@ -37,9 +38,10 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             AVAudioSession.sharedInstance().requestRecordPermission { continuation.resume(returning: $0) }
         }
     }
-    func startRecording(nightID: UUID, wake: Date, margin: Double, byteLimit: Int, receive: @escaping (ClipReceipt) -> Void, progress: @escaping (Date) -> Void) throws {
+    func startRecording(nightID: UUID, wake: Date, margin: Double, byteLimit: Int, epoch: @escaping (AcousticEpoch) -> Void, receive: @escaping (ClipReceipt) -> Void, progress: @escaping (Date) -> Void) throws {
         guard !isRecording, worker == nil else { return }
         guard AVAudioSession.sharedInstance().recordPermission == .granted else { captureState = "recordDenied"; throw CaptureError.permission }
+        waveform = []
         stopPlayback()
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement)
@@ -52,10 +54,13 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         guard format.sampleRate >= 8000, format.channelCount > 0 else { throw CaptureError.input }
         let generation = UUID(); self.generation = generation
         let worker = try CaptureWorker(nightID: nightID, start: Date(), deadline: wake.addingTimeInterval(-2), rate: format.sampleRate, margin: margin, directory: DiskLocation.clips, byteLimit: byteLimit,
+            epoch: { value in Task { @MainActor in epoch(value) } },
             receipt: { value in Task { @MainActor in receive(value) } },
             progress: { [weak self] date, level, calibrated in Task { @MainActor in
                 guard let self, self.generation == generation else { return }
                 self.lastInput = Date(); self.inputLevel = level
+                self.waveform.append(max(0, min(1, (level+75)/65)))
+                if self.waveform.count > 64 { self.waveform.removeFirst(self.waveform.count-64) }
                 if self.isRecording { self.captureState = calibrated ? "recordListening" : "recordCalibrating" }
                 progress(date)
             } },
@@ -88,7 +93,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             generation = UUID(); ramp?.invalidate(); ramp = nil; player = nil; playing = nil; restoreScreen()
             playbackTimer?.invalidate(); playbackTimer = nil; playbackTime = 0; playbackDuration = 0
         } else if let engine { engine.inputNode.removeTap(onBus: 0); engine.stop() }
-        engine = nil; self.worker = nil; captureState = reason
+        engine = nil; self.worker = nil; captureState = reason; waveform = []
         let end = await worker?.stop()
         if let end, generation == endingGeneration { lastCaptureEnd = end }
         if player == nil && self.worker == nil && generation == endingGeneration { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }

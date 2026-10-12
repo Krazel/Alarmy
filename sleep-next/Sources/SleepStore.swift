@@ -23,8 +23,9 @@ final class SleepStore: ObservableObject {
     let repository: ArchiveRepository
     // Design examples use a separate store. They never load, persist or touch audio files.
     let journalPreview: Bool
-    private let scheduler = WakeScheduler()
+    let scheduler = WakeScheduler()
     var writeTail: Task<Bool, Never>?
+    var smartScheduling = false
     private var timer: Timer?
     private var lastCheckpoint = Date.distantPast
     var audioInterrupted = false
@@ -92,6 +93,7 @@ final class SleepStore: ObservableObject {
             loaded = true
             await recoverClips()
             await prune()
+            await recoverTemporaryAnalysis()
             if archive.active != nil {
                 audio.captureState = "recordRecovered"
                 commit { value in
@@ -160,15 +162,19 @@ final class SleepStore: ObservableObject {
         guard !journalPreview else { return }
         guard !busy, archive.active == nil, !failed else { return }; busy = true; defer { busy = false }
         do {
-            if archive.preferences.record && !testMode {
+            if (archive.preferences.analysisEnabled || archive.preferences.record) && !testMode {
                 guard await audio.microphoneAllowed() else { error = words("micError"); return }
             }
             guard let wake = archive.plan.next(after: Date()) else { return }
             let tone = archive.plan.sound(excluding: archive.lastSound)
             let previousSound = archive.lastSound
-            let night = SleepSession(id: UUID(), start: Date(), checkpoint: Date(), wake: wake, alarmID: UUID(), soundID: tone)
-            if !testMode { try await scheduler.schedule(id: night.alarmID, date: wake, filename: ToneLibrary.filename(tone, imported: archive.tones), words: words) }
-            guard await commit({ $0.active = night; $0.lastSound = tone }).value else {
+            var night = SleepSession(id: UUID(), start: Date(), checkpoint: Date(), wake: wake, alarmID: UUID(), soundID: tone)
+            night.mode = archive.plan.resolvedMode; night.retainAudio = archive.preferences.record
+            if night.mode == .analysis { night.wake = .distantFuture }
+            if night.mode == .smart { night.latestWake = wake; night.windowStart = wake.addingTimeInterval(-Double(archive.plan.window)*60) }
+            let started = night
+            if !testMode && night.hasAlarm { try await scheduler.schedule(id: night.alarmID, date: wake, filename: ToneLibrary.filename(tone, imported: archive.tones), words: words) }
+            guard await commit({ $0.active = started; $0.lastSound = tone }).value else {
                 try? scheduler.cancel(id: night.alarmID)
                 archive.active = nil; archive.lastSound = previousSound
                 return
@@ -186,7 +192,7 @@ final class SleepStore: ObservableObject {
     func resume() async {
         guard loaded, !failed, !audioInterrupted else { return }
         if let dismissal = WakeDismissal.pending() {
-            if dismissal.alarmID == archive.active?.alarmID.uuidString {
+            if dismissal.alarmID == archive.active?.alarmID.uuidString || dismissal.alarmID == archive.active?.backupAlarmID?.uuidString {
                 if await finish(at: dismissal.date) {
                     do { try WakeDismissal.acknowledge(dismissal) } catch { self.error = error.localizedDescription }
                 }
@@ -211,7 +217,7 @@ final class SleepStore: ObservableObject {
         if !captureBusy && audio.isRecording && AVAudioSession.sharedInstance().recordPermission != .granted {
             Task { await self.pauseCapture(reason: "recordDenied") }
         }
-        guard UIApplication.shared.applicationState == .active else { return }
+        guard night.hasAlarm, UIApplication.shared.applicationState == .active else { return }
         audio.updateLight(wake: night.wake, minutes: archive.plan.lightMinutes)
         if Date() >= night.wake && !ringing && !audioInterrupted {
             ringing = true
@@ -230,7 +236,7 @@ final class SleepStore: ObservableObject {
             } catch { self.error = error.localizedDescription }
     }
     func snooze() async {
-        guard !busy, archive.active != nil else { return }; busy = true; defer { busy = false }
+        guard !busy, archive.active?.hasAlarm == true else { return }; busy = true; defer { busy = false }
         // The alarm's stop may still be flushing. Snapshot only after its final clips and pause decision.
         await pauseCapture(reason: "recordAlarm")
         guard var night = archive.active else { return }
@@ -244,7 +250,7 @@ final class SleepStore: ObservableObject {
                 archive.active = original; archive.active?.resumeCaptureAfterAlarm = false
                 return
             }
-            if !testMode { try? scheduler.cancel(id: old) }
+            if !testMode { try? scheduler.cancel(id: old); if let backup = original.backupAlarmID { try? scheduler.cancel(id: backup) } }
             audio.stopPlayback(); audio.restoreScreen(); ringing = false
             try await beginRecordingIfNeeded()
         } catch { self.error = error.localizedDescription }
@@ -252,7 +258,9 @@ final class SleepStore: ObservableObject {
     @discardableResult
     func finish(at end: Date = Date()) async -> Bool {
         guard !busy, archive.active != nil else { return false }; busy = true; defer { busy = false }
-            if let id = archive.active?.alarmID, !testMode { do { try scheduler.cancel(id: id) } catch { self.error = error.localizedDescription } }
+            if let night = archive.active, night.hasAlarm, !testMode {
+                for id in [night.alarmID, night.backupAlarmID].compactMap({ $0 }) { do { try scheduler.cancel(id: id) } catch { self.error = error.localizedDescription } }
+            }
             await pauseCapture(reason: "recordOff")
             await audio.stopAll(); ringing = false
             // stopAll flushes the last clip before we snapshot the session.
@@ -278,6 +286,10 @@ final class SleepStore: ObservableObject {
                     archive.sessions[i].clips[j].suggestion = false
                     archive.sessions[i].clips[j].analysisVersion = SoundTagger.version
                     archive.sessions[i].clips[j].analysisFailed = nil
+                    let summary = NightSoundSummary(clip:archive.sessions[i].clips[j])
+                    archive.sessions[i].soundSummaries?.removeAll { $0.id == clip.id }
+                    if archive.sessions[i].soundSummaries == nil { archive.sessions[i].soundSummaries = [] }
+                    archive.sessions[i].soundSummaries?.append(summary)
                 }
             }
         }
@@ -298,22 +310,40 @@ final class SleepStore: ObservableObject {
         analyzing.insert(clip.id); defer { analyzing.remove(clip.id) }
         let result = await SoundTagger.suggest(url: url)
         guard !Task.isCancelled else { return }
-        _ = await commit { value in
-                for i in value.sessions.indices {
-                    if let j = value.sessions[i].clips.firstIndex(where: { $0.id == clip.id }),
-                       value.sessions[i].clips[j] == clip {
-                        // A manual correction or deletion made while analysing wins.
-                        value.sessions[i].clips[j].analysisFailed = !result.completed
-                        guard result.completed else { continue }
-                        value.sessions[i].clips[j].kind = result.kind
-                        value.sessions[i].clips[j].analysisDone = true
-                        value.sessions[i].clips[j].suggestion = result.kind != .other
-                        value.sessions[i].clips[j].events = result.events
-                        value.sessions[i].clips[j].analysisVersion = SoundTagger.version
-                    }
-                }
+        let saved = await commit { value in
+            func update(_ night: inout SleepSession) {
+                guard let j = night.clips.firstIndex(where: { $0.id == clip.id }), night.clips[j] == clip else { return }
+                night.clips[j].analysisFailed = !result.completed
+                night.clips[j].analysisDone = result.completed
+                night.clips[j].kind = result.kind
+                night.clips[j].suggestion = true
+                night.clips[j].events = result.events
+                night.clips[j].analysisVersion = SoundTagger.version
+                var summaries = night.soundSummaries ?? []
+                summaries.removeAll { $0.id == clip.id }; summaries.append(NightSoundSummary(clip:night.clips[j]))
+                night.soundSummaries = summaries
+            }
+            if value.active != nil { update(&value.active!) }
+            for i in value.sessions.indices { update(&value.sessions[i]) }
         }.value
+        if saved { await discardTemporaryClip(clip) }
     }
+    func discardTemporaryClip(_ clip: NightClip) async {
+        let all = archive.sessions + (archive.active.map { [$0] } ?? [])
+        guard all.contains(where: { $0.retainAudio == false && $0.clips.contains(where: { $0.id == clip.id }) }),
+              await commit({ $0.queueClipDeletion([clip.filename]) }).value else { return }
+        await completePendingClipDeletions()
+    }
+    func recoverTemporaryAnalysis() async {
+        let nights = archive.sessions + (archive.active.map { [$0] } ?? [])
+        for night in nights where night.retainAudio == false {
+            for clip in night.clips {
+                if !clip.analysisDone && clip.analysisFailed != true { await analyze(clip) }
+                else { await discardTemporaryClip(clip) }
+            }
+        }
+    }
+
     @discardableResult
     func delete(_ clip: NightClip) async -> Bool {
         if journalPreview {
@@ -330,7 +360,7 @@ final class SleepStore: ObservableObject {
         guard await commit({ _ in }).value else { return }
         await completePendingClipDeletions()
     }
-    private func completePendingClipDeletions() async {
+    func completePendingClipDeletions() async {
         guard await acquireClipFiles() else { return }; defer { clipFilesBusy = false }
         guard let pending = archive.pendingClipDeletions, !pending.isEmpty else { return }
         // A failed optimistic edit may still be in memory. Persist this exact queue first.

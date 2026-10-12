@@ -1,6 +1,12 @@
 import Foundation
 
+enum AlarmMode: String, Codable, CaseIterable { case analysis, exact, smart }
+
 struct AlarmPlan: Codable, Equatable {
+    var mode: AlarmMode?
+    var windowMinutes: Int?
+    var resolvedMode: AlarmMode { mode ?? .exact }
+    var window: Int { [15,30,45,60].contains(windowMinutes ?? 30) ? (windowMinutes ?? 30) : 30 }
     var hour = 7
     var minute = 30
     var sounds = ["aurora", "lumen", "brisa"]
@@ -57,10 +63,21 @@ struct SleepSession: Codable, Equatable, Identifiable {
     var capturePaused: Bool?
     var captureSpans: [CaptureSpan]?
     var resumeCaptureAfterAlarm: Bool?
+    var mode: AlarmMode?
+    var windowStart: Date?
+    var latestWake: Date?
+    var backupAlarmID: UUID?
+    var smartTriggered: Bool?
+    var retainAudio: Bool?
+    var acousticEpochs: [AcousticEpoch]?
+    var soundSummaries: [NightSoundSummary]?
+    var soundAnalysisIncomplete: Bool?
+    var hasAlarm: Bool { mode != .analysis }
     var duration: TimeInterval { max(0, (end ?? checkpoint).timeIntervalSince(start)) }
     func snoozed(until wake: Date) -> SleepSession {
         var next = self
         next.alarmID = UUID(); next.wake = wake
+        next.windowStart = nil; next.backupAlarmID = nil
         if resumeCaptureAfterAlarm == true { next.capturePaused = false }
         next.resumeCaptureAfterAlarm = nil
         return next
@@ -82,6 +99,8 @@ struct ImportedTone: Codable, Equatable, Identifiable {
     let filename: String
 }
 struct Preferences: Codable, Equatable {
+    var analyze: Bool?
+    var analysisEnabled: Bool { analyze ?? true }
     var language = "system"
     var appearance = "auto"
     var record = false

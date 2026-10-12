@@ -18,6 +18,7 @@ final class AcousticSegmenter {
     private(set) var noiseFloor = -65.0
     private(set) var level = -100.0
     private(set) var calibrated = false
+    var observe: ((Double, Double, Bool) -> Void)?
     var emit: (Action) throws -> Void
     init(sampleRate: Double, margin: Double = 10, emit: @escaping (Action) throws -> Void) {
         self.sampleRate = sampleRate; self.margin = margin; self.emit = emit
@@ -52,6 +53,7 @@ final class AcousticSegmenter {
             }
         }
         let loud = calibrated && level > max(-65, noiseFloor + margin)
+        observe?(Double(samples.count)/sampleRate, level, loud)
         if active {
             try emit(.append(samples)); length += samples.count
             quiet = loud ? 0 : quiet + samples.count
@@ -177,6 +179,7 @@ final class CaptureWorker: @unchecked Sendable {
     private var overflowReported = false
     private let spool: ClipSpool
     private var detector: AcousticSegmenter!
+    private var epochs: EpochAccumulator!
     private var closed = false
     private var frames: Int64 = 0
     private var progressFrames: Int64 = 0
@@ -189,9 +192,10 @@ final class CaptureWorker: @unchecked Sendable {
     let progress: (Date, Double, Bool) -> Void
     let failure: (Error) -> Void
     let deadlineReached: () -> Void
-    init(nightID: UUID, start: Date, deadline: Date, rate: Double, margin: Double, directory: URL, byteLimit: Int = 256*1024*1024, receipt: @escaping (ClipReceipt) -> Void, progress: @escaping (Date, Double, Bool) -> Void, failure: @escaping (Error) -> Void, deadlineReached: @escaping () -> Void) throws {
+    init(nightID: UUID, start: Date, deadline: Date, rate: Double, margin: Double, directory: URL, byteLimit: Int = 256*1024*1024, epoch: @escaping (AcousticEpoch) -> Void = { _ in }, receipt: @escaping (ClipReceipt) -> Void, progress: @escaping (Date, Double, Bool) -> Void, failure: @escaping (Error) -> Void, deadlineReached: @escaping () -> Void) throws {
         spool = try ClipSpool(directory: directory); self.start = start; self.deadline = deadline; self.rate = rate; self.byteLimit = byteLimit
         self.receipt = receipt; self.progress = progress; self.failure = failure; self.deadlineReached = deadlineReached
+        epochs = EpochAccumulator(start: start, emit: epoch)
         detector = AcousticSegmenter(sampleRate: rate, margin: margin) { [weak self] action in
             guard let self else { return }
             switch action {
@@ -202,6 +206,7 @@ final class CaptureWorker: @unchecked Sendable {
             case .end: if let saved = try self.spool.close() { receipt(saved) }
             }
         }
+        detector.observe = { [weak self] duration, level, loud in self?.epochs.add(duration: duration, level: level, loud: loud) }
     }
     private func write(_ samples: [Float]) throws {
         guard written + samples.count*2 <= byteLimit else { throw CocoaError(.fileWriteOutOfSpace) }
@@ -222,18 +227,20 @@ final class CaptureWorker: @unchecked Sendable {
             let available = max(0, Int64(deadline.timeIntervalSince(start)*rate) - frames)
             let count = min(samples.count, Int(available))
             if count > 0 { try detector.feed(Array(samples.prefix(count))); frames += Int64(count) }
-            if frames - progressFrames >= Int64(rate) { progressFrames = frames; progress(start.addingTimeInterval(Double(frames)/rate), detector.level, detector.calibrated) }
+            if frames - progressFrames >= Int64(rate/10) { progressFrames = frames; progress(start.addingTimeInterval(Double(frames)/rate), detector.level, detector.calibrated) }
             if count < samples.count { try finish(); deadlineReached() }
         } catch { if closed { failure(error) } else { abort(error) } }
     }
     private func finish() throws {
         guard !closed else { return }; closed = true
         try detector.finish()
+        epochs.flush()
         progress(start.addingTimeInterval(Double(frames)/rate), detector.level, detector.calibrated)
     }
     private func abort(_ error: Error) {
         guard !closed else { return }
         closed = true
+        epochs.flush()
         if let saved = try? spool.close() { receipt(saved) }
         failure(error)
     }

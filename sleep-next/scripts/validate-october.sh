@@ -37,6 +37,14 @@ if [[ "${VALIDATION_SCOPE:-october}" == "design" ]]; then
     -only-testing:AlarmaNextUITests/NativeFlowTests/testJournalExamplesAndMoodCalendar
   )
 fi
+if [[ "${VALIDATION_SCOPE:-october}" == "analysis" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/SleepAnalysisTests
+    -only-testing:AlarmaNextTests/HealthTimelineTests
+    -only-testing:AlarmaNextTests/CaptureIntegrationTests
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testNightModesSwipeAndStatistics
+  )
+fi
 xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext \
   -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath "$RUN_DIR/build" \
   -resultBundlePath "$RUN_DIR/Tests.xcresult" -parallel-testing-enabled NO \

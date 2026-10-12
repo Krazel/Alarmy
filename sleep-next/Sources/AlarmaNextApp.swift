@@ -87,15 +87,20 @@ struct AlarmScreen: View {
                                 Eyebrow(text: store.words("tonight"))
                                 Button { editor = true } label: {
                                     HStack(alignment: .firstTextBaseline) {
-                                        Text(store.archive.plan.clock).font(.system(size: 70, weight: .light, design: .rounded)).monospacedDigit().minimumScaleFactor(0.7)
+                                        Text(store.archive.plan.resolvedMode == .analysis ? store.words("analysis") : store.archive.plan.clock).font(.system(size: store.archive.plan.resolvedMode == .analysis ? 32 : 70, weight: .light, design: .rounded)).monospacedDigit().minimumScaleFactor(0.7)
                                         Spacer(minLength: 5); Image(systemName: "slider.horizontal.3").font(.title3)
                                     }.foregroundStyle(Color.ink)
                                 }.accessibilityIdentifier("edit-alarm")
+                                Text(store.words(store.archive.plan.resolvedMode.rawValue)).font(.subheadline)
+                                if store.archive.plan.resolvedMode != .analysis {
                                 HStack { Image(systemName: "sunrise"); Text(store.words("wake")); Spacer(); Text(store.archive.plan.next(after: Date()) ?? Date(), style: .date).lineLimit(1).minimumScaleFactor(0.7) }.font(.caption).foregroundStyle(Color.ink.opacity(0.65))
+                                if store.archive.plan.resolvedMode == .smart { Text("\(store.archive.plan.window) min · " + store.words("windowBefore")).font(.caption) }
                                 Divider()
                                 Button { music = true } label: { HStack(spacing: 12) { Image(systemName: "waveform"); Text(store.words("sounds")); Spacer(); Text("\(store.archive.plan.sounds.count) " + store.words("selected")).font(.caption); Image(systemName: "chevron.right").font(.caption2) } }.font(.subheadline).foregroundStyle(Color.ink).accessibilityIdentifier("sounds")
+                                }
                             }
                         }
+                        Toggle(store.words("analyzeSounds"), isOn: Binding(get: { store.archive.preferences.analysisEnabled }, set: { value in store.preferences { $0.analyze = value } })).font(.subheadline).padding(16).background(Color.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 18))
                         Toggle(isOn: Binding(get: { store.archive.preferences.record }, set: { value in store.preferences { $0.record = value } })) {
                             Label(store.words("record"), systemImage: "mic")
                         }.font(.subheadline).padding(16).background(Color.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 18)).accessibilityIdentifier("record-toggle")
@@ -116,6 +121,18 @@ struct AlarmEditor: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker(store.words("alarmMode"), selection: Binding(get: { store.archive.plan.resolvedMode }, set: { value in store.plan { $0.mode = value } })) {
+                        ForEach(AlarmMode.allCases, id: \.self) { Text(store.words($0.rawValue)).tag($0) }
+                    }.pickerStyle(.inline).accessibilityIdentifier("alarm-mode")
+                } footer: { Text(store.words(store.archive.plan.resolvedMode == .analysis ? "analysisHint" : (store.archive.plan.resolvedMode == .smart ? "smartHint" : "exactHint"))) }
+                if store.archive.plan.resolvedMode != .analysis {
+                if store.archive.plan.resolvedMode == .smart {
+                    Picker(store.words("wakeWindow"), selection: Binding(get: { store.archive.plan.window }, set: { value in store.plan { $0.windowMinutes = value } })) {
+                        ForEach([15,30,45,60], id: \.self) { Text("\($0) min").tag($0) }
+                    }
+                    Text(store.words("latestWake")).font(.caption)
+                }
                 DatePicker(store.words("wake"), selection: time, displayedComponents: .hourAndMinute).datePickerStyle(.wheel).labelsHidden()
                 Section {
                     Toggle(store.words("gentle"), isOn: Binding(get: { store.archive.plan.gradual }, set: { value in store.plan { $0.gradual = value } }))
@@ -126,43 +143,9 @@ struct AlarmEditor: View {
                     Picker(store.words("light"), selection: Binding(get: { store.archive.plan.lightMinutes }, set: { value in store.plan { $0.lightMinutes = value } })) { Text(store.words("off")).tag(0); ForEach([3,5,10,15], id: \.self) { Text("\($0) min").tag($0) } }
                 } footer: { Text(store.words("lightHint")) }
                 Section { Text(store.words(WakeScheduler.systemAlarms ? "nativeExtra" : "fallbackInfo")).font(.footnote) }
+                }
             }.scrollContentBackground(.hidden).background(Color.paper).navigationTitle(store.words("edit")).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { dismiss() } } }
         }
-    }
-}
-struct NightScreen: View {
-    @EnvironmentObject var store: SleepStore
-    @State private var confirm = false
-    var body: some View {
-        ZStack {
-            NightLandscape()
-            GeometryReader { geometry in
-            ScrollView {
-            VStack(spacing: 18) {
-                Spacer()
-                Image(systemName: store.ringing ? "sun.max" : "moon.stars").font(.system(size: 40, weight: .ultraLight))
-                Text(store.words(store.ringing ? "morning" : "goodnight")).font(.system(size: 36, design: .serif))
-                if let night = store.archive.active {
-                    VStack(spacing: 10) { Text(store.words("until")).font(.caption2).tracking(3); Text(night.wake, style: .time).font(.system(size: 68, weight: .ultraLight, design: .rounded)).monospacedDigit() }
-                    CapturePanel(audio: store.audio)
-                }
-                Spacer()
-                if store.ringing {
-                    Button { Task { await store.snooze() } } label: { Text(store.words("snooze") + " Â· \(store.archive.plan.snoozeMinutes) min") }.buttonStyle(PrimaryButton())
-                    Button(store.words("dismiss")) { Task { await store.finish() } }.padding()
-                } else { Button(store.words("end")) { confirm = true }.font(.subheadline).padding(20).frame(maxWidth: .infinity).overlay(Capsule().stroke(.white.opacity(0.3))).accessibilityIdentifier("finish-night") }
-            }.padding(32).padding(.bottom, 20).frame(minHeight: geometry.size.height).foregroundStyle(Color(red: 0.96, green: 0.92, blue: 0.83))
-            }.scrollIndicators(.hidden)
-            }
-        }.preferredColorScheme(.dark).interactiveDismissDisabled().disabled(store.busy)
-        .confirmationDialog(store.words("endTitle"), isPresented: $confirm, titleVisibility: .visible) {
-            Button(store.words("end"), role: .destructive) { Task { await store.finish() } }
-            Button(store.words("cancel"), role: .cancel) { }
-        } message: { Text(store.words("endHint")) }
-        .alert(store.words("error"), isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
-            if store.writeFailed { Button(store.words("retrySave")) { Task { await store.retrySaving() } } }
-            Button(store.words("done")) { store.error = nil }
-        } message: { Text(store.error ?? "") }
     }
 }

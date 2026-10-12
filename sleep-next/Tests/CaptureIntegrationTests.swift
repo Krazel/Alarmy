@@ -3,6 +3,24 @@ import XCTest
 
 @MainActor
 final class CaptureIntegrationTests: XCTestCase {
+    func testTemporaryAnalysisRecoveryDeletesAudioAndKeepsSummary() async throws {
+        let (store,_,receipt,url) = try await fixture(finished:true)
+        _ = await store.commit { $0.sessions[0].retainAudio = false; $0.sessions[0].clips = [receipt.clip] }.value
+        try ClipSpool.acknowledge(receipt,directory:DiskLocation.clips)
+        await store.recoverTemporaryAnalysis()
+        let saved = try await store.repository.load()
+        XCTAssertTrue(saved.sessions[0].clips.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath:url.path))
+        XCTAssertEqual(saved.sessions[0].soundSummaries?.count,1)
+    }
+    func testFinalEpochBelongsToFinishedSession() async throws {
+        let (store,night,receipt,url) = try await fixture(finished:true)
+        defer { try? FileManager.default.removeItem(at:url); try? ClipSpool.acknowledge(receipt,directory:DiskLocation.clips) }
+        let epoch = AcousticEpoch(id:UUID(),start:night.start,duration:12,activeSeconds:2,meanDBFS:-42)
+        store.observe(epoch,nightID:night.id)
+        if let task = store.writeTail { _ = await task.value }
+        XCTAssertEqual(store.archive.sessions[0].acousticEpochs,[epoch]); XCTAssertNil(store.archive.active)
+    }
     func testFinishingDoesNotRewritePreviousUserPauseReasonOrTime() async throws {
         let (store,_,receipt,url) = try await fixture()
         defer { try? FileManager.default.removeItem(at: url); try? ClipSpool.acknowledge(receipt, directory: DiskLocation.clips) }

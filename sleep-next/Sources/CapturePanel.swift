@@ -8,7 +8,7 @@ struct CapturePanel: View {
             Label(store.words(audio.captureState), systemImage: audio.isRecording ? "waveform" : "mic.slash")
                 .font(.caption).multilineTextAlignment(.center).accessibilityIdentifier("capture-state")
             if audio.isRecording {
-                ProgressView(value: max(0, min(1, (audio.inputLevel + 80)/65))).tint(.orange).frame(width: 130).accessibilityLabel(store.words("record"))
+                SoundWave(values: audio.waveform).frame(height: 60).accessibilityLabel(store.words("liveSound"))
                 Text("\(store.archive.active?.clips.count ?? 0) · " + store.words("nightSounds")).font(.caption2)
                 Button(store.words("pauseCapture")) { Task { await store.pauseCapture() } }.accessibilityIdentifier("pause-capture")
             } else if !store.ringing {

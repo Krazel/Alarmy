@@ -2,6 +2,7 @@ import SwiftUI
 
 struct JournalScreen: View {
     @EnvironmentObject var store: SleepStore
+    @State private var statistics = false
     @State private var calendar = false
     @State private var openedClip: NightClip?
     @State private var examples = false
@@ -9,7 +10,7 @@ struct JournalScreen: View {
     @State private var stages: [SleepStage] = []
     private var nights: [SleepSession] { store.sessions(store.selectedDay) }
     private var clips: [NightClip] { nights.flatMap(\.clips) }
-    private var duration: Double { nights.reduce(0) { $0 + $1.duration } }
+    private var duration: Double { NightMetrics(nights:nights).inBed }
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -23,6 +24,7 @@ struct JournalScreen: View {
                     week
                     summary
                     feeling
+                    if !nights.isEmpty { NightAnalysisCard(nights:nights,stages:stages,feeling:store.page(store.selectedDay).feeling,words:store.words) }
                     notes
                     soundCard
                     healthCard
@@ -39,13 +41,18 @@ struct JournalScreen: View {
             .sheet(isPresented: $calendar) {
                 JournalCalendar(month: store.selectedDay).presentationDetents([.large])
             }
+            .sheet(isPresented: $statistics) { StatisticsScreen() }
             .sheet(isPresented: $examples) { JournalExamples(language: store.archive.preferences.language, appearance: store.archive.preferences.appearance) }
             .sheet(item: $openedClip) { ClipDetail(clipID: $0.id, audio: store.audio) }
             .task(id: CalendarDay.key(store.selectedDay)) { await store.analyzeClips(for: store.selectedDay) }
             .task(id: CalendarDay.key(store.selectedDay) + String(store.archive.preferences.health)) {
                 stages = []
                 if store.archive.preferences.health && !store.journalPreview {
-                    do { let values = try await HealthReader().stages(for: store.selectedDay); if !Task.isCancelled { stages = values } } catch { store.error = error.localizedDescription }
+                    do {
+                        var values: [SleepStage] = []
+                        for night in nights { values += try await HealthReader().stages(from:night.start,to:night.end ?? night.checkpoint) }
+                        if !Task.isCancelled { stages = HealthReader.normalize(values) }
+                    } catch { store.error = error.localizedDescription }
                 }
             }
         }
@@ -57,6 +64,7 @@ struct JournalScreen: View {
                 Spacer()
                 Button { calendar = true } label: { Image(systemName: "calendar").font(.system(size: 19)).padding(12).background(Color.card, in: Circle()) }.accessibilityIdentifier(store.journalPreview ? "example-calendar" : "calendar").accessibilityLabel(store.words("calendar"))
             }
+            Button { statistics = true } label: { Label(store.words("statistics"),systemImage:"chart.bar.xaxis") }.accessibilityIdentifier("statistics")
             Text(store.words("yourNight")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.6))
         }
     }
