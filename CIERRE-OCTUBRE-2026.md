@@ -2,10 +2,18 @@
 
 Prioridad humana posterior del 12/10: **subir las correcciones a TestFlight**.
 El usuario exige API y repositorio Alarma público para Actions estándar gratuitas,
-sin gastos; la excepción prevalece para este producto. Preparada 1.1.1(1).
+sin gastos; la excepción prevalece para este producto. **1.1.1(1) disponible en
+TestFlight interno** para el titular, API VALID / IN_BETA_TESTING y notas ES/EN
+verificadas. Fuente `dcbdddc8ec1a3540fdc8e8c577ba47c88cbb74bc`.
+Validación: 49 pruebas pasadas, incluidas las 15 regresiones nuevas, cero
+fallos/omitidas y Release iPhone correcto. Secretos temporales eliminados y
+entorno releído vacío. Biblioteca PR-019 conciliada y guardado verificado rev11,
+tracking e historial conservados. Noche física/batería e iOS 16–25 pendientes.
 Ver [entrega vigente](QA-2026-10-12/README.md). Las restricciones de nueva subida
 y privacidad del encargo inicial que siguen abajo quedan sustituidas por esa
 indicación; la noche física no se considera realizada.
+
+## Historial de preparación — anterior a la entrega autorizada
 
 Avance local del 12/10: preparadas correcciones de retención/borrado persistente,
 recuperación, interrupciones y posponer. 15 regresiones XCTest nuevas pendientes

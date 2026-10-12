@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-12T19:31:04.573Z",
+  "appId": "6818287946",
+  "appName": "Alarma de Krazel",
+  "bundleId": "com.krazel.alarmanext",
+  "version": "1.1.1",
+  "build": "1",
+  "buildId": "8839b3ba-7189-45b9-9cf9-26802835cf5d",
+  "processingState": "VALID",
+  "uploadedDate": "2026-10-12T12:29:55-07:00",
+  "expirationDate": "2027-01-10T11:29:55-08:00",
+  "minimumOS": "16.0",
+  "usesNonExemptEncryption": false,
+  "internalBuildState": "IN_BETA_TESTING",
+  "externalBuildState": "READY_FOR_BETA_SUBMISSION",
+  "internalGroup": true,
+  "groupAssigned": true,
+  "ownerOnlyVerified": true,
+  "testerCount": 1,
+  "publicLinkEnabled": false,
+  "notes": {
+    "es-ES": "Correcciones de recuperación y borrado de grabaciones, interrupciones y posponer. Posponer recupera el micrófono que detuvo la alarma y conserva una pausa manual. Mejoras del guardado al detener la alarma y de la reproducción. Audio personal local. Prueba pendiente de noche real y batería con pantalla bloqueada; las categorías son sugerencias corregibles. iPhone iOS 16+, castellano e inglés.",
+    "en-US": "Fixes for recording recovery and deletion, interruptions and snoozing. Snoozing resumes capture stopped by the alarm and preserves a manual microphone pause. Improved saving when stopping the alarm and audio playback. Personal recordings stay local. Overnight and battery testing with the screen locked are still pending; categories are editable suggestions. iPhone iOS 16+, Spanish and English."
+  },
+  "appStorePublished": false
+}

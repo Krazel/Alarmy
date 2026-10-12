@@ -6,10 +6,19 @@
 a TestFlight y ordena expresamente mantener **Krazel/Alarmy público**, usando API
 y Actions estándar gratuitas, sin gastos. Excepción de Alarma a la regla general
 de privado. Se revirtió por API el cambio a privado y se verificó PUBLIC.
-Candidata **1.1.1 (1)** preparada; falta completar validación/firma/subida y releer
-estado beta. La 1.1(1) anterior se conserva. [Entrega en curso](QA-2026-10-12/README.md).
+Entrega **1.1.1 (1)** disponible en TestFlight interno para el titular;
+API Apple confirma VALID / IN_BETA_TESTING y notas ES/EN. 49 pruebas pasadas,
+incluidas las 15 regresiones nuevas, cero
+fallos/omitidas y Release iPhone correcto. Fuente `dcbdddc8ec1a3540fdc8e8c577ba47c88cbb74bc`.
+Los siete secretos temporales se eliminaron y el entorno se releyó vacío.
+La 1.1(1) anterior se conserva. [Entrega y recibos](QA-2026-10-12/README.md).
+Biblioteca PR-019 guardada y releída, revisión 11; tracking/historial conservados.
+El pendiente anterior de octubre está conciliado. Siguiente paso: instalar la
+build y realizar la noche física/batería y comprobar iOS 16–25; siguen pendientes.
 Esta autorización posterior sustituye los bloqueos de privacidad y la prohibición
 de nueva subida descritos abajo, que corresponden al encargo previo de cierre.
+
+## Historial del encargo previo de cierre — sustituido donde se indica arriba
 
 Propietario PR-019: `01a0708e-0558-78b1-866c-801b9cf35996`. Continúa el cierre
 de octubre según `../.studio/coordination/cierre-octubre-20261012.md`; no repetir

@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-12T19:02:16.458Z",
+  "repo": "Krazel/Alarmy",
+  "environment": "alarma-local-qa",
+  "branch": "codex/native-sleep-rebuild",
+  "profileID": "Y88GH6KBJH",
+  "type": "IOS_APP_STORE",
+  "profileExpires": "2027-08-08T21:50:46.000+00:00",
+  "certificateMatched": true,
+  "temporarySecretNames": [
+    "BUILD_CERTIFICATE_BASE64",
+    "P12_PASSWORD",
+    "BUILD_PROVISION_PROFILE_BASE64",
+    "KEYCHAIN_PASSWORD",
+    "APP_STORE_CONNECT_API_KEY_ID",
+    "APP_STORE_CONNECT_ISSUER_ID",
+    "APP_STORE_CONNECT_API_KEY_BASE64"
+  ],
+  "valuesLogged": false
+}

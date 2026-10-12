@@ -1,0 +1,27 @@
+{
+  "source": "dcbdddc8ec1a3540fdc8e8c577ba47c88cbb74bc",
+  "validationRun": 38295534654,
+  "passedTests": 49,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "newRegressionsPassed": 15,
+  "newRegressionNames": [
+    "OctoberRecoveryTests.testAlarmDismissalReadDoesNotConsumeItBeforeNightIsSaved",
+    "OctoberRecoveryTests.testArchiveWithoutNewOptionalFieldsStillDecodes",
+    "OctoberRecoveryTests.testInvalidDeletionCannotReachOutsideClipDirectory",
+    "OctoberRecoveryTests.testMissingPCMIsReportedWithoutDiscardingRecoveryManifest",
+    "OctoberRecoveryTests.testRelaunchCompletesDeletionAndRemovesRecoveryReceipt",
+    "OctoberRecoveryTests.testRetentionWriteFailurePreservesAudioAndJournal",
+    "OctoberRecoveryTests.testSnoozeDoesNotGuessCaptureConsentForLegacyNight",
+    "OctoberRecoveryTests.testSnoozePreservesVoluntaryMicrophonePause",
+    "OctoberRecoveryTests.testSnoozeResumesCaptureStoppedForAlarm",
+    "OctoberStoreRecoveryTests.testAlarmStopRemembersCaptureConsentBeforePausing",
+    "OctoberStoreRecoveryTests.testDeletionWaitsForAnInFlightRecovery",
+    "OctoberStoreRecoveryTests.testDuplicateInterruptionDoesNotLoseOriginalResumeDecision",
+    "OctoberStoreRecoveryTests.testFailedDeleteCanRetryAndCannotReindexPendingReceipt",
+    "OctoberStoreRecoveryTests.testInterruptionEndWaitsForCaptureStop",
+    "OctoberStoreRecoveryTests.testVoluntaryPauseAfterAlarmOverridesAutomaticSnoozeResume"
+  ],
+  "releaseIPhoneBuild": "success",
+  "physicalNightAndBattery": "pending"
+}
