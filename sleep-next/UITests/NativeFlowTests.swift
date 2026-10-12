@@ -24,6 +24,8 @@ final class NativeFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["save-active-alarm"].waitForExistence(timeout:5))
         let minutes = app.pickerWheels.element(boundBy:1)
         XCTAssertTrue(minutes.waitForExistence(timeout:5)); minutes.adjust(toPickerWheelValue:"45")
+        // Let the wheel's native settling animation finish before taking its visual reference.
+        Thread.sleep(forTimeInterval:0.8)
         shot(spanish ? "51-es-edit-active-alarm" : "54-en-edit-active-alarm")
         app.buttons["save-active-alarm"].tap()
         let changed = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label CONTAINS ':45'"),object:alarm)

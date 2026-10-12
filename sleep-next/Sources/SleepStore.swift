@@ -194,7 +194,7 @@ final class SleepStore: ObservableObject {
             #if DEBUG
             if testMode && ProcessInfo.processInfo.arguments.contains("--night-wave-fixture") {
                 audio.captureState = "recordListening"
-                audio.waveform = (0..<64).map { 0.3 + 0.3 * sin(Double($0)*0.2) }
+                audio.waveform = (0..<64).map { 0.65 + 0.12 * sin(Double($0)*0.2) }
             }
             #endif
             do { try await beginRecordingIfNeeded() } catch {

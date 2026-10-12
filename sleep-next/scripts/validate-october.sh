@@ -63,6 +63,12 @@ if [[ "${VALIDATION_SCOPE:-october}" == "onda" ]]; then
     -only-testing:AlarmaNextUITests/NativeFlowTests/testNightModesSwipeAndStatistics
   )
 fi
+if [[ "${VALIDATION_SCOPE:-october}" == "onda_visual" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testMinimalNightAndInlineAlarmEnglish
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testMinimalNightAndInlineAlarmSpanishSmart
+  )
+fi
 xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext \
   -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath "$RUN_DIR/build" \
   -resultBundlePath "$RUN_DIR/Tests.xcresult" -parallel-testing-enabled NO \

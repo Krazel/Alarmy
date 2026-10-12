@@ -38,7 +38,7 @@ struct NightScreen: View {
             GeometryReader { geo in
                 VStack(spacing: 8) {
                     TimelineView(.periodic(from:.now,by:1)) { context in
-                        Text(context.date.formatted(.dateTime.hour().minute().locale(store.words.locale)))
+                        Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM:.omitted)).minute().locale(store.words.locale)))
                             .font(.system(size:76,weight:.light,design:.rounded)).monospacedDigit()
                             .lineLimit(1).minimumScaleFactor(0.6).accessibilityIdentifier("night-current-time")
                             .accessibilityLabel(store.words("currentTime"))
@@ -57,9 +57,9 @@ struct NightScreen: View {
                         } else { Text(store.words("analysis")).font(.system(size:20,design:.serif)).frame(minHeight:44) }
                     }
                     Spacer()
-                }.padding(.horizontal,24).padding(.top,20)
+                }.padding(.horizontal,24).padding(.top,20).frame(width:geo.size.width)
                 NightRibbon(audio:store.audio).frame(width:max(0,geo.size.width-36),height:100)
-                    .position(x:geo.size.width/2,y:geo.size.height*0.72)
+                    .position(x:geo.size.width/2,y:geo.size.height*0.85)
                 if store.ringing {
                     Button { Task { await store.snooze() } } label: {
                         Text(store.words("snooze") + " · \(store.archive.plan.snoozeMinutes) min")
@@ -85,7 +85,7 @@ struct NightScreen: View {
             } message: {Text(store.error ?? "")}
     }
     private func alarmLabel(_ night: SleepSession) -> String {
-        let time: (Date) -> String = { $0.formatted(.dateTime.hour().minute().locale(store.words.locale)) }
+        let time: (Date) -> String = { $0.formatted(.dateTime.hour(.twoDigits(amPM:.omitted)).minute().locale(store.words.locale)) }
         if let start = night.windowStart, let end = night.latestWake, night.smartTriggered != true {
             return store.words("alarm") + " · " + time(start) + " – " + time(end)
         }
@@ -130,11 +130,11 @@ struct ActiveAlarmEditor: View {
                 Text(next.formatted(.dateTime.weekday(.wide).day().month().hour().minute().locale(store.words.locale)))
                     .font(.subheadline).accessibilityIdentifier("active-alarm-date")
                 Text(store.words("tonightOnly")).font(.caption).foregroundStyle(.secondary)
-                if store.archive.active?.mode == .smart { Text(store.words("latestWake")).font(.caption).foregroundStyle(.secondary) }
+                if store.archive.active?.mode == .smart { Text(store.words("activeWindowDeadline")).font(.caption).foregroundStyle(.secondary) }
                 if saving { ProgressView() }
                 Spacer(minLength:0)
             }.padding(.horizontal,24).padding(.top,12)
-                .navigationTitle(store.words("changeAlarmTime")).navigationBarTitleDisplayMode(.inline)
+                .navigationTitle(store.words("alarmTime")).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement:.cancellationAction) { Button(store.words("cancel")) { dismiss() }.accessibilityIdentifier("cancel-active-alarm") }
                     ToolbarItem(placement:.confirmationAction) {

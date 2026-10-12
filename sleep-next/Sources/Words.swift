@@ -7,7 +7,9 @@ struct Words {
     func callAsFunction(_ key: String) -> String { Self.entries[key].map { $0[spanish ? 0 : 1] } ?? key }
     static let entries: [String: [String]] = [
         "soundActivity":["Actividad sobre el ruido de fondo","Activity above background noise"],
-        "currentTime":["Hora actual","Current time"],
+        "alarmTime":["Hora de alarma","Alarm time"],
+        "activeWindowDeadline":["Final de la ventana inteligente","End of the smart window"],
+        "currentTime":[ "Hora actual","Current time"],
         "changeAlarmTime":["Cambiar hora de alarma","Change alarm time"],
         "tonightOnly":["Solo esta noche. La grabación continúa.","Tonight only. Recording continues."],
         "analysisDisabled":["Análisis desactivado","Analysis off"],
