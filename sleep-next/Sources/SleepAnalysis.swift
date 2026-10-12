@@ -79,14 +79,31 @@ enum SleepMath {
 
 struct NightMetrics {
     let nights: [SleepSession]
-    var bed: [DateInterval] { SleepMath.union(nights.compactMap { n in n.duration > 0 ? DateInterval(start: n.start, duration: n.duration) : nil }) }
+    let bed: [DateInterval]
+    let epochs: [AcousticEpoch]
+    init(nights: [SleepSession]) {
+        self.nights = nights
+        bed = SleepMath.union(nights.compactMap { n in n.duration > 0 ? DateInterval(start:n.start,duration:n.duration) : nil })
+        epochs = Dictionary(grouping:nights.flatMap { $0.acousticEpochs ?? [] },by: \.id).values.compactMap(\.first).sorted { $0.start < $1.start }
+    }
     var inBed: Double { SleepMath.seconds(bed) }
-    var epochs: [AcousticEpoch] { Dictionary(grouping:nights.flatMap { $0.acousticEpochs ?? [] },by: \.id).values.compactMap(\.first).sorted { $0.start < $1.start } }
     func clipped(_ ranges: [DateInterval]) -> [DateInterval] {
-        SleepMath.union(ranges.flatMap { a in bed.compactMap { b in
-            let start = max(a.start,b.start), end = min(a.end,b.end)
-            return end > start ? DateInterval(start: start, end: end) : nil
-        } })
+        // Binary-search the already merged bed windows. Long histories must not
+        // rebuild/sort every night's windows for every 30-second observation.
+        var result: [DateInterval] = []
+        for range in ranges {
+            var low = 0, high = bed.count
+            while low < high {
+                let middle = (low+high)/2
+                if bed[middle].end <= range.start { low = middle+1 } else { high = middle }
+            }
+            var i = low
+            while i < bed.count && bed[i].start < range.end {
+                let a = max(range.start,bed[i].start), b = min(range.end,bed[i].end)
+                if b > a { result.append(DateInterval(start:a,end:b)) }; i += 1
+            }
+        }
+        return SleepMath.union(result)
     }
     var observed: Double { SleepMath.seconds(clipped(epochs.map { DateInterval(start: $0.start, duration: max(0,$0.duration)) })) }
     var activity: Double? {

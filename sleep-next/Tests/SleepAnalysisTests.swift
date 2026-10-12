@@ -26,6 +26,8 @@ final class SleepAnalysisTests: XCTestCase {
         XCTAssertEqual(m.inBed,100); XCTAssertEqual(m.soundSeconds(.snore),50); XCTAssertEqual(m.soundSeconds(.other),50)
         let stages = [SleepStage(id:UUID(),start:origin.addingTimeInterval(-50),end:origin.addingTimeInterval(150),key:"deep")]
         XCTAssertEqual(m.healthSeconds(stages),100)
+        let late = SleepSession(id:UUID(),start:origin.addingTimeInterval(200),checkpoint:origin.addingTimeInterval(300),end:origin.addingTimeInterval(300),wake:origin.addingTimeInterval(300),alarmID:UUID(),soundID:"aurora")
+        XCTAssertEqual(SleepMath.seconds(NightMetrics(nights:[n,late]).clipped([DateInterval(start:origin,duration:400)])),200)
         n.clips = []
         XCTAssertEqual(NightMetrics(nights:[n]).soundSeconds(.snore),50)
     }

@@ -16,7 +16,8 @@ struct NightAnalysisCard: View {
     let words: Words
     private var metrics: NightMetrics { NightMetrics(nights:nights) }
     var body: some View {
-        PaperCard {
+        let metrics = self.metrics
+        return PaperCard {
             VStack(alignment:.leading,spacing:14) {
                 Text(words("nightAnalysis")).font(.system(size:23,design:.serif))
                 MetricRow(title:words("perceivedQuality"),value:words(feeling?.key ?? "unrated"))
