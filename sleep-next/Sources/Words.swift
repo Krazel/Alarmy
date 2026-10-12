@@ -7,7 +7,14 @@ struct Words {
     func callAsFunction(_ key: String) -> String { Self.entries[key].map { $0[spanish ? 0 : 1] } ?? key }
     static let entries: [String: [String]] = [
         "soundActivity":["Actividad sobre el ruido de fondo","Activity above background noise"],
-        "alarmMode":["Tipo de noche", "Night mode"],
+        "currentTime":["Hora actual","Current time"],
+        "changeAlarmTime":["Cambiar hora de alarma","Change alarm time"],
+        "tonightOnly":["Solo esta noche. La grabación continúa.","Tonight only. Recording continues."],
+        "analysisDisabled":["Análisis desactivado","Analysis off"],
+        "alarmTooClose":["La alarma está a punto de sonar.","The alarm is about to ring."],
+        "alarmChangeFailed":["No se ha cambiado la hora. Se conserva la alarma anterior.","The time was not changed. Your previous alarm is kept."],
+        "alarmCleanupError":["No se ha podido cancelar una alarma de respaldo. Puede seguir sonando a su hora anterior; vuelve a abrir la app para reintentarlo.","A backup alarm could not be cancelled. It may still ring at its previous time; reopen the app to retry."],
+        "alarmMode":[ "Tipo de noche", "Night mode"],
         "analysis":["Sin alarma", "No alarm"],
         "exact":["Hora exacta", "Exact time"],
         "smart":["Ventana inteligente", "Smart window"],

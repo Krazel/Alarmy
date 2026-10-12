@@ -54,6 +54,15 @@ if [[ "${VALIDATION_SCOPE:-october}" == "categories" ]]; then
     -only-testing:AlarmaNextUITests/NativeFlowTests/testSpanishClipDetail
   )
 fi
+if [[ "${VALIDATION_SCOPE:-october}" == "onda" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/ActiveAlarmTests
+    -only-testing:AlarmaNextTests/CaptureRetimeTests
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testMinimalNightAndInlineAlarmEnglish
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testMinimalNightAndInlineAlarmSpanishSmart
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testNightModesSwipeAndStatistics
+  )
+fi
 xcodebuild -project AlarmaNext.xcodeproj -scheme AlarmaNext \
   -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath "$RUN_DIR/build" \
   -resultBundlePath "$RUN_DIR/Tests.xcresult" -parallel-testing-enabled NO \

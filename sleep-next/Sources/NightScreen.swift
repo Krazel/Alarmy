@@ -1,64 +1,159 @@
 import SwiftUI
 
+/// A smooth ribbon whose amplitude comes from the microphone envelope.
 struct SoundWave: View {
     let values: [Double]
+    var animate = true
     var body: some View {
-        GeometryReader { geo in
-            Path { path in
-                let samples = Array(repeating: 0.0, count: max(0,64-values.count)) + values.suffix(64)
-                for (index,value) in samples.enumerated() {
-                    let x = CGFloat(index) / 63 * geo.size.width
-                    let amplitude = max(1,CGFloat(value)*geo.size.height*0.45)
-                    path.move(to: CGPoint(x:x,y:geo.size.height/2-amplitude))
-                    path.addLine(to: CGPoint(x:x,y:geo.size.height/2+amplitude))
+        TimelineView(.animation(minimumInterval: 1.0/15, paused: values.isEmpty || !animate)) { context in
+            Canvas { canvas, size in
+                let signal = values.suffix(12)
+                let level = signal.isEmpty ? 0 : signal.reduce(0,+) / Double(signal.count)
+                let phase = context.date.timeIntervalSinceReferenceDate * 1.3
+                for layer in 0..<14 {
+                    var path = Path()
+                    for step in 0...120 {
+                        let x = Double(step)/120
+                        let envelope = pow(sin(.pi*x), 2)
+                        let wave = sin(x * .pi * 3.4 - phase + Double(layer)*0.075)
+                        let spread = Double(layer-7)*0.018
+                        let y = size.height/2 + (wave+spread)*envelope*min(1,level)*size.height*0.75
+                        let point = CGPoint(x:x*size.width,y:y)
+                        if step == 0 { path.move(to:point) } else { path.addLine(to:point) }
+                    }
+                    canvas.stroke(path, with:.linearGradient(Gradient(colors:[.cyan.opacity(0.08), .init(red:0.65,green:0.88,blue:1), .init(red:1,green:0.95,blue:0.79), .cyan.opacity(0.08)]), startPoint:.zero,endPoint:CGPoint(x:size.width,y:0)),lineWidth:layer == 7 ? 1.8 : 0.7)
                 }
-            }.stroke(Color(red:0.7,green:0.86,blue:0.92),style:StrokeStyle(lineWidth:2,lineCap:.round))
+            }
         }.accessibilityHidden(true)
     }
 }
 
 struct NightScreen: View {
     @EnvironmentObject var store: SleepStore
+    @State private var editingTime = false
+    private let ivory = Color(red:0.96,green:0.94,blue:0.87)
     var body: some View {
         ZStack {
             NightLandscape()
-            ScrollView {
-                VStack(spacing:22) {
-                    VStack(alignment:.leading,spacing:12) {
-                        Text(store.words((store.archive.active?.mode ?? .exact).rawValue)).font(.caption2).tracking(2).textCase(.uppercase)
-                        Text(store.words(store.ringing ? "morning" : (store.archive.active?.hasAlarm == false ? "yourPace" : "goodnight")))
-                            .font(.system(size:38,design:.serif)).frame(maxWidth:260,alignment:.leading)
-                    }.frame(maxWidth:.infinity,alignment:.leading).padding(.top,32).padding(.bottom,12)
+            GeometryReader { geo in
+                VStack(spacing: 8) {
+                    TimelineView(.periodic(from:.now,by:1)) { context in
+                        Text(context.date.formatted(.dateTime.hour().minute().locale(store.words.locale)))
+                            .font(.system(size:76,weight:.light,design:.rounded)).monospacedDigit()
+                            .lineLimit(1).minimumScaleFactor(0.6).accessibilityIdentifier("night-current-time")
+                            .accessibilityLabel(store.words("currentTime"))
+                            .accessibilityValue(context.date.formatted(date:.omitted,time:.shortened))
+                    }
                     if let night = store.archive.active {
-                        if !night.hasAlarm {
-                            TimelineView(.periodic(from:.now,by:1)) { context in
-                                Text(SleepMath.duration(context.date.timeIntervalSince(night.start))).font(.system(size:48,weight:.ultraLight,design:.rounded)).monospacedDigit()
-                            }
-                            Text(store.words("inBed")).font(.caption)
-                        } else if let start = night.windowStart, let end = night.latestWake, night.smartTriggered != true {
-                            HStack(spacing:6) { Text(start,style:.time); Text("–"); Text(end,style:.time) }
-                                .font(.system(size:38,weight:.ultraLight,design:.rounded)).monospacedDigit().minimumScaleFactor(0.6).lineLimit(1)
-                            HStack { Text(store.words("latestWake")); Text(end,style:.time) }.font(.caption)
-                        } else {
-                            Text(night.wake,style:.time).font(.system(size:64,weight:.ultraLight,design:.rounded)).monospacedDigit()
-                            if night.smartTriggered == true { Text(store.words("acousticWake")).font(.caption) }
-                        }
-                        CapturePanel(audio:store.audio)
+                        if night.hasAlarm {
+                            Button { editingTime = true } label: {
+                                HStack(spacing:7) {
+                                    Text(alarmLabel(night)).underline(color:ivory.opacity(0.55))
+                                    Image(systemName:"chevron.down").font(.system(size:10,weight:.semibold))
+                                }.font(.system(size:20,design:.serif)).lineLimit(1).minimumScaleFactor(0.65)
+                                    .frame(minHeight:44).contentShape(Rectangle())
+                            }.buttonStyle(.plain).disabled(store.ringing)
+                                .accessibilityIdentifier("night-edit-alarm").accessibilityHint(store.words("changeAlarmTime"))
+                        } else { Text(store.words("analysis")).font(.system(size:20,design:.serif)).frame(minHeight:44) }
                     }
-                    if store.ringing {
-                        Button { Task { await store.snooze() } } label: { Text(store.words("snooze") + " · \(store.archive.plan.snoozeMinutes) min") }.buttonStyle(PrimaryButton())
-                    }
-                }.padding(.horizontal,28).padding(.bottom,20)
-            }.scrollIndicators(.hidden)
-        }.foregroundStyle(Color(red:0.96,green:0.92,blue:0.83))
+                    Spacer()
+                }.padding(.horizontal,24).padding(.top,20)
+                NightRibbon(audio:store.audio).frame(width:max(0,geo.size.width-36),height:100)
+                    .position(x:geo.size.width/2,y:geo.size.height*0.72)
+                if store.ringing {
+                    Button { Task { await store.snooze() } } label: {
+                        Text(store.words("snooze") + " · \(store.archive.plan.snoozeMinutes) min")
+                            .padding(16).background(.black.opacity(0.25),in:Capsule())
+                    }.position(x:geo.size.width/2,y:geo.size.height*0.9)
+                }
+            }
+        }.foregroundStyle(ivory)
             .safeAreaInset(edge:.bottom) {
-                SwipeToFinish(words:store.words) { Task { await store.finish() } }.padding(.bottom,8)
+                SwipeToFinish(words:store.words) { Task { await store.finish() } }.padding(.bottom,6)
             }
             .preferredColorScheme(.dark).interactiveDismissDisabled().disabled(store.busy)
-            .alert(store.words("error"),isPresented:Binding(get:{store.error != nil},set:{if !$0 {store.error = nil}})) {
+            .sheet(isPresented:$editingTime) {
+                if let night = store.archive.active {
+                    ActiveAlarmEditor(date:night.latestWake ?? night.wake)
+                        .presentationDetents([.height(410),.large]).presentationDragIndicator(.visible)
+                }
+            }
+            .onChange(of:store.ringing) { ringing in if ringing { editingTime = false } }
+            .alert(store.words("error"),isPresented:Binding(get:{store.error != nil && !editingTime},set:{if !$0 && !editingTime {store.error = nil}})) {
                 if store.writeFailed { Button(store.words("retrySave")) { Task { await store.retrySaving() } } }
                 Button(store.words("done")) {store.error = nil}
             } message: {Text(store.error ?? "")}
+    }
+    private func alarmLabel(_ night: SleepSession) -> String {
+        let time: (Date) -> String = { $0.formatted(.dateTime.hour().minute().locale(store.words.locale)) }
+        if let start = night.windowStart, let end = night.latestWake, night.smartTriggered != true {
+            return store.words("alarm") + " · " + time(start) + " – " + time(end)
+        }
+        return store.words("alarm") + " · " + time(night.wake)
+    }
+}
+
+private struct NightRibbon: View {
+    @EnvironmentObject var store: SleepStore
+    @ObservedObject var audio: NightAudio
+    var body: some View {
+        VStack(spacing:12) {
+            SoundWave(values:audio.waveform,animate:!store.testMode).frame(height:76).accessibilityIdentifier("night-wave")
+            // Quiet normal operation has no microphone control. A genuine interruption
+            // must remain visible and recoverable, without pretending to keep listening.
+            if !store.ringing && audio.waveform.isEmpty && !audio.isRecording && !store.testMode {
+                if store.archive.preferences.analysisEnabled {
+                    Text(store.words(audio.captureState)).font(.caption).multilineTextAlignment(.center)
+                    Button { Task { await store.resumeCapture() } } label: { Text(store.words("resumeCapture")).underline() }
+                        .font(.caption).accessibilityIdentifier("resume-capture")
+                } else { Text(store.words("analysisDisabled")).font(.caption).opacity(0.7) }
+            }
+        }
+    }
+}
+
+struct ActiveAlarmEditor: View {
+    @EnvironmentObject var store: SleepStore
+    @Environment(\.dismiss) private var dismiss
+    @State var date: Date
+    @State private var saving = false
+    private var next: Date {
+        var plan = AlarmPlan(); let components = Calendar.current.dateComponents([.hour,.minute],from:date)
+        plan.hour = components.hour ?? 7; plan.minute = components.minute ?? 30
+        return plan.next(after:Date()) ?? date
+    }
+    var body: some View {
+        NavigationStack {
+            VStack(spacing:8) {
+                DatePicker(store.words("wake"),selection:$date,displayedComponents:.hourAndMinute)
+                    .datePickerStyle(.wheel).labelsHidden().accessibilityIdentifier("active-alarm-time")
+                Text(next.formatted(.dateTime.weekday(.wide).day().month().hour().minute().locale(store.words.locale)))
+                    .font(.subheadline).accessibilityIdentifier("active-alarm-date")
+                Text(store.words("tonightOnly")).font(.caption).foregroundStyle(.secondary)
+                if store.archive.active?.mode == .smart { Text(store.words("latestWake")).font(.caption).foregroundStyle(.secondary) }
+                if saving { ProgressView() }
+                Spacer(minLength:0)
+            }.padding(.horizontal,24).padding(.top,12)
+                .navigationTitle(store.words("changeAlarmTime")).navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement:.cancellationAction) { Button(store.words("cancel")) { dismiss() }.accessibilityIdentifier("cancel-active-alarm") }
+                    ToolbarItem(placement:.confirmationAction) {
+                        Button(store.words("save")) {
+                            let c = Calendar.current.dateComponents([.hour,.minute],from:date)
+                            saving = true
+                            Task {
+                                let saved = await store.changeActiveAlarm(hour:c.hour ?? 7,minute:c.minute ?? 30)
+                                saving = false
+                                if saved { dismiss() }
+                            }
+                        }.accessibilityIdentifier("save-active-alarm")
+                    }
+                }.disabled(saving).interactiveDismissDisabled(saving)
+                .alert(store.words("error"),isPresented:Binding(get:{store.error != nil},set:{if !$0 {store.error = nil}})) {
+                    if store.writeFailed { Button(store.words("retrySave")) { Task { await store.retrySaving() } } }
+                    Button(store.words("done")) { store.error = nil }
+                } message: { Text(store.error ?? "") }
+        }.preferredColorScheme(.dark).tint(Color(red:0.96,green:0.94,blue:0.87))
     }
 }
 
@@ -68,26 +163,25 @@ struct SwipeToFinish: View {
     @State private var lift: CGFloat = 0
     @State private var submitted = false
     var body: some View {
-        VStack(spacing:8) {
+        VStack(spacing:0) {
             ZStack(alignment:.bottom) {
-                Capsule().fill(.black.opacity(0.24)).overlay(Capsule().stroke(.white.opacity(0.22))).frame(width:64,height:148)
-                Image(systemName:"chevron.up.chevron.up").font(.caption).opacity(0.6).offset(y:-107)
-                Image(systemName:"chevron.up").font(.title3).foregroundStyle(Color(red:0.2,green:0.3,blue:0.4))
-                    .frame(width:54,height:54).background(Color(red:0.94,green:0.91,blue:0.83),in:Circle()).padding(.bottom,5).offset(y:-lift)
-            }.frame(width:110,height:148).contentShape(Rectangle())
+                Color.clear
+                Image(systemName:"chevron.up").font(.system(size:13,weight:.medium))
+                    .frame(width:28,height:28).background(.white.opacity(0.12),in:Circle())
+                    .frame(width:48,height:48).offset(y:-lift)
+            }.frame(width:100,height:112).contentShape(Rectangle())
                 .highPriorityGesture(DragGesture(minimumDistance:8)
-                    .onChanged { value in guard !submitted else { return }; lift = min(88,max(0,-value.translation.height)) }
+                    .onChanged { value in guard !submitted else { return }; lift = min(80,max(0,-value.translation.height)) }
                     .onEnded { value in
                         guard !submitted else { return }
-                        if -value.translation.height >= 80 { submitted = true; finish() }
+                        if -value.translation.height >= 64 { submitted = true; finish() }
                         else { withAnimation(.easeOut(duration:0.2)) { lift = 0 } }
                     })
                 .accessibilityElement(children:.ignore).accessibilityLabel(words("swipeFinish"))
                 .accessibilityIdentifier("finish-night")
-                .accessibilityAction(named:Text(words("end"))) { finish() }
-            Text(words(lift > 10 ? "keepSliding" : "swipeFinish")).font(.caption).multilineTextAlignment(.center)
+                .accessibilityAction(named:Text(words("stop"))) { finish() }
+            Text(words("stop")).font(.system(size:15,design:.serif))
         }.padding(.horizontal,24)
-        // A persistence failure leaves this screen open and allows another attempt.
-        .onChange(of: submitted) { value in if value { DispatchQueue.main.asyncAfter(deadline:.now()+2) { submitted = false; lift = 0 } } }
+        .onChange(of:submitted) { value in if value { DispatchQueue.main.asyncAfter(deadline:.now()+2) { submitted = false; lift = 0 } } }
     }
 }

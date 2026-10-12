@@ -1,6 +1,48 @@
 import XCTest
 
 final class NativeFlowTests: XCTestCase {
+    func testMinimalNightAndInlineAlarmEnglish() { exerciseInlineAlarm(spanish:false) }
+    func testMinimalNightAndInlineAlarmSpanishSmart() { exerciseInlineAlarm(spanish:true) }
+    private func exerciseInlineAlarm(spanish: Bool) {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test","--reset-test",spanish ? "--spanish" : "--english","--night-wave-fixture"]
+        app.launch()
+        XCTAssertTrue(app.buttons["edit-alarm"].waitForExistence(timeout:10))
+        if spanish {
+            app.buttons["edit-alarm"].tap(); app.buttons["Ventana inteligente"].tap(); app.buttons["Listo"].tap()
+        }
+        let start = app.buttons["begin-night"]
+        for _ in 0..<4 { if start.isHittable { break }; app.swipeUp() }
+        start.tap()
+        let alarm = app.buttons["night-edit-alarm"]
+        XCTAssertTrue(alarm.waitForExistence(timeout:5))
+        XCTAssertTrue(app.staticTexts["night-current-time"].exists)
+        XCTAssertFalse(app.buttons["pause-capture"].exists)
+        XCTAssertTrue(app.staticTexts[spanish ? "Parar" : "Stop"].exists)
+        shot(spanish ? "50-es-onda-night" : "53-en-onda-night")
+        alarm.tap()
+        XCTAssertTrue(app.buttons["save-active-alarm"].waitForExistence(timeout:5))
+        let minutes = app.pickerWheels.element(boundBy:1)
+        XCTAssertTrue(minutes.waitForExistence(timeout:5)); minutes.adjust(toPickerWheelValue:"45")
+        shot(spanish ? "51-es-edit-active-alarm" : "54-en-edit-active-alarm")
+        app.buttons["save-active-alarm"].tap()
+        let changed = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label CONTAINS ':45'"),object:alarm)
+        XCTAssertEqual(XCTWaiter.wait(for:[changed],timeout:10),.completed)
+        XCTAssertTrue(alarm.isHittable)
+        shot(spanish ? "52-es-onda-updated" : "55-en-onda-updated")
+        let after = alarm.label
+        alarm.tap(); XCTAssertTrue(app.buttons["cancel-active-alarm"].waitForExistence(timeout:5))
+        app.pickerWheels.element(boundBy:1).adjust(toPickerWheelValue:"15")
+        app.buttons["cancel-active-alarm"].tap()
+        XCTAssertEqual(alarm.label,after)
+        let slider = app.descendants(matching:.any).matching(identifier:"finish-night").firstMatch
+        slider.tap(); XCTAssertTrue(alarm.exists)
+        let bottom = slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.8))
+        bottom.press(forDuration:0.1,thenDragTo:slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.6)))
+        XCTAssertTrue(alarm.exists)
+        bottom.press(forDuration:0.1,thenDragTo:slider.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.05)))
+        XCTAssertTrue(app.buttons["statistics"].waitForExistence(timeout:5))
+    }
     func testEnglishExactNightAndAnalysisDiary() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test","--reset-test","--english","--design-fixture"]; app.launch()
         let start = app.buttons["begin-night"]

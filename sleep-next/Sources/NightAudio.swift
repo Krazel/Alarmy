@@ -85,6 +85,9 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             self.engine = engine; self.worker = worker; self.capturedRate = format.sampleRate; self.lastInput = Date(); self.lastCaptureEnd = nil; captureState = "recordCalibrating"
         } catch { if tapInstalled { engine.inputNode.removeTap(onBus: 0) }; engine.stop(); try? session.setActive(false); captureState = "recordError"; throw error }
     }
+    func updateCaptureDeadline(_ wake: Date) async {
+        await worker?.updateDeadline(wake.addingTimeInterval(-2))
+    }
     @discardableResult
     func stopRecording(reason: String = "recordPaused") async -> Date? {
         let worker = self.worker

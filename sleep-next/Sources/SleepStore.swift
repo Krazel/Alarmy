@@ -23,7 +23,8 @@ final class SleepStore: ObservableObject {
     let repository: ArchiveRepository
     // Design examples use a separate store. They never load, persist or touch audio files.
     let journalPreview: Bool
-    let scheduler = WakeScheduler()
+    let scheduler: any WakeScheduling
+    var editingActiveAlarm = false
     var writeTail: Task<Bool, Never>?
     var smartScheduling = false
     private var timer: Timer?
@@ -41,7 +42,8 @@ final class SleepStore: ObservableObject {
         return false
         #endif
     }
-    init(repository: ArchiveRepository? = nil, journalPreview: Bool = false) {
+    init(repository: ArchiveRepository? = nil, journalPreview: Bool = false, scheduler: (any WakeScheduling)? = nil) {
+        self.scheduler = scheduler ?? WakeScheduler()
         self.journalPreview = journalPreview
         if let repository { self.repository = repository; return }
         #if DEBUG
@@ -95,6 +97,7 @@ final class SleepStore: ObservableObject {
             await recoverClips()
             await prune()
             await recoverTemporaryAnalysis()
+            await cleanUpAlarmBackup()
             if archive.active != nil {
                 audio.captureState = "recordRecovered"
                 commit { value in
@@ -119,12 +122,20 @@ final class SleepStore: ObservableObject {
         guard !failed else { return Task { false } }
         change(&archive); writesPending += 1; saving = true
         let snapshot = archive
+        let waitForAlarmEdit = editingActiveAlarm
         let preceding = writeTail
         let task = Task { [weak self] in
             if let preceding { _ = await preceding.value }
             guard let self else { return false }
+            // Input keeps updating the archive during alarm changes. Defer its
+            // persistence until the schedule transaction resolves, then save
+            // the latest archive so stale snapshots cannot undo the new time.
+            if waitForAlarmEdit {
+                while self.editingActiveAlarm { try? await Task.sleep(nanoseconds: 10_000_000) }
+            }
+            let toSave = waitForAlarmEdit ? self.archive : snapshot
             do {
-                _ = try await repository.update { value in let revision = value.revision; value = snapshot; value.revision = revision }
+                _ = try await repository.update { value in let revision = value.revision; value = toSave; value.revision = revision }
                 self.writesPending -= 1; self.saving = self.writesPending > 0
                 if self.writesPending == 0 { self.writeFailed = false }
                 return true
@@ -180,6 +191,12 @@ final class SleepStore: ObservableObject {
                 archive.active = nil; archive.lastSound = previousSound
                 return
             }
+            #if DEBUG
+            if testMode && ProcessInfo.processInfo.arguments.contains("--night-wave-fixture") {
+                audio.captureState = "recordListening"
+                audio.waveform = (0..<64).map { 0.3 + 0.3 * sin(Double($0)*0.2) }
+            }
+            #endif
             do { try await beginRecordingIfNeeded() } catch {
                 // Preserve the scheduled alarm and any recoverable audio if input fails.
                 audio.captureState = "recordError"
@@ -204,6 +221,7 @@ final class SleepStore: ObservableObject {
             }
         }
         guard archive.active != nil else { return }
+        if !busy { await cleanUpAlarmBackup() }
         if audio.isRecording && AVAudioSession.sharedInstance().recordPermission != .granted { await pauseCapture(reason: "recordDenied") }
         tick()
     }

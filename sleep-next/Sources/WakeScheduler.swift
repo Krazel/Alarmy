@@ -9,7 +9,13 @@ import AppIntents
 struct WakeMetadata: AlarmMetadata { var session: String }
 
 enum WakeFailure: Error { case permission }
-struct WakeScheduler {
+@MainActor
+protocol WakeScheduling {
+    func schedule(id: UUID, date: Date, filename: String, words: Words) async throws
+    func cancel(id: UUID) throws
+}
+
+struct WakeScheduler: WakeScheduling {
     static var systemAlarms: Bool { if #available(iOS 26.0, *) { return true }; return false }
     func schedule(id: UUID, date: Date, filename: String, words: Words) async throws {
         if #available(iOS 26.0, *) {

@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-12T22:58:27.400Z",
+  "id": "PR-019",
+  "previousRevision": 15,
+  "revision": 16,
+  "verifiedSaved": true,
+  "changes": {
+    "next": "Elegir propuesta nocturna minimalista A Onda / B Halo / C Bruma en sleep-next/Design/night-variants-2026-10-13. Última preferencia humana: muy visual y pocas cosas; propuestas con Imágenes, sin elección ni implementación todavía. Candidata funcional 1.3 (1) validada en simulador, sin subir; TestFlight interno vigente 1.2 (1). Capturas de categorías: sleep-next/Design/clip-categories-2026-10-13. Probar micrófono real, batería, interrupciones, Salud y despertar bloqueado en iOS16–25 y 26 antes de validar uso nocturno. Sin App Review."
+  },
+  "tracking": {
+    "testflight": "Interno",
+    "appStore": "Creada en App Store Connect",
+    "ads": "No",
+    "testflightUrl": "https://appstoreconnect.apple.com/teams/7f069118-9712-49c8-a1f0-fda00b62a281/apps/6818287946/testflight",
+    "appStoreUrl": "https://appstoreconnect.apple.com/apps/6818287946"
+  }
+}

@@ -184,7 +184,7 @@ final class CaptureWorker: @unchecked Sendable {
     private var frames: Int64 = 0
     private var progressFrames: Int64 = 0
     private let start: Date
-    private let deadline: Date
+    private var deadline: Date
     private let rate: Double
     private var written = 0
     private let byteLimit: Int
@@ -211,6 +211,11 @@ final class CaptureWorker: @unchecked Sendable {
     private func write(_ samples: [Float]) throws {
         guard written + samples.count*2 <= byteLimit else { throw CocoaError(.fileWriteOutOfSpace) }
         try spool.append(samples); written += samples.count*2
+    }
+    func updateDeadline(_ date: Date) async {
+        await withCheckedContinuation { continuation in
+            queue.async { self.deadline = date; continuation.resume() }
+        }
     }
     func enqueue(_ samples: [Float]) {
         guard slots.wait(timeout: .now()) == .success else {

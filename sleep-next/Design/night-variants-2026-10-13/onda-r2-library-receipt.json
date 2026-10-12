@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-12T23:09:02.136Z",
+  "id": "PR-019",
+  "previousRevision": 16,
+  "revision": 17,
+  "verifiedSaved": true,
+  "changes": {
+    "next": "Dirección nocturna elegida: A Onda, muy visual y sencilla. Ajustes humanos: quitar mute; destacar hora actual y separar alarma; flecha menor con Parar/Stop conservando gesto ascendente. Propuesta ES/EN: sleep-next/Design/night-variants-2026-10-13/onda-r2-es-en.png. Revisión visual aún sin implementar. Candidata funcional 1.3 (1) validada en simulador, sin subir; vigente TestFlight interno 1.2 (1). Siguen pendientes micrófono real, batería, interrupciones, Salud y despertar bloqueado en iOS16–25 y 26. Sin App Review."
+  },
+  "tracking": {
+    "testflight": "Interno",
+    "appStore": "Creada en App Store Connect",
+    "ads": "No",
+    "testflightUrl": "https://appstoreconnect.apple.com/teams/7f069118-9712-49c8-a1f0-fda00b62a281/apps/6818287946/testflight",
+    "appStoreUrl": "https://appstoreconnect.apple.com/apps/6818287946"
+  }
+}

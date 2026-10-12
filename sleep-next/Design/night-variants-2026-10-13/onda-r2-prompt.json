@@ -1,0 +1,14 @@
+{
+  "tool": "built-in image_gen",
+  "date": "2026-10-13",
+  "file": "onda-r2-es-en.png",
+  "selectedBase": "A · Onda",
+  "requestedChanges": [
+    "Sin icono mute",
+    "Hora actual destacada",
+    "Hora de alarma separada",
+    "Flecha más pequeña",
+    "Parar / Stop; conservar gesto ascendente"
+  ],
+  "prompt": "Edit the reference Alarma iPhone UI concept A · Onda with ONLY the user's requested changes. Create a clean landscape comparison board with TWO large front-on iPhones, left Spanish and right English, on a plain warm ivory canvas. Board heading only 'A · Onda'; small 'Español' above left and 'English' above right, NO slogans or extra copy. Preserve the accepted dark blue moonlit lake background, moon, trees, mountains and the airy ivory/cyan horizontal sound ribbon over the lake from the reference. Preserve its minimalist composition and abundant empty landscape. CHANGES: Completely REMOVE the microphone/mute button and any microphone icons from both phones. Make the CURRENT TIME clearly the largest interface text: exact '23:48' in elegant clean legible rounded ivory numerals, centred near the top, around 64pt, comfortably below the status bar. Status bar time should also be '23:48'. Immediately under the current time, with clear spacing, a small outline alarm clock icon and exact text 'Alarma · 07:30' on Spanish phone and 'Alarm · 07:30' on English phone, about 22pt. No time range in this exact-alarm example. This makes the current time and alarm time unambiguously separate. Keep the waveform over the lake unchanged in spirit and placement, no cards. At bottom, make the upward chevron control MUCH SMALLER than the reference: a discreet thin ivory upward chevron about 16pt inside a very subtle translucent circle about 28pt, with a tiny faint upward gesture trail. Under it show ONLY 'Parar' on Spanish phone and ONLY 'Stop' on English phone, about 15pt. Remove the old 'Desliza para terminar' sentence entirely. It is still an upward-swipe gesture, NOT a tap-to-stop button. Keep some empty room between the waveform and small stop handle. No microphone control, no pause button, no greeting, no extra listening status, no tabs, no panel, no additional features or decorative labels. Natural premium native UI, high legibility, restrained glow, exact Spanish/English wording. Design concept, not real screenshot."
+}

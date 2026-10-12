@@ -1,0 +1,30 @@
+[
+  {
+    "file": "minimalistas-A-minima-onda.png",
+    "sha256": "19940f1ff43e109cbfc0cb0aa246ceae85d819e6464fad5887f6bca762e26e57"
+  },
+  {
+    "file": "minimalistas-B-minima-halo.png",
+    "sha256": "79dc16bb7c49cb5a70e4fdfa70bfc0219c7af6d829b407493a2b3cb5f2b4b4b5"
+  },
+  {
+    "file": "minimalistas-C-minima-bruma.png",
+    "sha256": "030541778224f5416d26e18c6f3eb3e9480c245dca91425c135d2a26394a1f18"
+  },
+  {
+    "file": "primera-exploracion-A-halo.png",
+    "sha256": "ef46db9577145f131046cc9976f73a0daaf97586e4e8456e6003f8444af09757"
+  },
+  {
+    "file": "primera-exploracion-B-horizonte.png",
+    "sha256": "2142eb17f45bfdd20eda2affde865aabc7bc68c2b6148bebb99d666012389058"
+  },
+  {
+    "file": "primera-exploracion-C-refugio.png",
+    "sha256": "f322c3c9651da74d1f64a68d2c648879c7a182d1c272d8f9f8b60ad0e5b42b97"
+  },
+  {
+    "file": "onda-r2-es-en.png",
+    "sha256": "07d316c99c51959b99e41e90118d710dbc3e4b1fc6cbb73b3a204a1b3be9401e"
+  }
+]

@@ -1,5 +1,26 @@
 # Estado de Alarma — 13-10-2026
 
+## A Onda aprobada e implementada — validación en curso
+
+El usuario aprueba el diseño y pide quitar puntos e icono de alarma, centrar
+la pantalla y editar la hora en un panel inferior sin finalizar la noche.
+Implementación en candidata 1.3 (1), con cambios de hora transaccionales y
+actualización del límite del capturador. No cambia TestFlight 1.2 (1).
+Evidencias: `sleep-next/Design/onda-implementation-2026-10-13`.
+Biblioteca leída en revisión 17; actualización de resultado pendiente.
+
+## Propuestas nocturnas minimalistas — 13/10
+
+Última dirección humana: muy visual y con pocas cosas. ChatGPT Imágenes:
+A Onda, B Halo y C Bruma, tras una primera exploración más densa. Hora,
+onda, control del micrófono y gesto ascendente sobre el fondo aprobado.
+Imágenes y prompts: `sleep-next/Design/night-variants-2026-10-13`.
+Elegida A · Onda con ajustes: sin mute, hora actual grande, alarma separada,
+flecha menor y «Parar»/«Stop». Propuesta actual `onda-r2-es-en.png`.
+Este encargo visual no cambia código ni distribución.
+Biblioteca PR-019 actualizada y releída: revisión 17.
+
+
 ## Ampliación de la candidata — grabaciones por categoría
 
 Encargo 13/10: categorías con contador y escucha de un fragmento cada vez.
