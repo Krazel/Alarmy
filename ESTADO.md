@@ -1,5 +1,12 @@
 # Estado de Alarma — 13-10-2026
 
+## Subida autorizada de 1.3 (1) — en curso
+
+El usuario pide subir la candidata aprobada a TestFlight. Se reutilizan la
+validación 38325929640 y firma/entorno autorizados; no cambia el árbol de app
+validado 271e448. Destino: grupo interno existente del titular.
+Recibos separados en `QA-2026-10-13`. Sin App Review ni testers externos.
+
 ## A Onda implementada y validada — candidata 1.3 (1)
 
 El usuario aprueba el diseño y pide quitar puntos e icono de alarma, centrar
