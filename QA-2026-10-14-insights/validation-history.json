@@ -1,0 +1,26 @@
+{
+  "candidate": "1.5 (1)",
+  "runs": [
+    {
+      "id": "38476297503",
+      "source": "33d3a21",
+      "result": "Compilation failed: Swift type-check timeout in CSV expression; split into typed steps."
+    },
+    {
+      "id": "38477797364",
+      "source": "60e228d",
+      "result": "Debug compiled, 23 passed / 1 failed. Habit controls inherited DisclosureGroup accessibility ID. Fixed identifiers and selected-state accessibility; Release not reached."
+    },
+    {
+      "id": "38478951054",
+      "source": "132d279",
+      "result": "Debug compiled, 24 passed / 1 failed. UI test tapped the Form row instead of the nap switch thumb, leaving the nap filter empty. Corrected gesture and added selected-state assertion; Release not reached."
+    },
+    {
+      "id": "38480354936",
+      "source": "d6700fc",
+      "result": "Success: Debug, 25/25 tests, zero failed/skipped, unsigned Release iPhone build."
+    }
+  ],
+  "limits": "Software tests and simulated screenshots only, not a validation of physiological accuracy or a physical overnight battery/audio test."
+}

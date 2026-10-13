@@ -27,6 +27,16 @@
       "Synthetic tests validate software rules, not physiological accuracy"
     ]
   },
-  "verification": "Initial compile found a Swift expression type-check timeout in CSV assembly; split into typed steps. Final native verification pending.",
+  "verification": {
+    "source": "d6700fc74d93303fc3c8f982f5a148a267111fb2",
+    "run": "https://github.com/Krazel/Alarmy/actions/runs/38480354936",
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0,
+    "debug": "passed",
+    "releaseIPhoneUnsigned": "passed",
+    "evidence": "QA-2026-10-14-insights",
+    "limitations": "Synthetic unit tests and native simulator UI; no physiological or overnight physical validation."
+  },
   "latestDecision": "User explicitly requests a proprietary local audio method even if imperfect; no external service."
 }

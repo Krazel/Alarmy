@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-13T23:00:59.362Z",
+  "id": "PR-019",
+  "previousRevision": 28,
+  "revision": 29,
+  "verifiedSaved": true,
+  "changes": {
+    "detail": "Candidata 1.5 (1): análisis acústico propio, experimental y local, sin Salud ni nube. Fases sin precisión fisiológica validada; huecos y noches antiguas quedan sin estimar. Incluye continuidad, hábitos, siestas, objetivo, corrección de horarios, comparación, sonidos compactos y CSV. ES/EN. Fuente d6700fc: Debug, 25/25 pruebas y Release iPhone correctos; capturas nativas revisadas. Sin subida: TestFlight interno vigente 1.4 (1).",
+    "next": "Probar una noche real en iPhone: captura, consumo y crescendo con pantalla bloqueada. La luz gradual solo funciona con la app abierta. Candidata 1.5 (1) sin distribuir; fases acústicas experimentales, sin validación clínica. Evidencia: https://github.com/Krazel/Alarmy/actions/runs/38480354936 y QA-2026-10-14-insights del repositorio."
+  },
+  "tracking": {
+    "testflight": "Interno",
+    "appStore": "Creada en App Store Connect",
+    "ads": "No",
+    "testflightUrl": "https://appstoreconnect.apple.com/teams/7f069118-9712-49c8-a1f0-fda00b62a281/apps/6818287946/testflight",
+    "appStoreUrl": "https://appstoreconnect.apple.com/apps/6818287946"
+  }
+}

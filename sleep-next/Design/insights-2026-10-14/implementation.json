@@ -47,5 +47,15 @@
     "night and nap filters"
   ],
   "modelStatus": "User-approved experimental local acoustic estimator; no physiological validation or accuracy claim. Stage hypotheses marked experimental; missing/legacy features remain unclassified. Health access removed.",
-  "nativeEvidence": "Final native validation pending"
+  "nativeEvidence": {
+    "source": "d6700fc74d93303fc3c8f982f5a148a267111fb2",
+    "run": "https://github.com/Krazel/Alarmy/actions/runs/38480354936",
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0,
+    "debug": "passed",
+    "releaseIPhoneUnsigned": "passed",
+    "evidence": "QA-2026-10-14-insights",
+    "limitations": "Synthetic unit tests and native simulator UI; no physiological or overnight physical validation."
+  }
 }

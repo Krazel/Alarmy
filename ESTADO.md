@@ -21,15 +21,22 @@ Alarmas: cuenta posposiciones futuras y hora observada solo cuando la app sabe
 que reprodujo; hora programada separada y datos antiguos desconocidos.
 Se conservan correcciones previas de crescendo/luz. Audio y análisis locales.
 
-Fuente 60e228d. CI inicial 38476297503 falló por expresión CSV demasiado compleja
-para el compilador Swift; dividida en pasos tipados. Validación final nativa
-38477797364 en curso. No afirmar precisión fisiológica ni prueba en iPhone real.
+Fuente de aplicación 132d279; ajuste posterior de prueba d6700fc. CI inicial 38476297503 falló por expresión CSV demasiado compleja
+para el compilador Swift; dividida en pasos tipados. El segundo pase compiló
+Debug y pasó 23/24 pruebas; corregida propagación de identificadores de
+accesibilidad en hábitos. El tercer pase pasó 24/25; corregido el toque del
+interruptor de Siesta en la prueba. Validación final nativa 38480354936 correcta: 25/25 pruebas, cero fallos u
+omitidas, Debug y Release iPhone sin firma correctos. Capturas nativas revisadas
+en QA-2026-10-14-insights, con datos sintéticos.
+No afirmar precisión fisiológica ni prueba en iPhone real.
 TestFlight vigente sigue 1.4 (1) interno; sin subida de 1.5 en este encargo.
-Biblioteca pendiente de conciliar al completar la validación.
+Biblioteca PR-019 actualizada y releída por API, revisión 29; resultado final
+y siguiente paso guardados, conservando distribución y tracking.
 
 
-## Análisis autónomo — investigación y selección de funciones
+## Historial previo — investigación y selección de funciones
 
+Estado anterior a la aprobación de la heurística experimental descrita arriba.
 El usuario rechaza exigir Salud para tiempo dormido y fases. Este objetivo
 sustituye la dependencia de Salud como decisión de producto; el motor autónomo
 todavía no está implementado. El análisis acústico actual detecta actividad y

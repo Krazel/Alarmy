@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-14",
+  "candidate": "1.5 (1)",
+  "source": "d6700fc74d93303fc3c8f982f5a148a267111fb2",
+  "applicationSource": "132d279",
+  "run": "https://github.com/Krazel/Alarmy/actions/runs/38480354936",
+  "debug": "passed",
+  "releaseIPhoneUnsigned": "passed",
+  "passed": 25,
+  "failed": 0,
+  "skipped": 0,
+  "device": {
+    "architecture": "arm64",
+    "deviceId": "4E3A6BB3-F417-4829-8DF5-0EA652541F40",
+    "deviceName": "iPhone 17 Pro",
+    "modelName": "iPhone 17 Pro",
+    "osBuildNumber": "23E254a",
+    "osVersion": "26.4.1",
+    "platform": "iOS Simulator"
+  },
+  "screenshots": [
+    {
+      "file": "93-en-nap-statistics.png",
+      "sha256": "ae78e172596b30d77a9d29c40d869939ede2f4d7d15b88070c053ebe584d7f2f",
+      "fixture": "synthetic native UI; not human sleep measurements"
+    },
+    {
+      "file": "94-en-session-editor.png",
+      "sha256": "f4729f2885cf469395587ab282e4f84ecaf8f7cdb85382a433aec2ab71697bbf",
+      "fixture": "synthetic native UI; not human sleep measurements"
+    },
+    {
+      "file": "92-en-night-details.png",
+      "sha256": "08adcd859446997b63eaff59a9f74921d2daaf832c682b2768356085c5326cde",
+      "fixture": "synthetic native UI; not human sleep measurements"
+    },
+    {
+      "file": "91-en-habits.png",
+      "sha256": "2d925fba3b2283988f46a1a7fa293adf98fc602f6b3d6632d96457bc2cc96442",
+      "fixture": "synthetic native UI; not human sleep measurements"
+    },
+    {
+      "file": "90-en-insights-diary.png",
+      "sha256": "d8d267e59f5c280864fc1ba12e96841d7ea2080e0cfa380c6732b4f14fc2ccaa",
+      "fixture": "synthetic native UI; not human sleep measurements"
+    },
+    {
+      "file": "73-es-stages.png",
+      "sha256": "08ddf05c62f4c871b8a0d1d4b2b2badaef6e704cb1a23da2759be70af414418b",
+      "fixture": "synthetic native UI; not human sleep measurements"
+    },
+    {
+      "file": "72-es-statistics.png",
+      "sha256": "ff6ea96a55987ce6a7c8c28abd5649d0eab9dda74ce63582686a8572d0d5c0f8",
+      "fixture": "synthetic native UI; not human sleep measurements"
+    },
+    {
+      "file": "71-es-sounds.png",
+      "sha256": "96920433d89ec2f3a33e7f26f117b2b6cc852ff9320e569c02ad4b70cca2c327",
+      "fixture": "synthetic native UI; not human sleep measurements"
+    },
+    {
+      "file": "70-es-diary.png",
+      "sha256": "828e9fd665e5df7621e40ce9c2b5b9303c5639da4cbb55843af25daf94b2c1b4",
+      "fixture": "synthetic native UI; not human sleep measurements"
+    }
+  ],
+  "physicalNight": "pending",
+  "physiologicalAccuracy": "not validated",
+  "testflight": "Not uploaded; last known internal version 1.4 (1)"
+}

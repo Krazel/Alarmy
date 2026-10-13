@@ -1,6 +1,26 @@
 # Validación de AlarmaNext
 
-## Candidata 1.1 (build 1) — 1 de octubre de 2026
+## Candidata 1.5 (build 1) — 14 de octubre de 2026
+
+Fuente de aplicación `132d279`; ajuste de prueba `d6700fc`. Análisis acústico propio y local, con hipótesis
+experimentales de sueño y fases; retirados permisos y dependencia de Salud.
+Incluye continuidad, hábitos, siestas, corrección de horarios, comparación,
+objetivo personal, métricas de alarmas y exportación. Contrato y limitaciones:
+[método v1](../research/local-estimator-v1.json).
+
+Validación nativa correcta: Debug, 25/25 pruebas (cero fallos/omitidas),
+Release iPhone sin firma y capturas de simulador revisadas:
+[38480354936](https://github.com/Krazel/Alarmy/actions/runs/38480354936).
+El historial con los fallos corregidos y la evidencia final se conserva en
+[QA de análisis](../QA-2026-10-14-insights/README.md).
+No se ha subido esta candidata a TestFlight. Sigue vigente 1.4 (1) interno.
+
+Las pruebas sintéticas comprueban funcionamiento del software, no precisión
+fisiológica. Pendiente una noche real con iPhone bloqueado, consumo y captura
+continua. Los apartados inferiores son evidencia histórica; sus referencias a
+Salud ya no describen la arquitectura de la candidata 1.5.
+
+## Historial: candidata 1.1 (build 1) — 1 de octubre de 2026
 
 El resultado vigente de CI, fuente, paquete, firma y biblioteca está en [ESTADO.md](../ESTADO.md). La versión pública sigue sin confirmarse. Se conserva la línea heredada 1.x; esta candidata no está aprobada para publicar.
 
