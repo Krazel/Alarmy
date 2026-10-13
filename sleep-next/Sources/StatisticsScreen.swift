@@ -20,7 +20,6 @@ struct NightAnalysisCard: View {
         return PaperCard {
             VStack(alignment:.leading,spacing:14) {
                 Text(words("nightAnalysis")).font(.system(size:23,design:.serif))
-                MetricRow(title:words("perceivedQuality"),value:words(feeling?.key ?? "unrated"))
                 MetricRow(title:words("sleepHealth"),value:SleepMath.duration(metrics.healthSeconds(stages)))
                 MetricRow(title:words("latencyHealth"),value:SleepMath.duration(metrics.healthLatency(stages)))
                 if !stages.isEmpty {
@@ -69,13 +68,14 @@ struct StatisticsScreen: View {
     @EnvironmentObject var store: SleepStore
     @Environment(\.dismiss) private var dismiss
     @State private var days = 7
+    @State private var showNaps = false
     @State private var health: [UUID:[SleepStage]] = [:]
     @State private var loading = false
     @State private var sounds = false
     private var words: Words { store.words }
     private var nights: [SleepSession] {
         let cutoff = Calendar.current.date(byAdding:.day,value:-(days-1),to:Calendar.current.startOfDay(for:Date())) ?? .distantPast
-        return store.archive.sessions.filter { days == 0 || ($0.end ?? $0.checkpoint) >= cutoff }.sorted { $0.start < $1.start }
+        return store.archive.sessions.filter { ($0.isNap == true) == showNaps && (days == 0 || ($0.end ?? $0.checkpoint) >= cutoff) }.map(\.analysisSession).sorted { $0.start < $1.start }
     }
     private var healthNights: [SleepSession] { nights.filter { NightMetrics(nights:[$0]).healthSeconds(health[$0.id] ?? []) != nil } }
     private func average(_ values:[Double?]) -> Double? { let n = values.compactMap {$0}; return n.isEmpty ? nil : n.reduce(0,+)/Double(n.count) }
@@ -93,11 +93,12 @@ struct StatisticsScreen: View {
                             .font(.subheadline).frame(maxWidth:.infinity)
                     }
                     Picker(words("period"),selection:$days) { ForEach([7,30,90,0],id:\.self) { n in Text(n == 0 ? words("allTime") : "\(n) " + words("days")).tag(n) } }.pickerStyle(.segmented).accessibilityIdentifier("statistics-period")
+                    Picker(words("sessionType"),selection:$showNaps) { Text(words("nightSession")).tag(false); Text(words("nap")).tag(true) }.pickerStyle(.segmented).accessibilityIdentifier("statistics-session-type")
                     if store.journalPreview { Text(words("exampleOnly")).font(.caption).foregroundStyle(Color.rust) }
                     if nights.isEmpty { Text(words("noNight")).padding(.vertical,32) }
                     else {
                         overview
-                        rhythms
+                        if !showNaps { rhythms }
                         stagesCard
                         HStack(alignment:.top,spacing:12) {
                             statTile("latencyHealth",value:DiaryPresentation.duration(average(nights.map { NightMetrics(nights:[$0]).healthLatency(health[$0.id] ?? []) })),symbol:"clock")
@@ -105,6 +106,7 @@ struct StatisticsScreen: View {
                         }
                         feelings
                         Button { sounds = true } label: { SoundSummaryRow(nights:nights,words:words) }.buttonStyle(.plain).accessibilityIdentifier("statistics-sounds")
+                        ExtraStatistics(nights:nights,stages:health)
                         DisclosureGroup(words("acousticDetails")) { details.padding(.top,14) }
                         Text("\(nights.count) · " + words("nights")).font(.caption).foregroundStyle(Color.ink.opacity(0.5)).frame(maxWidth:.infinity)
                     }
@@ -112,7 +114,7 @@ struct StatisticsScreen: View {
             }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust)
                 .navigationTitle(words("statistics")).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement:.confirmationAction) { Button { dismiss() } label: { Image(systemName:"xmark") }.accessibilityIdentifier("close-statistics").accessibilityLabel(words("done")) } }
-                .task(id:days) { await loadHealth() }
+                .task(id:"\(days)-\(showNaps)-\(store.archive.revision)") { await loadHealth() }
                 .sheet(isPresented:$sounds) { SoundsScreen(sessionIDs:nights.map(\.id)) }
         }
     }
@@ -143,6 +145,8 @@ struct StatisticsScreen: View {
                     Divider()
                     CompactMetric(title:words("usualRating"),value:MorningFeeling.allCases.max { feelingCount($0) < feelingCount($1) }.flatMap { feelingCount($0) > 0 ? words($0.key) : nil } ?? "—")
                 }.fixedSize(horizontal:false,vertical:true)
+                MetricRow(title:words("sleepGoal"),value:SleepMath.duration(Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60))
+                MetricRow(title:words("goalDifference"),value:meanSleep.map { ($0 >= Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60 ? "+ " : "− ") + SleepMath.duration(abs($0-Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60)) } ?? "—")
                 Text("\(healthNights.count) / \(nights.count) · " + words("healthNights")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5))
                 if healthNights.isEmpty { Text(words("compactHealthEmpty")).font(.caption).foregroundStyle(Color.ink.opacity(0.55)) }
             }
@@ -175,6 +179,8 @@ struct StatisticsScreen: View {
                 Divider()
                 MetricRow(title:words("bedRegularity"),value:nights.count > 1 ? "± " + DiaryPresentation.duration(bedtime.map {$0.spread*60}) : "—")
                 MetricRow(title:words("wakeRegularity"),value:nights.count > 1 ? "± " + DiaryPresentation.duration(wake.map {$0.spread*60}) : "—")
+                MetricRow(title:words("weekendShift"),value:AnalysisInsights.weekendShift(nights).map { ($0 >= 0 ? "+ " : "− ") + SleepMath.duration(abs($0)) } ?? "—")
+                Text(words("weekendHint")).font(.caption2).foregroundStyle(Color.ink.opacity(0.55))
                 Text(words("regularityHint")).font(.caption2).foregroundStyle(Color.ink.opacity(0.55))
             }
         }
@@ -242,7 +248,8 @@ struct StatisticsScreen: View {
             Text(words("nightHistory")).font(.system(size:23,design:.serif))
             ForEach(nights.reversed()) { night in
                 DisclosureGroup((night.end ?? night.checkpoint).formatted(date:.abbreviated,time:.omitted)) {
-                    NightAnalysisCard(nights:[night],stages:health[night.id] ?? [],feeling:store.page(night.end ?? night.checkpoint).feeling,words:words)
+                    ContinuityCard(nights:[night],stages:health[night.id] ?? [],words:words)
+                    AlarmMetrics(night:night,words:words)
                 }
             }
         }

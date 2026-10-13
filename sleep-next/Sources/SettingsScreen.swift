@@ -49,6 +49,9 @@ struct SettingsScreen: View {
                     Toggle(store.words("openJournal"), isOn: Binding(get: { store.archive.preferences.openJournal }, set: { value in store.preferences { $0.openJournal = value } }))
                 }
                 Section {
+                    Stepper(value:Binding(get:{ store.archive.preferences.sleepGoalMinutes ?? 480 },set:{ value in store.preferences { $0.sleepGoalMinutes = value } }),in:180...720,step:15) { MetricRow(title:store.words("sleepGoal"),value:SleepMath.duration(Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60)) }
+                } footer: { Text(store.words("goalHint")) }
+                Section {
                     Toggle(store.words("recordAndAnalyze"), isOn: Binding(get: { store.archive.preferences.analysisEnabled }, set: { value in store.preferences { $0.record = value; $0.analyze = value } })).accessibilityIdentifier("record-toggle")
                     Picker(store.words("sensitivity"), selection: Binding(get: { store.archive.preferences.sensitivity ?? 10 }, set: { value in store.preferences { $0.sensitivity = value } })) {
                         Text(store.words("sensitive")).tag(6.0); Text(store.words("normalSensitivity")).tag(10.0); Text(store.words("lessSensitive")).tag(14.0)

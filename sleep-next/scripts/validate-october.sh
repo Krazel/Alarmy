@@ -30,6 +30,14 @@ FILTERS=(
   -only-testing:AlarmaNextTests/RepositoryTests
   -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection
 )
+if [[ "${VALIDATION_SCOPE:-october}" == "insights" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/AnalysisInsightsTests
+    -only-testing:AlarmaNextTests/DomainTests/testTranslationsComplete
+    -only-testing:AlarmaNextUITests/DiaryFlowTests/testJournalStatisticsSpanish
+    -only-testing:AlarmaNextUITests/DiaryFlowTests/testInsightsEditingHabitsAndNaps
+  )
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "gradual" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/GradualWakeTests

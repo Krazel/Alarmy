@@ -63,7 +63,7 @@ struct NightClip: Codable, Equatable, Identifiable {
 }
 struct SleepSession: Codable, Equatable, Identifiable {
     let id: UUID
-    let start: Date
+    var start: Date
     var checkpoint: Date
     var end: Date?
     var wake: Date
@@ -83,6 +83,11 @@ struct SleepSession: Codable, Equatable, Identifiable {
     var acousticEpochs: [AcousticEpoch]?
     var soundSummaries: [NightSoundSummary]?
     var soundAnalysisIncomplete: Bool?
+    var correction: SessionCorrection?
+    var isNap: Bool?
+    var snoozeDates: [Date]?
+    var alarmObservedAt: Date?
+    var alarmStatsTracked: Bool?
     var hasAlarm: Bool { mode != .analysis }
     var hasActiveSmartWindow: Bool { mode == .smart && windowStart != nil && smartTriggered != true }
     var editableAlarmTime: Date { hasActiveSmartWindow ? (latestWake ?? wake) : wake }
@@ -105,6 +110,8 @@ struct CaptureSpan: Codable, Equatable, Identifiable {
 struct JournalPage: Codable, Equatable {
     var feeling: MorningFeeling?
     var text = ""
+    // nil means the user has not recorded habits, not an unexposed control day.
+    var habits: [SleepHabit]?
 }
 struct ImportedTone: Codable, Equatable, Identifiable {
     let id: String
@@ -112,6 +119,7 @@ struct ImportedTone: Codable, Equatable, Identifiable {
     let filename: String
 }
 struct Preferences: Codable, Equatable {
+    var sleepGoalMinutes: Int?
     var analyze: Bool?
     var analysisEnabled: Bool { record && (analyze ?? true) }
     var language = "system"

@@ -64,6 +64,40 @@ final class DiaryFlowTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["statistics-sleep"].label,"—")
         capture("80-en-statistics-no-health")
     }
+    func testInsightsEditingHabitsAndNaps() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test","--reset-test","--archive-id",UUID().uuidString,"--english","--design-fixture"]
+        app.launch(); XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout:10))
+        app.tabBars.buttons["Journal"].tap()
+        XCTAssertTrue(app.buttons["night-details"].waitForExistence(timeout:5))
+        XCTAssertFalse(app.buttons["Connect Health"].exists)
+        capture("90-en-insights-diary")
+        app.swipeUp()
+        let habits = app.buttons["habits-editor"]
+        XCTAssertTrue(habits.waitForExistence(timeout:5)); habits.tap()
+        let coffee = app.buttons["habit-lateCoffee"]
+        if !coffee.isHittable {app.swipeUp()}
+        XCTAssertTrue(coffee.waitForExistence(timeout:5)); coffee.tap()
+        capture("91-en-habits")
+        app.swipeDown(); app.swipeDown()
+        app.buttons["night-details"].tap()
+        let edit = app.buttons["edit-session"]
+        XCTAssertTrue(edit.waitForExistence(timeout:5))
+        if !edit.isHittable {app.swipeUp()}
+        capture("92-en-night-details")
+        edit.tap()
+        XCTAssertTrue(app.switches["session-nap"].waitForExistence(timeout:5)); app.switches["session-nap"].tap()
+        app.buttons["save-session"].tap()
+        XCTAssertTrue(app.buttons["edit-session"].waitForExistence(timeout:5))
+        app.buttons["Done"].tap()
+        app.buttons["statistics"].tap()
+        let type = app.segmentedControls["statistics-session-type"]
+        XCTAssertTrue(type.waitForExistence(timeout:5)); type.buttons["Nap"].tap()
+        XCTAssertTrue(app.staticTexts["statistics-sleep"].waitForExistence(timeout:5))
+        XCTAssertEqual(app.staticTexts["statistics-sleep"].label,"—")
+        capture("93-en-nap-statistics")
+        app.buttons["close-statistics"].tap()
+    }
     private func capture(_ name:String) {
         let attachment = XCTAttachment(screenshot:XCUIApplication().screenshot())
         attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)

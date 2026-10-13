@@ -20,6 +20,9 @@ struct SoundsScreen: View {
                         Text("\(NightMetrics(nights:nights).soundCount) " + store.words("sounds").lowercased()).font(.system(size:34,design:.serif))
                         Text("\(clips.count) " + store.words("savedClips") + " · " + DiaryPresentation.duration(clips.reduce(0) { $0+$1.duration })).font(.subheadline).foregroundStyle(Color.ink.opacity(0.6))
                     }
+                    DisclosureGroup(store.words("soundSchedule")) {
+                        ChartSoundHours(clips:clips,words:store.words)
+                    }
                     if clips.isEmpty { Text(store.words("noClips")).font(.subheadline) }
                     else {
                         LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],spacing:10) {
@@ -59,7 +62,11 @@ struct SoundsScreen: View {
         } label: {
             HStack(spacing:10) {
                 Image(systemName:kind.symbol).frame(width:38,height:38).background(Color.rust.opacity(0.09),in:Circle())
-                VStack(alignment:.leading,spacing:5) { Text(store.words(kind.rawValue)).font(.subheadline); Text("\(count)").font(.system(size:20,design:.serif)) }
+                VStack(alignment:.leading,spacing:5) {
+                    Text(store.words(kind.rawValue)).font(.subheadline)
+                    Text("\(count)").font(.system(size:20,design:.serif))
+                    Text(DiaryPresentation.clipTime(clips.filter {$0.kind == kind}.reduce(0) {$0+$1.duration})).font(.caption2)
+                }
                 Spacer(minLength:0)
             }.foregroundStyle(category == kind ? Color.rust : Color.ink).padding(13).frame(maxWidth:.infinity,alignment:.leading)
                 .background(Color.card,in:RoundedRectangle(cornerRadius:20))

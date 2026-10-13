@@ -82,6 +82,7 @@ struct NightMetrics {
     let bed: [DateInterval]
     let epochs: [AcousticEpoch]
     init(nights: [SleepSession]) {
+        let nights = nights.map(\.analysisSession)
         self.nights = nights
         bed = SleepMath.union(nights.compactMap { n in n.duration > 0 ? DateInterval(start:n.start,duration:n.duration) : nil })
         epochs = Dictionary(grouping:nights.flatMap { $0.acousticEpochs ?? [] },by: \.id).values.compactMap(\.first).sorted { $0.start < $1.start }

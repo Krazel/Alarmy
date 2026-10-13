@@ -58,8 +58,10 @@ struct CompactMetric: View {
 struct StageChart: View {
     let stages: [SleepStage]
     let words: Words
+    @State private var selected: SleepStage?
     var body: some View {
         VStack(spacing:4) {
+            GeometryReader { geometry in
             Canvas { context,size in
                 guard let start = stages.map(\.start).min(), let end = stages.map(\.end).max(), end > start else { return }
                 let total = end.timeIntervalSince(start)
@@ -68,7 +70,15 @@ struct StageChart: View {
                     let rect = CGRect(x:stage.start.timeIntervalSince(start)/total*size.width,y:level*12,width:stage.end.timeIntervalSince(stage.start)/total*size.width,height:13)
                     context.fill(Path(roundedRect:rect,cornerRadius:2),with:.color(DiaryPresentation.color(stage.key)))
                 }
+            }.contentShape(Rectangle()).gesture(DragGesture(minimumDistance:0).onChanged { gesture in
+                guard let start = stages.map(\.start).min(), let end = stages.map(\.end).max(), geometry.size.width > 0 else { return }
+                let date = start.addingTimeInterval(min(1,max(0,gesture.location.x/geometry.size.width))*end.timeIntervalSince(start))
+                selected = stages.first { $0.start <= date && $0.end > date }
+            })
             }.frame(height:50).accessibilityLabel(words("stagesHealth"))
+            if let selected {
+                Text(words(selected.key) + " · " + selected.start.formatted(date:.omitted,time:.shortened) + "–" + selected.end.formatted(date:.omitted,time:.shortened)).font(.caption2)
+            }
             if let start = stages.map(\.start).min(), let end = stages.map(\.end).max() {
                 HStack { Text(start,style:.time); Spacer(); Text(end,style:.time) }.font(.system(size:10)).foregroundStyle(Color.ink.opacity(0.6))
             }
@@ -86,7 +96,9 @@ struct StageDurations: View {
                 HStack(spacing:5) {
                     Circle().fill(DiaryPresentation.color(key)).frame(width:9,height:9)
                     Text(words(key)); Spacer(minLength:2)
-                    Text(DiaryPresentation.duration(NightMetrics(nights:nights).healthSeconds(stages,key:key))).monospacedDigit()
+                    let seconds = NightMetrics(nights:nights).healthSeconds(stages,key:key) ?? 0
+                    let total = SleepMath.seconds(stages.map { DateInterval(start:$0.start,end:$0.end) })
+                    Text(DiaryPresentation.duration(seconds) + " · \(Int(seconds/max(1,total)*100))%").monospacedDigit().accessibilityLabel(DiaryPresentation.duration(seconds) + " · \(Int(seconds/max(1,total)*100))% " + words("stageShare"))
                 }.font(.system(size:10))
             }
         }

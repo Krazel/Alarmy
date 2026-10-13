@@ -6,6 +6,7 @@ struct JournalScreen: View {
     @State private var calendar = false
     @State private var sounds = false
     @State private var examples = false
+    @State private var details = false
     @FocusState private var editingNote: Bool
     @State private var stages: [SleepStage] = []
     private var nights: [SleepSession] { store.sessions(store.selectedDay) }
@@ -30,6 +31,7 @@ struct JournalScreen: View {
                     }
                     feeling
                     notes
+                    HabitEditor(day:store.selectedDay)
                     HStack { Spacer(); Image(systemName: store.journalPreview ? "flask" : "lock"); Text(store.words(store.journalPreview ? "exampleOnly" : (store.writeFailed ? "savePending" : (store.saving ? "saving" : "saved")))); Spacer() }.font(.caption2).foregroundStyle(Color.ink.opacity(0.5)).padding(.bottom, 18)
                 }.padding(.horizontal, 20).padding(.top, 8)
             }.scrollIndicators(.hidden).background(Color.paper)
@@ -45,6 +47,7 @@ struct JournalScreen: View {
             }
             .sheet(isPresented: $statistics) { StatisticsScreen() }
             .sheet(isPresented: $examples) { JournalExamples(language: store.archive.preferences.language, appearance: store.archive.preferences.appearance) }
+            .sheet(isPresented: $details) { NightDetails(ids:nights.map(\.id),stages:stages) }
             .sheet(isPresented: $sounds) { SoundsScreen(sessionIDs:nights.map(\.id)) }
             .task(id: CalendarDay.key(store.selectedDay)) { await store.analyzeClips(for: store.selectedDay) }
             .task(id: CalendarDay.key(store.selectedDay) + String(store.archive.preferences.health)) {
@@ -113,14 +116,13 @@ struct JournalScreen: View {
                     }.fixedSize(horizontal:false,vertical:true)
                     if stages.isEmpty {
                         Text(store.words("compactHealthEmpty")).font(.caption).foregroundStyle(Color.ink.opacity(0.55)).fixedSize(horizontal:false,vertical:true)
-                        if !store.archive.preferences.health && !store.journalPreview {
-                            Button(store.words("connectHealth")) { Task { do { try await HealthReader().authorize(); store.preferences { $0.health = true } } catch { store.error = error.localizedDescription } } }.font(.caption)
-                        }
+                        AcousticTimeline(metrics:metrics,words:store.words)
                     } else {
                         StageChart(stages:stages,words:store.words)
                         StageDurations(stages:stages,nights:nights,words:store.words)
                         Text(store.words("stagesHealth")).font(.system(size:10)).foregroundStyle(Color.ink.opacity(0.5)).frame(maxWidth:.infinity,alignment:.trailing)
                     }
+                    Button(store.words("nightDetails")) { details = true }.font(.caption).accessibilityIdentifier("night-details")
                     if nights.contains(where: \.interrupted) { Text(store.words("interrupted")).font(.caption2).foregroundStyle(Color.rust) }
                 }
             }

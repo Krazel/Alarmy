@@ -192,6 +192,7 @@ final class SleepStore: ObservableObject {
             let previousSound = archive.lastSound
             var night = SleepSession(id: UUID(), start: Date(), checkpoint: Date(), wake: wake, alarmID: UUID(), soundID: tone)
             night.mode = archive.plan.resolvedMode; night.retainAudio = archive.preferences.record
+            night.alarmStatsTracked = true; night.snoozeDates = []
             if night.mode == .analysis { night.wake = .distantFuture }
             if night.mode == .smart { night.latestWake = wake; night.windowStart = wake.addingTimeInterval(-Double(archive.plan.window)*60) }
             let started = night
@@ -258,6 +259,8 @@ final class SleepStore: ObservableObject {
             guard archive.active?.id == night.id, archive.active?.alarmID == night.alarmID,
                   ringing, !busy, !audioInterrupted else { return }
             if !testMode { try? scheduler.cancel(id: night.alarmID) }
+            let observed = Date()
+            commit { if $0.active?.id == night.id && $0.active?.alarmObservedAt == nil { $0.active?.alarmObservedAt = observed } }
             do {
                 guard let url = ToneLibrary.url(night.soundID, imported: archive.tones) ?? ToneLibrary.url("aurora", imported: []) else { throw CocoaError(.fileNoSuchFile) }
                 try audio.play(url: url, id: "wake", loop: true, gradual: archive.plan.gradual)
@@ -271,6 +274,7 @@ final class SleepStore: ObservableObject {
         guard var night = archive.active else { return }
         let original = night
         let old = night.alarmID; night = night.snoozed(until: Date().addingTimeInterval(Double(archive.plan.snoozeMinutes * 60)))
+        night.snoozeDates = (night.snoozeDates ?? []) + [Date()]
         do {
             if !testMode { try await scheduler.schedule(id: night.alarmID, date: night.wake, filename: try await ToneLibrary.alarmFilename(night.soundID, imported: archive.tones, gradual: archive.plan.gradual), words: words) }
             let updated = night
