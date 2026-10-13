@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-13T13:47:35.351Z",
+  "id": "PR-019",
+  "previousRevision": 21,
+  "revision": 22,
+  "verifiedSaved": true,
+  "changes": {
+    "detail": "Alarma 1.3.1 (1) disponible en TestFlight interno. Nueva dirección visual solicitada: resumen y gráfico antes de caras/nota; sonidos en una fila que abre detalle; caras visibles al entrar y nota justo debajo; icono de estadísticas junto al calendario. Dos láminas IA de diario/sonidos y estadísticas guardadas, pendientes de selección e implementación. ES/EN. Datos de ejemplo y fases de Salud. Prueba nocturna física/FPS/batería pendiente.",
+    "next": "Revisar propuestas visuales de diario y estadísticas: https://github.com/Krazel/Alarmy/tree/codex/native-sleep-rebuild/sleep-next/Design/diary-statistics-2026-10-13 . No implementadas ni subidas como nueva build. Mantener resumen → fila compacta de sonidos → caras → nota, con caras visibles al abrir. Conservar miniaturas de estado en semana/calendario, navegación e idiomas ES/EN. TestFlight vigente 1.3.1 (1), interno para el titular."
+  },
+  "tracking": {
+    "testflight": "Interno",
+    "appStore": "Creada en App Store Connect",
+    "ads": "No",
+    "testflightUrl": "https://appstoreconnect.apple.com/teams/7f069118-9712-49c8-a1f0-fda00b62a281/apps/6818287946/testflight",
+    "appStoreUrl": "https://appstoreconnect.apple.com/apps/6818287946"
+  }
+}

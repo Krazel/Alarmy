@@ -1,5 +1,16 @@
 # Estado de Alarma — 13-10-2026
 
+## Reordenación visual de diario/estadísticas — propuesta pendiente
+
+Usuario corrige el orden: resumen y gráfico primero, sonidos en una única fila
+que abre detalle, luego caras visibles desde el primer vistazo y nota debajo.
+Acceso a estadísticas con icono junto al calendario. Pide imágenes de la UI.
+Dos láminas creadas con image_gen en sleep-next/Design/diary-statistics-2026-10-13:
+diario/detalle de sonidos y estadísticas/vista desplazada. Datos ficticios,
+fases de Salud; pendientes de selección humana e implementación. TestFlight
+vigente 1.3.1 (1) se conserva. Prompts, referencias y SHA guardados.
+Biblioteca PR-019 actualizada y releída, revisión 22, sin cambiar distribución.
+
 ## Entrega completada — TestFlight interno 1.3.1 (1)
 
 Autorizada por «subelo a test». Subida 38389891412 completada; fuente
