@@ -14,6 +14,8 @@ después de la entrega previa 1.1.1(1) del mismo día.
 El 13/10 el usuario autoriza subir la candidata 1.3 (1) con todos los cambios
 aprobados a ese mismo TestFlight interno.
 No iniciar App Review externo ni publicación comercial por esa autorización.
+El 13/10, tras validar las correcciones, el usuario pide «subelo a test»:
+autorizada 1.3.1 (1) al mismo TestFlight interno y con la firma temporal existente.
 
 Firma en el entorno existente alarma-local-qa, limitado a codex/native-sleep-rebuild.
 Reutilizar credenciales/perfil autorizados; secretos temporales por stdin, sin
