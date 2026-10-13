@@ -14,7 +14,7 @@ final class SleepAnalysisTests: XCTestCase {
         XCTAssertEqual(m.quietLatency,0); XCTAssertEqual(m.coverage!,1.0/3,accuracy:0.001)
         n.acousticEpochs = (40..<60).map { epoch(Double($0*30)) }
         XCTAssertNil(NightMetrics(nights:[n]).quietLatency)
-        XCTAssertNil(NightMetrics(nights:[n]).healthSeconds([]))
+        XCTAssertNil(NightMetrics(nights:[n]).sleepSeconds([]))
     }
     func testBedHealthAndSoundIntervalsDoNotDoubleCount() {
         var n = night(100)
@@ -25,7 +25,7 @@ final class SleepAnalysisTests: XCTestCase {
         let m = NightMetrics(nights:[n,n])
         XCTAssertEqual(m.inBed,100); XCTAssertEqual(m.soundSeconds(.snore),50); XCTAssertEqual(m.soundSeconds(.other),50)
         let stages = [SleepStage(id:UUID(),start:origin.addingTimeInterval(-50),end:origin.addingTimeInterval(150),key:"deep")]
-        XCTAssertEqual(m.healthSeconds(stages),100)
+        XCTAssertEqual(m.sleepSeconds(stages),100)
         let late = SleepSession(id:UUID(),start:origin.addingTimeInterval(200),checkpoint:origin.addingTimeInterval(300),end:origin.addingTimeInterval(300),wake:origin.addingTimeInterval(300),alarmID:UUID(),soundID:"aurora")
         XCTAssertEqual(SleepMath.seconds(NightMetrics(nights:[n,late]).clipped([DateInterval(start:origin,duration:400)])),200)
         n.clips = []
@@ -83,6 +83,6 @@ final class SleepAnalysisTests: XCTestCase {
         let snoozed = n.snoozed(until:origin.addingTimeInterval(5000))
         XCTAssertNil(snoozed.windowStart); XCTAssertNil(snoozed.backupAlarmID)
         let stages = [SleepStage(id:UUID(),start:origin.addingTimeInterval(600),end:origin.addingTimeInterval(1200),key:"core")]
-        XCTAssertNil(NightMetrics(nights:[n]).healthLatency(stages))
+        XCTAssertNil(NightMetrics(nights:[n]).sleepLatency(stages))
     }
 }

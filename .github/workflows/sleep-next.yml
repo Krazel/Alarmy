@@ -36,7 +36,7 @@ jobs:
           python3 - <<'PY'
           import json,os
           r=json.load(open('native-test-summary.json'))
-          minimum={'design':5,'analysis':13,'categories':4,'onda':9,'onda_visual':2,'onda_time':6,'feedback':11,'diary':13,'diary_polish':4,'gradual':10,'insights':10}.get(os.environ.get('VALIDATION_SCOPE'),15)
+          minimum={'design':5,'analysis':13,'categories':4,'onda':9,'onda_visual':2,'onda_time':6,'feedback':11,'diary':13,'diary_polish':4,'gradual':10,'insights':16}.get(os.environ.get('VALIDATION_SCOPE'),15)
           assert r['failedTests']==0 and r['passedTests']>=minimum, r
           print('Passed native tests:',r['passedTests'])
           PY

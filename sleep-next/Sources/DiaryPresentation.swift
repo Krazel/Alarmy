@@ -22,7 +22,7 @@ enum DiaryPresentation {
     // Count only observed transitions from sleep into awake and back into sleep.
     // Missing intervals, initial latency and final waking are not awakenings.
     static func awakenings(_ stages: [SleepStage]) -> Int? {
-        let values = HealthReader.normalize(stages)
+        let values = SleepStageTimeline.normalize(stages)
         guard values.contains(where: { $0.key != "awake" }) else { return nil }
         return values.indices.filter { i in
             i > 0 && i+1 < values.count && values[i].key == "awake" &&
@@ -75,7 +75,7 @@ struct StageChart: View {
                 let date = start.addingTimeInterval(min(1,max(0,gesture.location.x/geometry.size.width))*end.timeIntervalSince(start))
                 selected = stages.first { $0.start <= date && $0.end > date }
             })
-            }.frame(height:50).accessibilityLabel(words("stagesHealth"))
+            }.frame(height:50).accessibilityLabel(words("localEstimate"))
             if let selected {
                 Text(words(selected.key) + " · " + selected.start.formatted(date:.omitted,time:.shortened) + "–" + selected.end.formatted(date:.omitted,time:.shortened)).font(.caption2)
             }
@@ -96,7 +96,7 @@ struct StageDurations: View {
                 HStack(spacing:5) {
                     Circle().fill(DiaryPresentation.color(key)).frame(width:9,height:9)
                     Text(words(key)); Spacer(minLength:2)
-                    let seconds = NightMetrics(nights:nights).healthSeconds(stages,key:key) ?? 0
+                    let seconds = NightMetrics(nights:nights).sleepSeconds(stages,key:key) ?? 0
                     let total = SleepMath.seconds(stages.map { DateInterval(start:$0.start,end:$0.end) })
                     Text(DiaryPresentation.duration(seconds) + " · \(Int(seconds/max(1,total)*100))%").monospacedDigit().accessibilityLabel(DiaryPresentation.duration(seconds) + " · \(Int(seconds/max(1,total)*100))% " + words("stageShare"))
                 }.font(.system(size:10))

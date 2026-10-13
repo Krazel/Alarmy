@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-14",
+  "approved": "All nine proposal blocks",
+  "implemented": [
+    "Habits with explicit unrecorded/none distinction",
+    "Grouped night comparisons after minimum sample counts",
+    "Naps separated from night trends",
+    "Personal sleep goal",
+    "Session interval correction and restore without destroying original capture",
+    "Continuity computation for available stage observations",
+    "Stage selection and percentages",
+    "Category clip durations and hourly distribution",
+    "Alarm telemetry with unknown legacy/locked-screen observations",
+    "CSV export excluding notes/audio",
+    "Capture coverage and missing time",
+    "Removal of mandatory Health CTA and duplicate subjective rating",
+    "Local experimental sleep duration and stage estimator with explicit coverage and uncertainty"
+  ],
+  "blockingDependency": {
+    "status": "Replaced by explicitly authorized experimental heuristic, not a trained/validated model",
+    "method": "10 Hz energy envelope -> 30 s contrast/autocorrelation/peak-interval variability; sustained breathing-like observations suggest sleep. Stable/variable patterns produce experimental stage hypotheses. Silence alone and missing capture never create sleep. No fixed cycles or percentages.",
+    "limits": [
+      "Not clinically validated; accuracy unknown",
+      "Can misclassify awake breathing, partners and rhythmic noise",
+      "Historical nights without envelope features cannot be reconstructed",
+      "No Health permissions, cloud processing or costs",
+      "Synthetic tests validate software rules, not physiological accuracy"
+    ]
+  },
+  "verification": "Initial compile found a Swift expression type-check timeout in CSV assembly; split into typed steps. Final native verification pending.",
+  "latestDecision": "User explicitly requests a proprietary local audio method even if imperfect; no external service."
+}

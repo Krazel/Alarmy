@@ -9,39 +9,6 @@ struct MetricRow: View {
     }
 }
 
-struct NightAnalysisCard: View {
-    let nights: [SleepSession]
-    let stages: [SleepStage]
-    let feeling: MorningFeeling?
-    let words: Words
-    private var metrics: NightMetrics { NightMetrics(nights:nights) }
-    var body: some View {
-        let metrics = self.metrics
-        return PaperCard {
-            VStack(alignment:.leading,spacing:14) {
-                Text(words("nightAnalysis")).font(.system(size:23,design:.serif))
-                MetricRow(title:words("sleepHealth"),value:SleepMath.duration(metrics.healthSeconds(stages)))
-                MetricRow(title:words("latencyHealth"),value:SleepMath.duration(metrics.healthLatency(stages)))
-                if !stages.isEmpty {
-                    ForEach(["awake","core","deep","rem","asleep"].filter { key in stages.contains { $0.key == key } },id:\.self) { key in
-                        MetricRow(title:words(key) + " · " + words("healthSource"),value:SleepMath.duration(metrics.healthSeconds(stages,key:key)))
-                    }
-                }
-                Text(words("stageSourceHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
-                Divider()
-                MetricRow(title:words("estimatedRest"),value:SleepMath.duration(metrics.rest))
-                MetricRow(title:words("quietLatency"),value:SleepMath.duration(metrics.quietLatency))
-                MetricRow(title:words("analysisCoverage"),value:metrics.coverage.map { "\(Int($0*100))%" } ?? "—")
-                AcousticTimeline(metrics:metrics,words:words)
-                Text(words("restHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
-                Divider()
-                MetricRow(title:words("soundActivity"),value:SleepMath.duration(metrics.activity))
-                Text(words("soundStatsHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
-            }
-        }.accessibilityIdentifier("night-analysis")
-    }
-}
-
 struct AcousticTimeline: View {
     let metrics: NightMetrics
     let words: Words
@@ -69,18 +36,19 @@ struct StatisticsScreen: View {
     @Environment(\.dismiss) private var dismiss
     @State private var days = 7
     @State private var showNaps = false
-    @State private var health: [UUID:[SleepStage]] = [:]
+    @State private var estimates: [UUID:[SleepStage]] = [:]
     @State private var loading = false
     @State private var sounds = false
     private var words: Words { store.words }
     private var nights: [SleepSession] {
         let cutoff = Calendar.current.date(byAdding:.day,value:-(days-1),to:Calendar.current.startOfDay(for:Date())) ?? .distantPast
-        return store.archive.sessions.filter { ($0.isNap == true) == showNaps && (days == 0 || ($0.end ?? $0.checkpoint) >= cutoff) }.map(\.analysisSession).sorted { $0.start < $1.start }
+        return store.archive.sessions.filter { ($0.isNap == true) == showNaps && (days == 0 || ($0.end ?? $0.checkpoint) >= cutoff) }.sorted { $0.start < $1.start }
     }
-    private var healthNights: [SleepSession] { nights.filter { NightMetrics(nights:[$0]).healthSeconds(health[$0.id] ?? []) != nil } }
+    private var estimatedNights: [SleepSession] { nights.filter { NightMetrics(nights:[$0]).sleepSeconds(estimates[$0.id] ?? []) != nil } }
     private func average(_ values:[Double?]) -> Double? { let n = values.compactMap {$0}; return n.isEmpty ? nil : n.reduce(0,+)/Double(n.count) }
-    private var meanSleep: Double? { average(nights.map { NightMetrics(nights:[$0]).healthSeconds(health[$0.id] ?? []) }) }
-    private func stageMean(_ key: String) -> Double? { average(healthNights.map { NightMetrics(nights:[$0]).healthSeconds(health[$0.id] ?? [],key:key) }) }
+    private var meanSleep: Double? { average(nights.map { NightMetrics(nights:[$0]).sleepSeconds(estimates[$0.id] ?? []) }) }
+    private var meanGoalSleep: Double? { average(nights.map { let c = SleepContinuity(nights:[$0],stages:estimates[$0.id] ?? []); return c.coverage >= 0.99 ? c.asleep : nil }) }
+    private func stageMean(_ key: String) -> Double? { average(estimatedNights.map { NightMetrics(nights:[$0]).sleepSeconds(estimates[$0.id] ?? [],key:key) }) }
     private func feelingCount(_ feeling: MorningFeeling) -> Int {
         Set(nights.map { CalendarDay.key($0.end ?? $0.checkpoint) }).filter { store.archive.pages[$0]?.feeling == feeling }.count
     }
@@ -101,12 +69,12 @@ struct StatisticsScreen: View {
                         if !showNaps { rhythms }
                         stagesCard
                         HStack(alignment:.top,spacing:12) {
-                            statTile("latencyHealth",value:DiaryPresentation.duration(average(nights.map { NightMetrics(nights:[$0]).healthLatency(health[$0.id] ?? []) })),symbol:"clock")
-                            statTile("healthAwakenings",value:average(nights.map { DiaryPresentation.awakenings(health[$0.id] ?? []).map(Double.init) }).map { String(format:"%.1f",$0) } ?? "—",symbol:"moon.zzz")
+                            statTile("latencyHealth",value:DiaryPresentation.duration(average(nights.map { NightMetrics(nights:[$0]).sleepLatency(estimates[$0.id] ?? []) })),symbol:"clock")
+                            statTile("healthAwakenings",value:average(nights.map { SleepContinuity(nights:[$0],stages:estimates[$0.id] ?? []).awakenings.map(Double.init) }).map { String(format:"%.1f",$0) } ?? "—",symbol:"moon.zzz")
                         }
                         feelings
                         Button { sounds = true } label: { SoundSummaryRow(nights:nights,words:words) }.buttonStyle(.plain).accessibilityIdentifier("statistics-sounds")
-                        ExtraStatistics(nights:nights,stages:health)
+                        ExtraStatistics(nights:nights,stages:estimates)
                         DisclosureGroup(words("acousticDetails")) { details.padding(.top,14) }
                         Text("\(nights.count) · " + words("nights")).font(.caption).foregroundStyle(Color.ink.opacity(0.5)).frame(maxWidth:.infinity)
                     }
@@ -114,7 +82,7 @@ struct StatisticsScreen: View {
             }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust)
                 .navigationTitle(words("statistics")).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement:.confirmationAction) { Button { dismiss() } label: { Image(systemName:"xmark") }.accessibilityIdentifier("close-statistics").accessibilityLabel(words("done")) } }
-                .task(id:"\(days)-\(showNaps)-\(store.archive.revision)") { await loadHealth() }
+                .task(id:"\(days)-\(showNaps)-\(store.archive.revision)") { await loadAnalysis() }
                 .sheet(isPresented:$sounds) { SoundsScreen(sessionIDs:nights.map(\.id)) }
         }
     }
@@ -133,26 +101,29 @@ struct StatisticsScreen: View {
                 Text(DiaryPresentation.duration(meanSleep)).font(.system(size:36,design:.serif)).accessibilityIdentifier("statistics-sleep")
                 Text(words("meanSleep")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                 if loading { ProgressView() }
-                if !healthNights.isEmpty {
+                if !estimatedNights.isEmpty {
                 Chart(nights) { night in
-                    if let seconds = NightMetrics(nights:[night]).healthSeconds(health[night.id] ?? []) {
+                    if let seconds = NightMetrics(nights:[night]).sleepSeconds(estimates[night.id] ?? []) {
                         BarMark(x:.value(words("nights"),night.end ?? night.checkpoint,unit:.day),y:.value(words("asleepShort"),seconds/3600)).foregroundStyle(DiaryPresentation.color("core")).cornerRadius(4)
                     }
-                }.frame(height:125).chartYScale(domain:0...max(8,nights.map { NightMetrics(nights:[$0]).healthSeconds(health[$0.id] ?? []) ?? 0 }.max().map {$0/3600} ?? 8)).chartYAxisLabel("h").accessibilityLabel(words("meanSleep"))
+                }.frame(height:125).chartYScale(domain:0...max(8,nights.map { NightMetrics(nights:[$0]).sleepSeconds(estimates[$0.id] ?? []) ?? 0 }.max().map {$0/3600} ?? 8)).chartYAxisLabel("h").accessibilityLabel(words("meanSleep"))
                 }
                 HStack {
-                    CompactMetric(title:words("meanBed"),value:DiaryPresentation.duration(average(nights.map(\.duration))))
+                    CompactMetric(title:words("meanBed"),value:DiaryPresentation.duration(average(nights.map {NightMetrics(nights:[$0]).inBed})))
                     Divider()
                     CompactMetric(title:words("usualRating"),value:MorningFeeling.allCases.max { feelingCount($0) < feelingCount($1) }.flatMap { feelingCount($0) > 0 ? words($0.key) : nil } ?? "—")
                 }.fixedSize(horizontal:false,vertical:true)
+                if !showNaps {
                 MetricRow(title:words("sleepGoal"),value:SleepMath.duration(Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60))
-                MetricRow(title:words("goalDifference"),value:meanSleep.map { ($0 >= Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60 ? "+ " : "− ") + SleepMath.duration(abs($0-Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60)) } ?? "—")
-                Text("\(healthNights.count) / \(nights.count) · " + words("healthNights")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5))
-                if healthNights.isEmpty { Text(words("compactHealthEmpty")).font(.caption).foregroundStyle(Color.ink.opacity(0.55)) }
+                MetricRow(title:words("goalDifference"),value:meanGoalSleep.map { ($0 >= Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60 ? "+ " : "− ") + SleepMath.duration(abs($0-Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60)) } ?? "—")
+                }
+                Text("\(estimatedNights.count) / \(nights.count) · " + words("healthNights")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5))
+                if estimatedNights.isEmpty { Text(words("compactHealthEmpty")).font(.caption).foregroundStyle(Color.ink.opacity(0.55)) }
             }
         }
     }
     private var rhythms: some View {
+        let nights = self.nights.map(\.analysisSession)
         let bedtime = SleepMath.clockStats(nights.map(\.start))
         let wake = SleepMath.clockStats(nights.map { $0.end ?? $0.checkpoint })
         let shown = Array(nights.suffix(14))
@@ -214,7 +185,7 @@ struct StatisticsScreen: View {
                         ProgressView(value:(stageMean("awake") ?? 0)/max(1,total+(stageMean("awake") ?? 0))).tint(DiaryPresentation.color("awake")).frame(maxWidth:110)
                         Spacer(); VStack(alignment:.trailing,spacing:3) { Text(words("awakeSeparate")).font(.caption2); Text(DiaryPresentation.duration(stageMean("awake"))).font(.subheadline) }
                     }
-                    Text(words("healthMean")).font(.caption2).foregroundStyle(Color.ink.opacity(0.55))
+                    Text(words("localEstimate")).font(.caption2).foregroundStyle(Color.ink.opacity(0.55))
                 }
             }
         }
@@ -248,27 +219,24 @@ struct StatisticsScreen: View {
             Text(words("nightHistory")).font(.system(size:23,design:.serif))
             ForEach(nights.reversed()) { night in
                 DisclosureGroup((night.end ?? night.checkpoint).formatted(date:.abbreviated,time:.omitted)) {
-                    ContinuityCard(nights:[night],stages:health[night.id] ?? [],words:words)
+                    ContinuityCard(nights:[night],stages:estimates[night.id] ?? [],words:words)
                     AlarmMetrics(night:night,words:words)
                 }
             }
         }
     }
-    private func loadHealth() async {
-        health = [:]
+    private func loadAnalysis() async {
+        estimates = [:]
         #if DEBUG
-        if store.testMode && ProcessInfo.processInfo.arguments.contains("--health-fixture") {
-            for night in nights { health[night.id] = DiaryPresentation.fixtureStages(night) }; return
+        if store.testMode && ProcessInfo.processInfo.arguments.contains("--stage-fixture") {
+            for night in nights { estimates[night.id] = DiaryPresentation.fixtureStages(night) }; return
         }
         #endif
-        guard store.archive.preferences.health, !store.journalPreview else { return }
         loading = true; defer { loading = false }
-        do {
-            for night in nights {
-                guard !Task.isCancelled else {return}
-                let values = try await HealthReader().stages(from:night.start,to:night.end ?? night.checkpoint)
-                guard !Task.isCancelled else {return}; health[night.id] = values
-            }
-        } catch { store.error = error.localizedDescription }
+        let source = nights
+        let result = await Task.detached(priority:.userInitiated) {
+            Dictionary(uniqueKeysWithValues:source.map {($0.id,LocalSleepEstimator.stages(night:$0))})
+        }.value
+        if !Task.isCancelled {estimates = result}
     }
 }

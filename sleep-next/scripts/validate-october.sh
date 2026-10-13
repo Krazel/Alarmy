@@ -33,6 +33,8 @@ FILTERS=(
 if [[ "${VALIDATION_SCOPE:-october}" == "insights" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/AnalysisInsightsTests
+    -only-testing:AlarmaNextTests/LocalSleepEstimatorTests
+    -only-testing:AlarmaNextTests/SleepAnalysisTests
     -only-testing:AlarmaNextTests/DomainTests/testTranslationsComplete
     -only-testing:AlarmaNextUITests/DiaryFlowTests/testJournalStatisticsSpanish
     -only-testing:AlarmaNextUITests/DiaryFlowTests/testInsightsEditingHabitsAndNaps

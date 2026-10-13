@@ -88,6 +88,7 @@ struct SleepSession: Codable, Equatable, Identifiable {
     var snoozeDates: [Date]?
     var alarmObservedAt: Date?
     var alarmStatsTracked: Bool?
+    var localAnalysisVersion: Int?
     var hasAlarm: Bool { mode != .analysis }
     var hasActiveSmartWindow: Bool { mode == .smart && windowStart != nil && smartTriggered != true }
     var editableAlarmTime: Date { hasActiveSmartWindow ? (latestWake ?? wake) : wake }

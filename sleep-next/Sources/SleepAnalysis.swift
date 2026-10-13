@@ -7,6 +7,7 @@ struct AcousticEpoch: Codable, Equatable, Identifiable {
     let duration: Double
     let activeSeconds: Double
     let meanDBFS: Double
+    var breathing: BreathingFeatures?
     var end: Date { start.addingTimeInterval(duration) }
     var quiet: Bool { duration >= 29 && activeSeconds / duration < 0.05 }
 }
@@ -139,12 +140,12 @@ struct NightMetrics {
         })
         return missing <= 2 ? prefix.duration : nil
     }
-    func healthSeconds(_ stages: [SleepStage], key: String? = nil) -> Double? {
+    func sleepSeconds(_ stages: [SleepStage], key: String? = nil) -> Double? {
         let all = clipped(stages.map { DateInterval(start:$0.start,end:$0.end) })
         guard !all.isEmpty else { return nil }
         return SleepMath.seconds(clipped(stages.filter { key == nil ? $0.key != "awake" : $0.key == key }.map { DateInterval(start:$0.start,end:$0.end) }))
     }
-    func healthLatency(_ stages: [SleepStage]) -> Double? {
+    func sleepLatency(_ stages: [SleepStage]) -> Double? {
         guard nights.count == 1, let begin = bed.first?.start,
               let first = clipped(stages.filter { $0.key != "awake" }.map { DateInterval(start:$0.start,end:$0.end) }).first else { return nil }
         // Do not turn unobserved Health time before the first record into wakefulness.
@@ -189,12 +190,19 @@ enum SmartWakePolicy {
 final class EpochAccumulator {
     private var start: Date
     private var seconds = 0.0, active = 0.0, energy = 0.0
+    private var envelope: [Double] = []
+    private var envelopeSeconds = 0.0, envelopeEnergy = 0.0
     private let emit: (AcousticEpoch) -> Void
     init(start: Date, emit: @escaping (AcousticEpoch) -> Void) { self.start = start; self.emit = emit }
     func add(duration: Double, level: Double, loud: Bool) {
         var remaining = duration
         while remaining > 0.000001 {
-            let n = min(30-seconds,remaining)
+            let n = min(min(30-seconds,remaining),0.1-envelopeSeconds)
+            envelopeSeconds += n; envelopeEnergy += pow(10,level/10)*n
+            if envelopeSeconds >= 0.099999 {
+                envelope.append(10*log10(max(1e-10,envelopeEnergy/envelopeSeconds)))
+                envelopeSeconds = 0; envelopeEnergy = 0
+            }
             seconds += n; active += loud ? n : 0; energy += pow(10,level/10)*n; remaining -= n
             if seconds >= 29.999999 { flush() }
         }
@@ -202,7 +210,8 @@ final class EpochAccumulator {
     func flush() {
         guard seconds > 0 else { return }
         let duration = seconds >= 29.999999 ? 30 : seconds
-        emit(AcousticEpoch(id:UUID(),start:start,duration:duration,activeSeconds:active,meanDBFS:10*log10(max(1e-10,energy/seconds))))
+        emit(AcousticEpoch(id:UUID(),start:start,duration:duration,activeSeconds:active,meanDBFS:10*log10(max(1e-10,energy/seconds)),breathing:RespiratoryEnvelope.features(envelope)))
         start = start.addingTimeInterval(duration); seconds = 0; active = 0; energy = 0
+        envelope = []; envelopeSeconds = 0; envelopeEnergy = 0
     }
 }

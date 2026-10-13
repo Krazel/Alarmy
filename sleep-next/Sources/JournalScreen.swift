@@ -50,23 +50,20 @@ struct JournalScreen: View {
             .sheet(isPresented: $details) { NightDetails(ids:nights.map(\.id),stages:stages) }
             .sheet(isPresented: $sounds) { SoundsScreen(sessionIDs:nights.map(\.id)) }
             .task(id: CalendarDay.key(store.selectedDay)) { await store.analyzeClips(for: store.selectedDay) }
-            .task(id: CalendarDay.key(store.selectedDay) + String(store.archive.preferences.health)) {
+            .task(id: analysisKey) {
                 stages = []
                 #if DEBUG
-                if store.testMode && ProcessInfo.processInfo.arguments.contains("--health-fixture") {
+                if store.testMode && ProcessInfo.processInfo.arguments.contains("--stage-fixture") {
                     stages = nights.flatMap { DiaryPresentation.fixtureStages($0) }; return
                 }
                 #endif
-                if store.archive.preferences.health && !store.journalPreview {
-                    do {
-                        var values: [SleepStage] = []
-                        for night in nights { values += try await HealthReader().stages(from:night.start,to:night.end ?? night.checkpoint) }
-                        if !Task.isCancelled { stages = HealthReader.normalize(values) }
-                    } catch { store.error = error.localizedDescription }
-                }
+                let source = nights
+                let result = await Task.detached(priority:.userInitiated) { LocalSleepEstimator.stages(nights:source) }.value
+                if !Task.isCancelled { stages = result }
             }
         }
     }
+    private var analysisKey: String { CalendarDay.key(store.selectedDay) + nights.map { "\($0.id)-\($0.acousticEpochs?.count ?? 0)-\($0.correction?.start.timeIntervalSince1970 ?? 0)-\($0.correction?.end.timeIntervalSince1970 ?? 0)" }.joined() }
     private var header: some View {
         HStack {
             Text(store.words("journal")).font(.system(size:32,design:.serif))
@@ -103,6 +100,7 @@ struct JournalScreen: View {
     private func moveWeek(_ amount: Int) { if let date = Calendar.current.date(byAdding: .day, value: amount*7, to: store.selectedDay) { store.selectedDay = min(date, Date()) } }
     private var summary: some View {
         let metrics = NightMetrics(nights:nights)
+        let stages = SleepContinuity(nights:nights,stages:self.stages).stages
         return PaperCard(padding:16) {
             VStack(alignment:.leading,spacing:10) {
                 Text(store.words("overview")).font(.system(size:22,design:.serif)).accessibilityIdentifier("night-summary-title")
@@ -110,7 +108,7 @@ struct JournalScreen: View {
                     Text(store.words("noNightHint")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.6))
                 } else {
                     HStack(alignment:.top,spacing:8) {
-                        CompactMetric(title:store.words("asleepShort"),value:DiaryPresentation.duration(metrics.healthSeconds(stages)))
+                        CompactMetric(title:store.words("asleepShort"),value:DiaryPresentation.duration(metrics.sleepSeconds(stages)))
                         Divider()
                         CompactMetric(title:store.words("inBed"),value:DiaryPresentation.duration(metrics.inBed))
                     }.fixedSize(horizontal:false,vertical:true)
@@ -120,7 +118,8 @@ struct JournalScreen: View {
                     } else {
                         StageChart(stages:stages,words:store.words)
                         StageDurations(stages:stages,nights:nights,words:store.words)
-                        Text(store.words("stagesHealth")).font(.system(size:10)).foregroundStyle(Color.ink.opacity(0.5)).frame(maxWidth:.infinity,alignment:.trailing)
+                        Text(store.words("stageCoverage") + ": \(Int(SleepContinuity(nights:nights,stages:stages).coverage*100))%").font(.caption2).foregroundStyle(Color.ink.opacity(0.6))
+                        Text(store.words("localEstimate")).font(.system(size:10)).foregroundStyle(Color.ink.opacity(0.5)).frame(maxWidth:.infinity,alignment:.trailing)
                     }
                     Button(store.words("nightDetails")) { details = true }.font(.caption).accessibilityIdentifier("night-details")
                     if nights.contains(where: \.interrupted) { Text(store.words("interrupted")).font(.caption2).foregroundStyle(Color.rust) }

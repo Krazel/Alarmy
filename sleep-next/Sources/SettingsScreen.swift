@@ -71,12 +71,9 @@ struct SettingsScreen: View {
                     if store.deletingRecordings { ProgressView() }
                 } header: { Text(store.words("storage")) } footer: { Text(store.words("recordingStorageHint")) }
                 Section {
-                    Toggle(store.words("health"), isOn: Binding(get: { store.archive.preferences.health }, set: { value in
-                        if !value { store.preferences { $0.health = false } }
-                        else { Task { do { try await HealthReader().authorize(); store.preferences { $0.health = true } } catch { store.error = error.localizedDescription } } }
-                    }))
                     Button { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } label: { Label(store.words("permissions"), systemImage: "arrow.up.right.square") }
-                } footer: { Text(store.words("healthHint")) }
+                    DisclosureGroup(store.words("localEstimate")) { Text(store.words("localMethodHint")).font(.caption) }
+                }
                 Section {
                     Text(store.words(WakeScheduler.systemAlarms ? "nativeInfo" : "fallbackInfo")).font(.subheadline)
                     if WakeScheduler.systemAlarms { Text(store.words("nativeExtra")).font(.caption).foregroundStyle(.secondary) }

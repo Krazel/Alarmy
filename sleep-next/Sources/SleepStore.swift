@@ -91,12 +91,19 @@ final class SleepStore: ObservableObject {
                         }
                     }
                 }
-                if ProcessInfo.processInfo.arguments.contains("--health-fixture"), let latest = archive.sessions.first {
+                if ProcessInfo.processInfo.arguments.contains("--stage-fixture"), let latest = archive.sessions.first {
                     for offset in 1...6 {
                         let end = latest.checkpoint.addingTimeInterval(-Double(offset)*86400+Double(offset%3)*600)
                         let begin = end.addingTimeInterval(-Double([430,390,465,360,440,420][offset-1])*60)
                         archive.sessions.append(SleepSession(id:UUID(),start:begin,checkpoint:end,end:end,wake:end,alarmID:UUID(),soundID:"aurora"))
                         archive.pages[CalendarDay.key(end)] = JournalPage(feeling:MorningFeeling.allCases[offset%5],text:"")
+                    }
+                }
+                if ProcessInfo.processInfo.arguments.contains("--local-analysis-fixture"), let n = archive.sessions.first {
+                    archive.sessions[0].acousticEpochs = stride(from:0,to:Int(n.duration),by:30).map { offset in
+                        let variable = offset >= 3600 && offset < 5400
+                        let features = BreathingFeatures(version:1,contrast:8,periodicity:variable ? 0.4 : 0.9,intervalVariation:variable ? 0.3 : 0.05,peaks:8)
+                        return AcousticEpoch(id:UUID(),start:n.start.addingTimeInterval(Double(offset)),duration:min(30,n.duration-Double(offset)),activeSeconds:0,meanDBFS:-50,breathing:features)
                     }
                 }
                 let fixture = archive
@@ -192,7 +199,7 @@ final class SleepStore: ObservableObject {
             let previousSound = archive.lastSound
             var night = SleepSession(id: UUID(), start: Date(), checkpoint: Date(), wake: wake, alarmID: UUID(), soundID: tone)
             night.mode = archive.plan.resolvedMode; night.retainAudio = archive.preferences.record
-            night.alarmStatsTracked = true; night.snoozeDates = []
+            night.alarmStatsTracked = true; night.snoozeDates = []; night.localAnalysisVersion = LocalSleepEstimator.version
             if night.mode == .analysis { night.wake = .distantFuture }
             if night.mode == .smart { night.latestWake = wake; night.windowStart = wake.addingTimeInterval(-Double(archive.plan.window)*60) }
             let started = night
@@ -259,11 +266,11 @@ final class SleepStore: ObservableObject {
             guard archive.active?.id == night.id, archive.active?.alarmID == night.alarmID,
                   ringing, !busy, !audioInterrupted else { return }
             if !testMode { try? scheduler.cancel(id: night.alarmID) }
-            let observed = Date()
-            commit { if $0.active?.id == night.id && $0.active?.alarmObservedAt == nil { $0.active?.alarmObservedAt = observed } }
             do {
                 guard let url = ToneLibrary.url(night.soundID, imported: archive.tones) ?? ToneLibrary.url("aurora", imported: []) else { throw CocoaError(.fileNoSuchFile) }
                 try audio.play(url: url, id: "wake", loop: true, gradual: archive.plan.gradual)
+                let observed = Date()
+                commit { if $0.active?.id == night.id && $0.active?.alarmObservedAt == nil { $0.active?.alarmObservedAt = observed } }
                 if archive.plan.motionSnooze { audio.watchMovement { [weak self] in Task { await self?.snooze() } } }
             } catch { self.error = error.localizedDescription }
     }

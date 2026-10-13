@@ -18,10 +18,10 @@ final class DiaryPresentationTests: XCTestCase {
         let night = SleepSession(id:UUID(),start:start,checkpoint:start.addingTimeInterval(100),end:start.addingTimeInterval(100),wake:start.addingTimeInterval(100),alarmID:UUID(),soundID:"aurora")
         let values = [stage("awake",0,10),stage("core",10,30),stage("deep",30,50),stage("rem",50,80),stage("asleep",80,100)]
         let metrics = NightMetrics(nights:[night])
-        let sleep = ["core","deep","rem","asleep"].reduce(0.0) { $0+(metrics.healthSeconds(values,key:$1) ?? 0) }
+        let sleep = ["core","deep","rem","asleep"].reduce(0.0) { $0+(metrics.sleepSeconds(values,key:$1) ?? 0) }
         XCTAssertEqual(sleep,90)
-        XCTAssertEqual(sleep,metrics.healthSeconds(values))
-        XCTAssertEqual(metrics.healthSeconds(values,key:"awake"),10)
+        XCTAssertEqual(sleep,metrics.sleepSeconds(values))
+        XCTAssertEqual(metrics.sleepSeconds(values,key:"awake"),10)
         XCTAssertEqual(DiaryPresentation.duration(nil),"—")
         XCTAssertEqual(DiaryPresentation.clipTime(24),"00:24")
         XCTAssertEqual(DiaryPresentation.clipTime(75),"01:15")

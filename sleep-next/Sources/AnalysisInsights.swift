@@ -30,17 +30,17 @@ struct SleepContinuity {
     init(nights: [SleepSession], stages: [SleepStage]) {
         let metrics = NightMetrics(nights:nights)
         self.metrics = metrics
-        self.stages = HealthReader.normalize(stages.flatMap { stage in
+        self.stages = SleepStageTimeline.normalize(stages.flatMap { stage in
             metrics.clipped([DateInterval(start:stage.start,end:max(stage.start,stage.end))]).map {
                 SleepStage(id:UUID(),start:$0.start,end:$0.end,key:stage.key)
             }
         })
     }
-    var asleep: Double? { metrics.healthSeconds(stages) }
+    var asleep: Double? { metrics.sleepSeconds(stages) }
     var coverage: Double { metrics.inBed > 0 ? SleepMath.seconds(stages.map { DateInterval(start:$0.start,end:$0.end) }) / metrics.inBed : 0 }
     // Partial coverage is not complete-night sleep efficiency or latency.
     var efficiency: Double? { coverage >= 0.99 ? asleep.map { $0 / metrics.inBed } : nil }
-    var latency: Double? { metrics.healthLatency(stages) }
+    var latency: Double? { metrics.sleepLatency(stages) }
     var awakenings: Int? { coverage >= 0.99 ? DiaryPresentation.awakenings(stages) : nil }
     var awakeDuringSleep: Double? {
         guard coverage >= 0.99, let first = stages.first(where:{$0.key != "awake"}),
@@ -91,14 +91,30 @@ enum AnalysisInsights {
     static func csv(nights: [SleepSession], pages: [String:JournalPage], stages: [UUID:[SleepStage]], words: Words) -> String {
         func cell(_ text: String) -> String { "\"" + text.replacingOccurrences(of:"\"",with:"\"\"") + "\"" }
         func minutes(_ seconds: Double?) -> String { seconds.map { String(format:"%.1f",locale:Locale(identifier:"en_US_POSIX"),$0/60) } ?? "" }
-        let headers = ["date","sessionType","bedtime","wakeTime","bedMinutes","sleepMinutes","dataSource","analysisCoverage","snoozes","feeling","habits"]
+        let headers = ["date","sessionType","bedtime","wakeTime","bedMinutes","sleepMinutes","dataSource","analysisCoverage","snoozes","feeling","habits","latency","awakeDuring","longest","efficiency","light","deep","rem","awake","snore","cough","voice","breath","other","scheduled","observed"]
         var rows = [headers.map {cell(words("csv-"+$0))}.joined(separator:",")]
         let iso = ISO8601DateFormatter()
         for raw in nights.sorted(by:{$0.start < $1.start}) {
             let night = raw.analysisSession, m = NightMetrics(nights:[night])
             let page = pages[CalendarDay.key(raw.end ?? raw.checkpoint)]
-            let sleep = m.healthSeconds(stages[raw.id] ?? [])
-            let values = [CalendarDay.key(raw.end ?? raw.checkpoint),words(raw.isNap == true ? "nap" : "nightSession"),iso.string(from:night.start),iso.string(from:night.end ?? night.checkpoint),minutes(m.inBed),minutes(sleep),sleep == nil ? words("unavailable") : words("healthSource"),m.coverage.map {String(format:"%.1f",$0*100)} ?? "",raw.alarmStatsTracked == true && raw.hasAlarm ? String(raw.snoozeDates?.count ?? 0) : "",page?.feeling.map {words($0.key)} ?? "",page?.habits.map {$0.map {words($0.rawValue)}.joined(separator:"; ")} ?? ""]
+            let sleep = m.sleepSeconds(stages[raw.id] ?? [])
+            let continuity = SleepContinuity(nights:[raw],stages:stages[raw.id] ?? [])
+            var values: [String] = []
+            values.append(CalendarDay.key(raw.end ?? raw.checkpoint))
+            values.append(words(raw.isNap == true ? "nap" : "nightSession"))
+            values.append(iso.string(from:night.start))
+            values.append(iso.string(from:night.end ?? night.checkpoint))
+            values.append(minutes(m.inBed)); values.append(minutes(sleep))
+            values.append(sleep == nil ? words("unavailable") : words("localEstimate"))
+            values.append(m.coverage.map {String(format:"%.1f",$0*100)} ?? "")
+            values.append(raw.alarmStatsTracked == true && raw.hasAlarm ? String(raw.snoozeDates?.count ?? 0) : "")
+            values.append(page?.feeling.map {words($0.key)} ?? "")
+            let habitNames = (page?.habits ?? []).map {words($0.rawValue)}
+            values.append(habitNames.joined(separator:"; "))
+            values += [minutes(continuity.latency),minutes(continuity.awakeDuringSleep),minutes(continuity.longestSleep),continuity.efficiency.map {String(format:"%.1f",$0*100)} ?? ""]
+            values += ["core","deep","rem","awake"].map {minutes(m.sleepSeconds(stages[raw.id] ?? [],key:$0))}
+            values += [SoundKind.snore,.cough,.voice,.breath,.other].map {minutes(m.soundSeconds($0))}
+            values += [raw.hasAlarm ? iso.string(from:raw.wake) : "",raw.alarmObservedAt.map {iso.string(from:$0)} ?? ""]
             rows.append(values.map(cell).joined(separator:","))
         }
         return "\u{FEFF}" + rows.joined(separator:"\r\n")

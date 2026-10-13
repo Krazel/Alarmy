@@ -74,6 +74,7 @@ struct NightDetails: View {
             ScrollView {
                 VStack(spacing:16) {
                     ContinuityCard(nights:nights,stages:stages,words:store.words)
+                    Text(store.words("localMethodHint")).font(.caption).foregroundStyle(.secondary)
                     ForEach(nights) { night in
                         PaperCard {
                             VStack(alignment:.leading,spacing:12) {
@@ -117,7 +118,7 @@ struct ContinuityCard: View {
                 MetricRow(title:words("awakeDuringSleep"),value:SleepMath.duration(value.awakeDuringSleep))
                 MetricRow(title:words("longestSleep"),value:SleepMath.duration(value.longestSleep))
                 MetricRow(title:words("efficiency"),value:value.efficiency.map {"\(Int($0*100))%"} ?? "—")
-                Text(words(stages.isEmpty ? "automaticPending" : "stagesHealth")).font(.caption).foregroundStyle(.secondary)
+                Text(words(stages.isEmpty ? "automaticPending" : "localEstimate")).font(.caption).foregroundStyle(.secondary)
             }
         }
     }
@@ -204,7 +205,7 @@ struct CompareNights: View {
                     if let night = nights.first(where:{$0.id == slot.id}) {
                         Section(night.start.formatted(date:.abbreviated,time:.shortened)) {
                             MetricRow(title:store.words("inBed"),value:SleepMath.duration(NightMetrics(nights:[night]).inBed))
-                            MetricRow(title:store.words("asleepShort"),value:SleepMath.duration(NightMetrics(nights:[night]).healthSeconds(stages[night.id] ?? [])))
+                            MetricRow(title:store.words("asleepShort"),value:SleepMath.duration(NightMetrics(nights:[night]).sleepSeconds(stages[night.id] ?? [])))
                             MetricRow(title:store.words("analysisCoverage"),value:NightMetrics(nights:[night]).coverage.map {"\(Int($0*100))%"} ?? "—")
                             MetricRow(title:store.words("feeling"),value:store.words(store.page(night.end ?? night.checkpoint).feeling?.key ?? "unrated"))
                             MetricRow(title:store.words("sounds"),value:"\(NightMetrics(nights:[night]).soundCount)")

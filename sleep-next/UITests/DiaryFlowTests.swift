@@ -6,7 +6,7 @@ final class DiaryFlowTests: XCTestCase {
     func testJournalStatisticsSpanish() { exercise(spanish:true) }
     private func exercise(spanish:Bool) {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test","--reset-test","--archive-id",UUID().uuidString,spanish ? "--spanish" : "--english","--design-fixture","--clip-fixture","--health-fixture"]
+        app.launchArguments = ["--ui-test","--reset-test","--archive-id",UUID().uuidString,spanish ? "--spanish" : "--english","--design-fixture","--clip-fixture","--stage-fixture"]
         app.launch()
         XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout:10))
         app.tabBars.buttons[spanish ? "Diario" : "Journal"].tap()
@@ -66,7 +66,7 @@ final class DiaryFlowTests: XCTestCase {
     }
     func testInsightsEditingHabitsAndNaps() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test","--reset-test","--archive-id",UUID().uuidString,"--english","--design-fixture"]
+        app.launchArguments = ["--ui-test","--reset-test","--archive-id",UUID().uuidString,"--english","--design-fixture","--local-analysis-fixture"]
         app.launch(); XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout:10))
         app.tabBars.buttons["Journal"].tap()
         XCTAssertTrue(app.buttons["night-details"].waitForExistence(timeout:5))
@@ -94,7 +94,8 @@ final class DiaryFlowTests: XCTestCase {
         let type = app.segmentedControls["statistics-session-type"]
         XCTAssertTrue(type.waitForExistence(timeout:5)); type.buttons["Nap"].tap()
         XCTAssertTrue(app.staticTexts["statistics-sleep"].waitForExistence(timeout:5))
-        XCTAssertEqual(app.staticTexts["statistics-sleep"].label,"—")
+        let estimated = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label != %@", "—"),object:app.staticTexts["statistics-sleep"])
+        XCTAssertEqual(XCTWaiter.wait(for:[estimated],timeout:10),.completed)
         capture("93-en-nap-statistics")
         app.buttons["close-statistics"].tap()
     }

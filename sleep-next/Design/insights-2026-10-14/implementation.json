@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-14",
+  "authorization": "perf implementa todo",
+  "candidate": "1.5 (1)",
+  "platform": "Native SwiftUI iPhone iOS 16+",
+  "languages": [
+    "es",
+    "en"
+  ],
+  "reference": "../diary-statistics-2026-10-13/approval.json",
+  "layout": {
+    "journal": [
+      "header and mood week",
+      "summary: asleep/in-bed, available timeline, detail link",
+      "single compact sound row",
+      "morning faces",
+      "diary note",
+      "collapsed habits"
+    ],
+    "details": [
+      "sleep continuity when supported by observations",
+      "session times and reversible correction",
+      "nap classification",
+      "alarm observations",
+      "capture coverage and gaps"
+    ],
+    "statistics": [
+      "period and night/nap selection",
+      "duration and personal goal for nights",
+      "schedule and weekend shift",
+      "available stages",
+      "feelings",
+      "compact sounds",
+      "collapsed habit associations and alarm metrics",
+      "night comparison and CSV export"
+    ]
+  },
+  "states": [
+    "empty history",
+    "insufficient acoustic signal",
+    "partial acoustic coverage",
+    "local experimental phase hypotheses",
+    "untagged habits vs explicitly none",
+    "insufficient days for comparison",
+    "old sessions without alarm telemetry",
+    "edited and restored session times",
+    "night and nap filters"
+  ],
+  "modelStatus": "User-approved experimental local acoustic estimator; no physiological validation or accuracy claim. Stage hypotheses marked experimental; missing/legacy features remain unclassified. Health access removed.",
+  "nativeEvidence": "Final native validation pending"
+}

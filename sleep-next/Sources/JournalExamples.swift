@@ -55,7 +55,9 @@ enum JournalScenario: String, CaseIterable, Identifiable {
             value.sessions[i].acousticEpochs = stride(from:0,to:Int(night.duration),by:30).compactMap { offset in
                 if self == .interrupted && i == 0 && offset >= 10800 && offset < 14400 { return nil }
                 let active = offset < 900 || offset % 5400 < 90
-                return AcousticEpoch(id:UUID(),start:night.start.addingTimeInterval(Double(offset)),duration:min(30,night.duration-Double(offset)),activeSeconds:active ? 12 : 0,meanDBFS:active ? -32 : -65)
+                let variable = (offset / 3600) % 3 == 2
+                let breathing = active ? nil : BreathingFeatures(version:1,contrast:8,periodicity:variable ? 0.4 : 0.9,intervalVariation:variable ? 0.3 : 0.05,peaks:8)
+                return AcousticEpoch(id:UUID(),start:night.start.addingTimeInterval(Double(offset)),duration:min(30,night.duration-Double(offset)),activeSeconds:active ? 15 : 0,meanDBFS:active ? -32 : -55,breathing:breathing)
             }
             value.sessions[i].soundSummaries = night.clips.map { NightSoundSummary(clip:$0) }
         }
