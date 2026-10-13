@@ -61,7 +61,7 @@ final class NightFeedbackTests: XCTestCase {
         XCTAssertEqual(restored.pages["day"]?.text,"Keep this dream")
         XCTAssertEqual(restored.pages["day"]?.feeling,.peaceful)
         XCTAssertEqual(NightMetrics(nights:restored.sessions).soundCount,1)
-        XCTAssertEqual(NightMetrics(nights:restored.sessions).soundSeconds(.cough),clip.duration)
+        XCTAssertEqual(try XCTUnwrap(NightMetrics(nights:restored.sessions).soundSeconds(.cough)),clip.duration,accuracy:0.001)
         XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("alarm.wav")),Data([9]))
         XCTAssertTrue(try ClipSpool(directory:dir).recover().isEmpty)
     }

@@ -39,7 +39,7 @@ final class OctoberRecoveryTests: XCTestCase {
         let audio = clips.appendingPathComponent(clip.filename), original = Data([1,2,3,4])
         try original.write(to: audio)
         let repo = ArchiveRepository(file: file, clipsDirectory: clips), session = night(clip: clip)
-        _ = try await repo.update { $0.sessions = [session]; $0.pages["day"] = JournalPage(text: "Keep me") }
+        _ = try await repo.update { $0.preferences.keepDays = 30; $0.sessions = [session]; $0.pages["day"] = JournalPage(text: "Keep me") }
         try FileManager.default.removeItem(at: file); try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
         do { _ = try await repo.prune(); XCTFail("The archive write must fail") } catch { }
         XCTAssertEqual(try Data(contentsOf: audio), original)

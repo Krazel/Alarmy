@@ -53,7 +53,7 @@ struct SettingsScreen: View {
                     Picker(store.words("sensitivity"), selection: Binding(get: { store.archive.preferences.sensitivity ?? 10 }, set: { value in store.preferences { $0.sensitivity = value } })) {
                         Text(store.words("sensitive")).tag(6.0); Text(store.words("normalSensitivity")).tag(10.0); Text(store.words("lessSensitive")).tag(14.0)
                     }
-                    Picker(store.words("retention"), selection: Binding(get: { store.archive.preferences.keepDays }, set: { value in store.preferences { $0.keepDays = value }; Task { await store.prune() } })) { Text(store.words("forever")).tag(0); ForEach([1,7,30,90], id: \.self) { Text("\($0) " + store.words("days")).tag($0) } }
+                    Picker(store.words("retention"), selection: Binding(get: { store.archive.preferences.keepDays }, set: { value in store.preferences { $0.keepDays = value }; Task { await store.prune(); await store.refreshRecordingUsage() } })) { Text(store.words("forever")).tag(0); ForEach([1,7,30,90], id: \.self) { Text("\($0) " + store.words("days")).tag($0) } }
                 } header: { Text(store.words("privacy")) } footer: { Text(store.words("recordAndAnalyzeHint")) }
                 Section {
                     HStack {

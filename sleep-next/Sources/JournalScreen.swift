@@ -121,7 +121,7 @@ struct JournalScreen: View {
                     }
                 }
             }
-        }.accessibilityIdentifier("night-summary")
+        }
     }
     private var feeling: some View {
         VStack(alignment: .leading, spacing: 13) {
@@ -135,7 +135,7 @@ struct JournalScreen: View {
                     }.accessibilityIdentifier("feeling-\(value.rawValue)").accessibilityLabel(store.words(value.key)).accessibilityAddTraits(chosen ? .isSelected : [])
                 }
             }
-        }.padding(.vertical, 5).accessibilityIdentifier("morning-feeling")
+        }.padding(.vertical, 5)
     }
     private var notes: some View {
         PaperCard {
