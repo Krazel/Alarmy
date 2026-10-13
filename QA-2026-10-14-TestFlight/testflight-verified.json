@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-13T23:32:39.988Z",
+  "appId": "6818287946",
+  "appName": "Alarma de Krazel",
+  "bundleId": "com.krazel.alarmanext",
+  "version": "1.5",
+  "build": "1",
+  "buildId": "00b99c93-8994-477c-981d-054f4c10bc79",
+  "processingState": "VALID",
+  "uploadedDate": "2026-10-13T16:31:27-07:00",
+  "expirationDate": "2027-01-11T15:31:27-08:00",
+  "minimumOS": "16.0",
+  "usesNonExemptEncryption": false,
+  "internalBuildState": "IN_BETA_TESTING",
+  "externalBuildState": "READY_FOR_BETA_SUBMISSION",
+  "internalGroup": true,
+  "groupAssigned": true,
+  "ownerOnlyVerified": true,
+  "testerCount": 1,
+  "publicLinkEnabled": false,
+  "notes": {
+    "es-ES": "Análisis del sueño propio y totalmente local, sin conectar Salud. Tiempo dormido y fases estimadas a partir del audio: método experimental, sin precisión clínica validada; la respiración despierto, otras personas y ruido repetitivo pueden confundirse. Los huecos sin señal suficiente quedan sin clasificar y las noches antiguas pueden no tener los datos necesarios. Nuevo detalle de continuidad, hábitos opcionales, siestas, objetivo personal, edición reversible de horarios, comparación y exportación CSV. Sonidos agrupados con duraciones y distribución horaria. Se conserva el diario compacto. Incluye crescendo de alarma con pantalla bloqueada; la luz gradual requiere la app abierta. Comprueba una noche completa, consumo y alarmas. Castellano e inglés, iPhone iOS 16+.",
+    "en-US": "Own on-device sleep analysis, without connecting Health. Sleep duration and stages estimated from audio: an experimental method without clinically validated accuracy; awake breathing, other people and repetitive noise may be misclassified. Insufficient-signal gaps remain unknown and older nights may lack the required data. New continuity details, optional habits, naps, personal goal, reversible time edits, comparison and CSV export. Grouped sounds with durations and hourly distribution. Compact journal preserved. Includes alarm crescendo with the phone locked; gradual light requires the app to remain open. Please test a full night, battery use and alarms. Spanish and English, iPhone iOS 16+."
+  },
+  "appStorePublished": false
+}

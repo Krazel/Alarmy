@@ -13,7 +13,9 @@ Release iPhone sin firma y capturas de simulador revisadas:
 [38480354936](https://github.com/Krazel/Alarmy/actions/runs/38480354936).
 El historial con los fallos corregidos y la evidencia final se conserva en
 [QA de análisis](../QA-2026-10-14-insights/README.md).
-No se ha subido esta candidata a TestFlight. Sigue vigente 1.4 (1) interno.
+Entrega posterior autorizada y verificada el 14/10: TestFlight interno 1.5 (1),
+`VALID` / `IN_BETA_TESTING`. Recibos en
+[QA de entrega](../QA-2026-10-14-TestFlight/README.md).
 
 Las pruebas sintéticas comprueban funcionamiento del software, no precisión
 fisiológica. Pendiente una noche real con iPhone bloqueado, consumo y captura

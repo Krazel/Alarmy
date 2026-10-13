@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-10-13T23:33:32.861Z",
+  "id": "PR-019",
+  "previousRevision": 29,
+  "revision": 30,
+  "verifiedSaved": true,
+  "changes": {
+    "version": "1.5",
+    "build": 1,
+    "distribution": "TestFlight interno — 1.5 (1) disponible para el titular",
+    "detail": "TestFlight interno 1.5 (1), VALID / IN_BETA_TESTING, mismo grupo del titular. Análisis acústico experimental totalmente local, sin Salud ni nube; fases sin precisión fisiológica validada. Continuidad, hábitos, siestas, objetivo, edición reversible, comparación, sonidos compactos y CSV. Incluye correcciones de crescendo/luz. ES/EN, iOS 16+. 25/25 pruebas y Release correctos. Notas verificadas y siete secretos temporales eliminados; entorno vacío.",
+    "next": "Probar 1.5 (1) en una noche real: señal útil, continuidad de captura, batería/almacenamiento y crescendo con iPhone bloqueado. Luz gradual solo con app abierta. Fases experimentales y noches antiguas pueden carecer de datos. Entrega: https://github.com/Krazel/Alarmy/actions/runs/38484310553 ; recibos QA-2026-10-14-TestFlight. Sin envío App Review ni pruebas externas."
+  },
+  "tracking": {
+    "testflight": "Interno",
+    "appStore": "Creada en App Store Connect",
+    "ads": "No",
+    "testflightUrl": "https://appstoreconnect.apple.com/teams/7f069118-9712-49c8-a1f0-fda00b62a281/apps/6818287946/testflight",
+    "appStoreUrl": "https://appstoreconnect.apple.com/apps/6818287946"
+  }
+}

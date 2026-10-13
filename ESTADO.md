@@ -1,6 +1,23 @@
 # Estado de Alarma — 14-10-2026
 
-## Candidata 1.5 (1) — análisis local experimental y estadísticas ampliadas
+## Entrega TestFlight interno 1.5 (1) — verificada por API
+
+Autorización del 14/10: «subelo a test». Apple confirma `VALID` e
+`IN_BETA_TESTING`, build `00b99c93-8994-477c-981d-054f4c10bc79`, iOS mínimo16.
+Mismo grupo interno del titular (1 tester), sin enlace público ni pruebas externas.
+Notas es-ES/en-US guardadas y releídas. Sin envío App Review ni publicación.
+Fuente de entrega `f788b34aff1a208ea401c46063fb3932f6249ac1`; árbol de aplicación
+idéntico al validado `d6700fc` (25/25, Debug/Release correctos).
+Firma/subida correcta: https://github.com/Krazel/Alarmy/actions/runs/38484310553 .
+SHA256 IPA `72958a4d37d5ab9f051312be64d32b61c58330d4f4c8401a617f32121a5bafa5`.
+Siete secretos temporales eliminados; entorno releído vacío, originales locales
+conservados. Recibos en QA-2026-10-14-TestFlight. La candidata incluye análisis
+local experimental sin Salud y las correcciones de crescendo/luz. Precisión
+fisiológica y noche física/consumo pendientes. Luz gradual solo con app abierta.
+Biblioteca PR-019 guardada y releída por API, revisión 30; versión 1.5 (1),
+TestFlight interno, ficha App Store creada y anuncios No; historial conservado.
+
+## Implementación validada 1.5 (1) — análisis local y estadísticas ampliadas
 
 Usuario aprueba los nueve bloques y confirma «quiero todo local, que hagamos
 nuestra propia forma a partir del audio, aunq no sea 100% buena». Implementado
@@ -29,7 +46,7 @@ interruptor de Siesta en la prueba. Validación final nativa 38480354936 correct
 omitidas, Debug y Release iPhone sin firma correctos. Capturas nativas revisadas
 en QA-2026-10-14-insights, con datos sintéticos.
 No afirmar precisión fisiológica ni prueba en iPhone real.
-TestFlight vigente sigue 1.4 (1) interno; sin subida de 1.5 en este encargo.
+La implementación se entregó después como TestFlight interno 1.5 (1); véase arriba.
 Biblioteca PR-019 actualizada y releída por API, revisión 29; resultado final
 y siguiente paso guardados, conservando distribución y tracking.
 
