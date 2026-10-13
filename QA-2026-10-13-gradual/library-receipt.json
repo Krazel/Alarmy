@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-13T19:42:15.381Z",
+  "id": "PR-019",
+  "previousRevision": 25,
+  "revision": 26,
+  "verifiedSaved": true,
+  "changes": {
+    "next": "Candidata 1.4.1 (1) implementada y validada: 10/10 pruebas, cero fallos/omitidas, Debug simulador y Release iPhone correctos. Fuente 3f6031d33e01966aad4f53e9d4711d3577245099; https://github.com/Krazel/Alarmy/actions/runs/38453395483 . Aún no subida a TestFlight (vigente 1.4). Pendiente entrega y prueba física del crescendo con el iPhone bloqueado y de la luz con Alarma abierta. Evidencia: https://github.com/Krazel/Alarmy/tree/codex/native-sleep-rebuild/QA-2026-10-13-gradual . Responsable: chat Alarma 01a0708e-0558-78b1-866c-801b9cf35996. Sin testers externos ni App Review."
+  },
+  "tracking": {
+    "testflight": "Interno",
+    "appStore": "Creada en App Store Connect",
+    "ads": "No",
+    "testflightUrl": "https://appstoreconnect.apple.com/teams/7f069118-9712-49c8-a1f0-fda00b62a281/apps/6818287946/testflight",
+    "appStoreUrl": "https://appstoreconnect.apple.com/apps/6818287946"
+  }
+}

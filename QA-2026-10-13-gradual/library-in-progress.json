@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-13T19:22:01.486Z",
+  "id": "PR-019",
+  "previousRevision": 24,
+  "revision": 25,
+  "verifiedSaved": true,
+  "changes": {
+    "detail": "Alarma 1.4 (1) sigue disponible en TestFlight interno del titular. Corrección candidata 1.4.1 (1): subida de volumen incorporada al archivo que reproduce iOS bloqueado (25 s; si iOS repite el sonido, repite la subida), aplicada a inicio, posponer, edición y ventana inteligente. Luz gradual corregida con pantalla abierta; no disponible bloqueada, explicado en ES/EN. Conserva diario/estadísticas de 1.4, fases de Salud y grabaciones locales. Sin nueva subida a TestFlight.",
+    "next": "Validación enfocada de 1.4.1 en curso: https://github.com/Krazel/Alarmy/actions/runs/38453395483 . Primera ejecución: audio generado correcto; 8/10 pruebas y dos aserciones del simulador corregidas (brillo/protección). Pendiente resultado final y prueba real de volumen con el iPhone bloqueado y luz con Alarma abierta. Responsable: chat Alarma 01a0708e-0558-78b1-866c-801b9cf35996. Sin testers externos ni App Review."
+  },
+  "tracking": {
+    "testflight": "Interno",
+    "appStore": "Creada en App Store Connect",
+    "ads": "No",
+    "testflightUrl": "https://appstoreconnect.apple.com/teams/7f069118-9712-49c8-a1f0-fda00b62a281/apps/6818287946/testflight",
+    "appStoreUrl": "https://appstoreconnect.apple.com/apps/6818287946"
+  }
+}

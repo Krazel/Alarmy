@@ -1,6 +1,6 @@
 # Estado de Alarma — 13-10-2026
 
-## Corrección en curso — volumen y luz gradual, candidata 1.4.1 (1)
+## Corrección validada — volumen y luz gradual, candidata 1.4.1 (1)
 
 Usuario confirma que el fallo ocurre con el iPhone bloqueado. La alarma del
 sistema recibía el tono original; el crescendo solo existía en AVAudioPlayer
@@ -11,8 +11,14 @@ inteligente; original conservado y escritura atómica. Si iOS repite el archivo,
 repite la subida. No se modifica el volumen del sistema ni se promete controlar
 la pantalla bloqueada. Luz abierta: nivel nocturno bajo antes de subir hasta
 máximo en los minutos elegidos y restauración al salir. Textos ES/EN explícitos.
-Validación nativa enfocada pendiente; prueba real con iPhone bloqueado pendiente.
+Validación 38450915451: Debug y PCM correctos, 8/10; dos aserciones de hardware
+del simulador corregidas con adaptador de pantalla y límite de Data Protection.
+Segunda validación 38453395483 correcta: 10/10 pruebas, cero fallos/omitidas,
+Debug y Release iPhone correctos; fuente 3f6031d. Evidencias: QA-2026-10-13-gradual.
+Prueba real con iPhone bloqueado pendiente.
 Distribución vigente sigue 1.4 (1). Esta corrección aún no está en TestFlight.
+Biblioteca PR-019 guardada y releída por API, revisión 26; conserva historial
+y distribución vigente.
 
 
 ## Entrega completada — TestFlight interno 1.4 (1)
