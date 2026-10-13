@@ -87,7 +87,14 @@ final class DiaryFlowTests: XCTestCase {
         if !edit.isHittable {app.swipeUp()}
         capture("92-en-night-details")
         edit.tap()
-        XCTAssertTrue(app.switches["session-nap"].waitForExistence(timeout:5)); app.switches["session-nap"].tap()
+        let nap = app.switches["session-nap"]
+        XCTAssertTrue(nap.waitForExistence(timeout:5))
+        XCTAssertEqual(nap.value as? String,"0")
+        // SwiftUI Form exposes the row as a switch; touch the trailing thumb.
+        nap.coordinate(withNormalizedOffset:CGVector(dx:0.93,dy:0.5)).tap()
+        let enabled = XCTNSPredicateExpectation(predicate:NSPredicate(format:"value == '1'"),object:nap)
+        XCTAssertEqual(XCTWaiter.wait(for:[enabled],timeout:5),.completed)
+        capture("94-en-session-editor")
         app.buttons["save-session"].tap()
         XCTAssertTrue(app.buttons["edit-session"].waitForExistence(timeout:5))
         app.buttons["Done"].tap()
