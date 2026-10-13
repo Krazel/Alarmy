@@ -63,6 +63,17 @@ if [[ "${VALIDATION_SCOPE:-october}" == "onda" ]]; then
     -only-testing:AlarmaNextUITests/NativeFlowTests/testNightModesSwipeAndStatistics
   )
 fi
+if [[ "${VALIDATION_SCOPE:-october}" == "feedback" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/NightFeedbackTests
+    -only-testing:AlarmaNextTests/OctoberRecoveryTests/testRetentionWriteFailurePreservesAudioAndJournal
+    -only-testing:AlarmaNextTests/OctoberRecoveryTests/testRelaunchCompletesDeletionAndRemovesRecoveryReceipt
+    -only-testing:AlarmaNextTests/AcousticCaptureTests/testBudgetExhaustionReportsFailureAndLeavesRecoverableData
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testFeedbackJournalAndStorageEnglish
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testFeedbackJournalAndStorageSpanish
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testMinimalNightAndInlineAlarmEnglish
+  )
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "onda_time" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/ActiveAlarmTests

@@ -4,27 +4,31 @@ import SwiftUI
 struct SoundWave: View {
     let values: [Double]
     var animate = true
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var envelope = WaveEnvelope()
+    private var input: Double { let recent = values.suffix(4); return recent.isEmpty ? 0 : recent.reduce(0,+)/Double(recent.count) }
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0/15, paused: values.isEmpty || !animate)) { context in
+        TimelineView(.animation(minimumInterval:1.0/60,paused:values.isEmpty || !animate || reduceMotion || scenePhase != .active)) { context in
             Canvas { canvas, size in
-                let signal = values.suffix(12)
-                let level = signal.isEmpty ? 0 : signal.reduce(0,+) / Double(signal.count)
-                let phase = context.date.timeIntervalSinceReferenceDate * 1.3
-                for layer in 0..<14 {
+                let time = context.date.timeIntervalSinceReferenceDate
+                let level = animate && !reduceMotion ? envelope.level(at:time) : input
+                let phase = reduceMotion ? 0 : time*1.3
+                let gradient = GraphicsContext.Shading.linearGradient(Gradient(colors:[.cyan.opacity(0.08), .init(red:0.65,green:0.88,blue:1), .init(red:1,green:0.95,blue:0.79), .cyan.opacity(0.08)]),startPoint:.zero,endPoint:CGPoint(x:size.width,y:0))
+                for layer in 0..<12 {
                     var path = Path()
-                    for step in 0...120 {
-                        let x = Double(step)/120
-                        let envelope = pow(sin(.pi*x), 2)
-                        let wave = sin(x * .pi * 3.4 - phase + Double(layer)*0.075)
-                        let spread = Double(layer-7)*0.018
-                        let y = size.height/2 + (wave+spread)*envelope*min(1,level)*size.height*0.75
+                    for step in 0...100 {
+                        let x = Double(step)/100
+                        let y = size.height/2 + WaveMotion.offset(x:x,phase:phase,layer:layer,level:level,height:size.height)
                         let point = CGPoint(x:x*size.width,y:y)
                         if step == 0 { path.move(to:point) } else { path.addLine(to:point) }
                     }
-                    canvas.stroke(path, with:.linearGradient(Gradient(colors:[.cyan.opacity(0.08), .init(red:0.65,green:0.88,blue:1), .init(red:1,green:0.95,blue:0.79), .cyan.opacity(0.08)]), startPoint:.zero,endPoint:CGPoint(x:size.width,y:0)),lineWidth:layer == 7 ? 1.8 : 0.7)
+                    canvas.stroke(path,with:gradient,lineWidth:layer == 6 ? 1.8 : 0.7)
                 }
             }
-        }.accessibilityHidden(true)
+        }.onAppear { envelope.update(input,at:Date().timeIntervalSinceReferenceDate) }
+            .onChange(of:input) { level in envelope.update(level,at:Date().timeIntervalSinceReferenceDate) }
+            .accessibilityHidden(true)
     }
 }
 

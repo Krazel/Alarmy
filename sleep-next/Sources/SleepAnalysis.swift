@@ -86,6 +86,7 @@ struct NightMetrics {
         bed = SleepMath.union(nights.compactMap { n in n.duration > 0 ? DateInterval(start:n.start,duration:n.duration) : nil })
         epochs = Dictionary(grouping:nights.flatMap { $0.acousticEpochs ?? [] },by: \.id).values.compactMap(\.first).sorted { $0.start < $1.start }
     }
+    var soundCount: Int { Set(nights.flatMap { ($0.soundSummaries ?? []).map(\.id) + $0.clips.map(\.id) }).count }
     var inBed: Double { SleepMath.seconds(bed) }
     func clipped(_ ranges: [DateInterval]) -> [DateInterval] {
         // Binary-search the already merged bed windows. Long histories must not

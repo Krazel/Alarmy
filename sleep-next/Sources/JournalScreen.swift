@@ -13,6 +13,7 @@ struct JournalScreen: View {
     private var duration: Double { NightMetrics(nights:nights).inBed }
     var body: some View {
         NavigationStack {
+            ScrollViewReader { scroll in
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     header
@@ -22,15 +23,16 @@ struct JournalScreen: View {
                         Button { examples = true } label: { Label(store.words("journalExamples"), systemImage: "flask") }.font(.subheadline).accessibilityIdentifier("journal-examples")
                     }
                     week
-                    summary
                     feeling
-                    if !nights.isEmpty { NightAnalysisCard(nights:nights,stages:stages,feeling:store.page(store.selectedDay).feeling,words:store.words) }
                     notes
-                    soundCard
+                    summary { editingNote = false; withAnimation(.easeInOut(duration:0.3)) { scroll.scrollTo("night-sounds",anchor:.top) } }
+                    if !nights.isEmpty { NightAnalysisCard(nights:nights,stages:stages,feeling:store.page(store.selectedDay).feeling,words:store.words) }
                     healthCard
+                    soundCard.id("night-sounds")
                     HStack { Spacer(); Image(systemName: store.journalPreview ? "flask" : "lock"); Text(store.words(store.journalPreview ? "exampleOnly" : (store.writeFailed ? "savePending" : (store.saving ? "saving" : "saved")))); Spacer() }.font(.caption2).foregroundStyle(Color.ink.opacity(0.5)).padding(.bottom, 18)
                 }.padding(.horizontal, 22).padding(.top, 18)
             }.scrollIndicators(.hidden).background(Color.paper)
+            }
             .overlay(alignment: .top) {
                 GeometryReader { geometry in
                     Color.paper.frame(height: geometry.safeAreaInsets.top).frame(maxHeight: .infinity, alignment: .top).ignoresSafeArea(edges: .top)
@@ -92,7 +94,7 @@ struct JournalScreen: View {
         }.padding(.vertical, 4)
     }
     private func moveWeek(_ amount: Int) { if let date = Calendar.current.date(byAdding: .day, value: amount*7, to: store.selectedDay) { store.selectedDay = min(date, Date()) } }
-    private var summary: some View {
+    private func summary(openSounds: @escaping () -> Void) -> some View {
         PaperCard {
             VStack(alignment: .leading, spacing: 18) {
                 HStack { Eyebrow(text: store.words("overview")); Spacer(); Image(systemName: "moon.stars").foregroundStyle(Color.rust) }
@@ -105,14 +107,14 @@ struct JournalScreen: View {
                         Text("\((Int(duration)%3600)/60)").font(.system(size: 46, weight: .light, design: .rounded)); Text("min").font(.subheadline).foregroundStyle(Color.ink.opacity(0.5))
                     }
                     Text(store.words("inBed")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
+                    Button(action:openSounds) {
+                        HStack { Text(store.words("soundsRecorded")); Spacer(); Text("\(NightMetrics(nights:nights).soundCount)").monospacedDigit(); Image(systemName:"chevron.right").font(.caption) }.foregroundStyle(Color.rust)
+                    }.accessibilityIdentifier("summary-sounds").accessibilityValue("\(NightMetrics(nights:nights).soundCount)")
                     ForEach(nights) { night in
                         HStack { Text(night.start, style: .time); Rectangle().fill(Color.rust.opacity(0.35)).frame(height: 2); Text(night.end ?? night.checkpoint, style: .time) }.font(.caption).monospacedDigit()
                         if let spans = night.captureSpans, !spans.isEmpty {
                             let seconds = spans.reduce(0.0) { $0 + max(0, $1.end.timeIntervalSince($1.start)) }
                             Text(store.words("captureTime") + " · \(Int(seconds)/60) min").font(.caption)
-                            ForEach(spans) { span in
-                                HStack { Text(span.start, style: .time); Text("–"); Text(span.end, style: .time); Spacer(); Text(store.words(span.reason)) }.font(.system(size: 10)).foregroundStyle(Color.ink.opacity(0.6))
-                            }
                             Text(store.words("captureGaps")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5))
                         }
                         if night.interrupted { Text(store.words("interrupted")).font(.caption2).foregroundStyle(Color.rust) }
@@ -133,7 +135,7 @@ struct JournalScreen: View {
                     }.accessibilityIdentifier("feeling-\(value.rawValue)").accessibilityLabel(store.words(value.key)).accessibilityAddTraits(chosen ? .isSelected : [])
                 }
             }
-        }.padding(.vertical, 5)
+        }.padding(.vertical, 5).accessibilityIdentifier("morning-feeling")
     }
     private var notes: some View {
         PaperCard {

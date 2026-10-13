@@ -100,10 +100,6 @@ struct AlarmScreen: View {
                                 }
                             }
                         }
-                        Toggle(store.words("analyzeSounds"), isOn: Binding(get: { store.archive.preferences.analysisEnabled }, set: { value in store.preferences { $0.analyze = value } })).font(.subheadline).padding(16).background(Color.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 18))
-                        Toggle(isOn: Binding(get: { store.archive.preferences.record }, set: { value in store.preferences { $0.record = value } })) {
-                            Label(store.words("record"), systemImage: "mic")
-                        }.font(.subheadline).padding(16).background(Color.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 18)).accessibilityIdentifier("record-toggle").disabled(!store.archive.preferences.analysisEnabled)
                         Button { Task { await store.start() } } label: { HStack { if store.busy { ProgressView() }; Image(systemName: "moon.zzz"); Text(store.words("start")) } }.buttonStyle(PrimaryButton()).disabled(store.busy).accessibilityIdentifier("begin-night")
                         Spacer(minLength: 160)
                     }.padding(.horizontal, 26)

@@ -11,18 +11,15 @@ extension SleepStore {
         let spanID = UUID(), now = Date()
         var lastPersist = now
         let directory = DiskLocation.clips
-        let existing = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.fileSizeKey])) ?? []
-        let total = existing.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
-        let nightBytes = night.clips.reduce(0) { value, clip in value + ((try? directory.appendingPathComponent(clip.filename).resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
-        let remaining = min(256*1024*1024 - nightBytes, 512*1024*1024 - total)
-        guard remaining > 1_000_000 else { audio.captureState = "recordError"; throw CocoaError(.fileWriteOutOfSpace) }
+        try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+        try await Task.detached { try RecordingStorage.ensureAvailable(RecordingStorage.available(at:directory)) }.value
         audio.onFailure = { [weak self] error in
             guard let self else { return }
-            self.error = self.words("recordFailure") + " " + error.localizedDescription
+            self.error = self.captureFailureMessage(error)
             Task { await self.pauseCapture(reason: "recordError") }
         }
         audio.onDeadline = { [weak self] in Task { await self?.pauseCapture(reason: "recordAlarm") } }
-        try audio.startRecording(nightID: night.id, wake: night.wake, margin: archive.preferences.sensitivity ?? 10, byteLimit: remaining,
+        try audio.startRecording(nightID: night.id, wake: night.wake, margin: archive.preferences.sensitivity ?? 10, byteLimit: Int.max,
             epoch: { [weak self] epoch in self?.observe(epoch, nightID: night.id) },
             receive: { [weak self] receipt in self?.index(receipt) },
             progress: { [weak self] end in
@@ -65,7 +62,7 @@ extension SleepStore {
             if recovery.1 > 0 { error = words("damagedClips") }
             for receipt in recovery.0 { index(receipt) }
             if let writeTail { _ = await writeTail.value }
-        } catch { self.error = words("recordFailure") + " " + error.localizedDescription }
+        } catch { self.error = captureFailureMessage(error) }
     }
     func acquireClipFiles() async -> Bool {
         // Recovery must not recreate a WAV while a deliberate deletion removes its sidecars.
@@ -108,8 +105,8 @@ extension SleepStore {
         guard !captureBusy, archive.active != nil, !ringing, !audioInterrupted, !failed else { return }
         captureBusy = true; defer { captureBusy = false }
         guard await audio.microphoneAllowed() else { audio.captureState = "recordDenied"; error = words("micError"); return }
-        guard await commit({ $0.preferences.analyze = true; $0.active?.capturePaused = false; $0.active?.resumeCaptureAfterAlarm = nil }).value else { return }
-        do { try await beginRecordingIfNeeded() } catch { audio.captureState = "recordError"; self.error = words("recordFailure") + " " + error.localizedDescription }
+        guard await commit({ $0.preferences.analyze = true; $0.preferences.record = true; $0.active?.retainAudio = true; $0.active?.capturePaused = false; $0.active?.resumeCaptureAfterAlarm = nil }).value else { return }
+        do { try await beginRecordingIfNeeded() } catch { audio.captureState = "recordError"; self.error = captureFailureMessage(error) }
     }
     func interruption(began: Bool, shouldResume: Bool = false) async {
         // Ended notifications must wait for the begun notification to flush its final clip.

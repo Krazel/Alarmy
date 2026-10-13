@@ -37,7 +37,6 @@ struct NightAnalysisCard: View {
                 Text(words("restHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                 Divider()
                 MetricRow(title:words("soundActivity"),value:SleepMath.duration(metrics.activity))
-                ForEach(SoundKind.allCases,id:\.self) { kind in MetricRow(title:words(kind.rawValue),value:SleepMath.duration(metrics.soundSeconds(kind))) }
                 Text(words("soundStatsHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
             }
         }.accessibilityIdentifier("night-analysis")

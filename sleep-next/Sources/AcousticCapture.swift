@@ -187,13 +187,15 @@ final class CaptureWorker: @unchecked Sendable {
     private var deadline: Date
     private let rate: Double
     private var written = 0
+    private var nextSpaceCheck = 0
+    private let storageCheck: (() throws -> Void)?
     private let byteLimit: Int
     let receipt: (ClipReceipt) -> Void
     let progress: (Date, Double, Bool) -> Void
     let failure: (Error) -> Void
     let deadlineReached: () -> Void
-    init(nightID: UUID, start: Date, deadline: Date, rate: Double, margin: Double, directory: URL, byteLimit: Int = 256*1024*1024, epoch: @escaping (AcousticEpoch) -> Void = { _ in }, receipt: @escaping (ClipReceipt) -> Void, progress: @escaping (Date, Double, Bool) -> Void, failure: @escaping (Error) -> Void, deadlineReached: @escaping () -> Void) throws {
-        spool = try ClipSpool(directory: directory); self.start = start; self.deadline = deadline; self.rate = rate; self.byteLimit = byteLimit
+    init(nightID: UUID, start: Date, deadline: Date, rate: Double, margin: Double, directory: URL, byteLimit: Int = Int.max, storageCheck: (() throws -> Void)? = nil, epoch: @escaping (AcousticEpoch) -> Void = { _ in }, receipt: @escaping (ClipReceipt) -> Void, progress: @escaping (Date, Double, Bool) -> Void, failure: @escaping (Error) -> Void, deadlineReached: @escaping () -> Void) throws {
+        spool = try ClipSpool(directory: directory); self.start = start; self.deadline = deadline; self.rate = rate; self.byteLimit = byteLimit; self.storageCheck = storageCheck
         self.receipt = receipt; self.progress = progress; self.failure = failure; self.deadlineReached = deadlineReached
         epochs = EpochAccumulator(start: start, emit: epoch)
         detector = AcousticSegmenter(sampleRate: rate, margin: margin) { [weak self] action in
@@ -209,7 +211,11 @@ final class CaptureWorker: @unchecked Sendable {
         detector.observe = { [weak self] duration, level, loud in self?.epochs.add(duration: duration, level: level, loud: loud) }
     }
     private func write(_ samples: [Float]) throws {
-        guard written + samples.count*2 <= byteLimit else { throw CocoaError(.fileWriteOutOfSpace) }
+        guard samples.count*2 <= byteLimit - written else { throw RecordingStorageError.recordingLimit }
+        if written >= nextSpaceCheck {
+            try storageCheck?()
+            nextSpaceCheck = written + 1024*1024
+        }
         try spool.append(samples); written += samples.count*2
     }
     func updateDeadline(_ date: Date) async {

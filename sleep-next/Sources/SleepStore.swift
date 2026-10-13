@@ -5,6 +5,8 @@ import AVFoundation
 @MainActor
 final class SleepStore: ObservableObject {
     @Published var archive = AppArchive()
+    @Published var recordingUsage: RecordingUsage?
+    @Published var deletingRecordings = false
     @Published var loaded = false
     @Published var failed = false
     @Published var error: String?
@@ -172,7 +174,7 @@ final class SleepStore: ObservableObject {
     func sessions(_ day: Date) -> [SleepSession] { archive.sessions.filter { Calendar.current.isDate($0.end ?? $0.start, inSameDayAs: day) } }
     func start() async {
         guard !journalPreview else { return }
-        guard !busy, archive.active == nil, !failed else { return }; busy = true; defer { busy = false }
+        guard !busy, !deletingRecordings, archive.active == nil, !failed else { return }; busy = true; defer { busy = false }
         do {
             if archive.preferences.analysisEnabled && !testMode {
                 guard await audio.microphoneAllowed() else { error = words("micError"); return }
@@ -201,7 +203,7 @@ final class SleepStore: ObservableObject {
                 // Preserve the scheduled alarm and any recoverable audio if input fails.
                 audio.captureState = "recordError"
                 _ = await commit { $0.active?.capturePaused = true }.value
-                self.error = words("recordFailure") + " " + error.localizedDescription
+                self.error = captureFailureMessage(error)
             }
             tab = 0
         } catch WakeFailure.permission { error = words("permissionError") }

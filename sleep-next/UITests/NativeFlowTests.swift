@@ -1,6 +1,55 @@
 import XCTest
 
 final class NativeFlowTests: XCTestCase {
+    func testFeedbackJournalAndStorageEnglish() { feedbackJournalAndStorage(spanish:false) }
+    func testFeedbackJournalAndStorageSpanish() { feedbackJournalAndStorage(spanish:true) }
+    private func feedbackJournalAndStorage(spanish: Bool) {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test","--reset-test","--archive-id",UUID().uuidString,spanish ? "--spanish" : "--english","--design-fixture","--clip-fixture"]
+        app.launch()
+        XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout:10))
+        XCTAssertFalse(app.switches["record-toggle"].exists)
+        let settings = spanish ? "Ajustes" : "Settings", journal = spanish ? "Diario" : "Journal"
+        app.tabBars.buttons[journal].tap()
+        let note = app.textViews["journal-note"]
+        XCTAssertTrue(note.waitForExistence(timeout:5))
+        XCTAssertGreaterThan(note.frame.minY,app.buttons["feeling-2"].frame.maxY)
+        let summary = app.buttons["summary-sounds"]
+        XCTAssertLessThan(note.frame.maxY,summary.frame.minY)
+        shot(spanish ? "60-es-journal-note" : "63-en-journal-note")
+        for _ in 0..<5 { if summary.isHittable { break }; app.swipeUp() }
+        XCTAssertEqual(summary.value as? String,"30")
+        summary.tap()
+        let category = app.buttons["clip-category-cough"]
+        let visible = XCTNSPredicateExpectation(predicate:NSPredicate(format:"hittable == true"),object:category)
+        XCTAssertEqual(XCTWaiter.wait(for:[visible],timeout:5),.completed)
+        shot(spanish ? "61-es-sound-categories" : "64-en-sound-categories")
+        app.tabBars.buttons[settings].tap()
+        let toggle = app.switches["record-toggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout:5))
+        XCTAssertEqual(toggle.value as? String,"0"); toggle.tap()
+        XCTAssertEqual(toggle.value as? String,"1")
+        XCTAssertFalse(app.switches[spanish ? "Analizar sonidos durante la noche" : "Analyse sounds overnight"].exists)
+        let erase = app.buttons["delete-all-recordings"]
+        for _ in 0..<5 { if erase.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(app.staticTexts["recording-storage-size"].waitForExistence(timeout:5))
+        let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"enabled == true"),object:erase)
+        XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:5),.completed)
+        shot(spanish ? "62-es-storage" : "65-en-storage")
+        erase.tap(); app.buttons[spanish ? "Cancelar" : "Cancel"].tap()
+        XCTAssertTrue(erase.isEnabled)
+        erase.tap(); let confirm = app.buttons["confirm-delete-all-recordings"]; XCTAssertTrue(confirm.waitForExistence(timeout:5)); confirm.tap()
+        let empty = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label BEGINSWITH '0 '"),object:app.staticTexts["recording-storage-count"])
+        XCTAssertEqual(XCTWaiter.wait(for:[empty],timeout:10),.completed)
+        XCTAssertFalse(erase.isEnabled)
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout:10))
+        app.tabBars.buttons[settings].tap(); XCTAssertEqual(app.switches["record-toggle"].value as? String,"1")
+        app.tabBars.buttons[journal].tap()
+        XCTAssertTrue((app.textViews["journal-note"].value as? String)?.contains("Ejemplo de diseño") == true)
+        for _ in 0..<5 { if app.buttons["summary-sounds"].isHittable { break }; app.swipeUp() }
+        XCTAssertEqual(app.buttons["summary-sounds"].value as? String,"30")
+    }
     func testMinimalNightAndInlineAlarmEnglish() { exerciseInlineAlarm(spanish:false) }
     func testMinimalNightAndInlineAlarmSpanishSmart() { exerciseInlineAlarm(spanish:true) }
     private func exerciseInlineAlarm(spanish: Bool) {
@@ -198,7 +247,7 @@ final class NativeFlowTests: XCTestCase {
     func testMicrophoneDeniedStopsNightBeforeScheduling() {
         let app=XCUIApplication(); app.launchArguments=["--reset-test"]
         app.launch(); XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout:10))
-        app.switches["record-toggle"].tap(); app.buttons["begin-night"].tap()
+        app.tabBars.buttons["Settings"].tap(); app.switches["record-toggle"].tap(); app.tabBars.buttons["Alarm"].tap(); app.buttons["begin-night"].tap()
         let springboard=XCUIApplication(bundleIdentifier:"com.apple.springboard")
         let deny=springboard.buttons.matching(NSPredicate(format:"label CONTAINS[c] 'Allow' AND label != 'Allow'")).firstMatch
         if deny.waitForExistence(timeout:5) { deny.tap() }

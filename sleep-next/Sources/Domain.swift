@@ -113,7 +113,7 @@ struct ImportedTone: Codable, Equatable, Identifiable {
 }
 struct Preferences: Codable, Equatable {
     var analyze: Bool?
-    var analysisEnabled: Bool { analyze ?? true }
+    var analysisEnabled: Bool { record && (analyze ?? true) }
     var language = "system"
     var appearance = "auto"
     var record = false

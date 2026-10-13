@@ -1,5 +1,19 @@
 # Estado de Alarma — 13-10-2026
 
+## Correcciones tras la primera noche — candidata 1.3.1 (1)
+
+Usuario vio al despertar aviso de espacio; pide almacenamiento/borrado total,
+onda fluida sin recorte, nota bajo el estado al despertar, resumen de sonidos
+pulsable y unificar grabar/analizar en Ajustes.
+Causa probable identificada: límites internos 256 MB/noche y 512 MB totales
+reportaban Cocoa fileWriteOutOfSpace incluso con espacio libre en el iPhone.
+Se sustituyen por capacidad real con reserva de seguridad, sin borrar grabaciones
+automáticamente. Borrado explícito conserva diario/estadísticas y usa cola durable.
+Onda a 60 FPS solicitados con interpolación y geometría acotada; pausa al ir al fondo
+y respeta Reducir movimiento. Rendimiento físico pendiente.
+Comprobación nativa enfocada pendiente; vigente TestFlight 1.3 (1), sin nueva subida.
+Evidencias: `sleep-next/Design/night-feedback-2026-10-13`.
+
 ## Entrega completada — TestFlight interno 1.3 (1)
 
 El usuario autoriza la subida el 13/10. **1.3 (1) disponible en TestFlight interno

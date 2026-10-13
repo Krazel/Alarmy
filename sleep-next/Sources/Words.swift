@@ -6,6 +6,18 @@ struct Words {
     var locale: Locale { Locale(identifier: spanish ? "es_ES" : "en_GB") }
     func callAsFunction(_ key: String) -> String { Self.entries[key].map { $0[spanish ? 0 : 1] } ?? key }
     static let entries: [String: [String]] = [
+        "recordAndAnalyze":["Grabar y analizar sonidos", "Record and analyse sounds"],
+        "recordAndAnalyzeHint":["Guarda los fragmentos nocturnos y los analiza siempre en este iPhone. Al desactivarlo, el micrófono no escucha ni graba.", "Saves night clips and always analyses them on this iPhone. When off, the microphone does not listen or record."],
+        "storage":["Almacenamiento", "Storage"],
+        "savedRecordings":["Grabaciones guardadas", "Saved recordings"],
+        "deleteAllRecordings":["Eliminar todas las grabaciones", "Delete all recordings"],
+        "recordingStorageHint":["Espacio de grabaciones y archivos temporales de audio. Tu diario, estadísticas y sonidos de alarma se conservan.", "Space used by recordings and temporary audio files. Your journal, statistics and alarm tones are kept."],
+        "deleteRecordingsConfirm":["Se eliminarán todas las grabaciones de este iPhone. Tu diario y estadísticas se conservarán. Esta acción no se puede deshacer.", "All recordings on this iPhone will be deleted. Your journal and statistics will be kept. This cannot be undone."],
+        "recordStorageLow":["Queda poco espacio libre en el iPhone. La grabación se ha detenido; los fragmentos ya guardados y la alarma se conservan. Puedes liberar espacio en Ajustes → Almacenamiento.", "Your iPhone is running low on free space. Recording has stopped; saved clips and your alarm are kept. Free up space in Settings → Storage."],
+        "recordStorageUnknown":["No se ha podido consultar el espacio libre. Las grabaciones anteriores y la alarma se conservan. Vuelve a intentar la grabación.", "Available storage could not be checked. Previous recordings and your alarm are kept. Try recording again."],
+        "recordLimit":["Se ha alcanzado el límite de esta grabación. Los fragmentos guardados se conservan.", "This recording reached its limit. Saved clips are kept."],
+        "soundsRecorded":["Sonidos de la noche", "Night sounds"],
+
         "soundActivity":["Actividad sobre el ruido de fondo","Activity above background noise"],
         "alarmTime":["Hora de alarma","Alarm time"],
         "activeWindowDeadline":["Final de la ventana inteligente","End of the smart window"],
