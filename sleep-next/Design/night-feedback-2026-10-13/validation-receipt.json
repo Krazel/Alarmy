@@ -1,0 +1,67 @@
+{
+  "run": "38387418695",
+  "url": "https://github.com/Krazel/Alarmy/actions/runs/38387418695",
+  "source": "fc561181644e32f306849e4686cf41e5c6446962",
+  "candidate": "1.3.1 (1)",
+  "testsPassed": 11,
+  "testsFailed": 0,
+  "releaseIPhone": "BUILD SUCCEEDED, unsigned",
+  "screenshots": [
+    {
+      "file": "65-en-storage.png",
+      "sha256": "d2038dec8497661330ddd6e11d4feaba54f0d8158b5028acc0cb93e29cddf523",
+      "device": "iPhone 17 Pro",
+      "source": "9762223D-147C-4BB0-964A-91D5B5629AA5.png"
+    },
+    {
+      "file": "64-en-sound-categories.png",
+      "sha256": "9dc6e0881e612acbe1ece9dcca3fab7319fe95e5123a2c135f9b3b74c5264d64",
+      "device": "iPhone 17 Pro",
+      "source": "9FDE4B69-5857-4F22-A7F9-CADD42844AD3.png"
+    },
+    {
+      "file": "63-en-journal-note.png",
+      "sha256": "8b8f3218f2c63eb4d2ff02933e4f0e628fa91e34b27a013b824a29244442e57d",
+      "device": "iPhone 17 Pro",
+      "source": "1FB07A4C-63F1-4C41-BAD8-5F68F2A9729A.png"
+    },
+    {
+      "file": "62-es-storage.png",
+      "sha256": "8ac453839055ec06def1fd1391743dd6d2488f34f7575f39c1e55f4176fe5b6c",
+      "device": "iPhone 17 Pro",
+      "source": "8EC5AA1D-1BE7-487D-A9BB-8F0CF165B748.png"
+    },
+    {
+      "file": "61-es-sound-categories.png",
+      "sha256": "25c760f34034812db1c4d13709826e6cec100e3176deb15c55dc25487b947bef",
+      "device": "iPhone 17 Pro",
+      "source": "5F3711C7-EDE6-4699-9325-C1E8D7B4342C.png"
+    },
+    {
+      "file": "60-es-journal-note.png",
+      "sha256": "fdfaab87e07ad36474768b3cc3c486f00e38759d8c6bd06ed22d0ca568cca152",
+      "device": "iPhone 17 Pro",
+      "source": "0DE5414C-E86F-495A-ADF2-B2CBDE5A14A8.png"
+    },
+    {
+      "file": "55-en-onda-updated.png",
+      "sha256": "f89b0084b68a87c02c1057705e8d4a1bc336edbcc417670dfaf53ca2b69bef0b",
+      "device": "iPhone 17 Pro",
+      "source": "1A51A52B-76DA-4E60-91E5-BCC547ACAED9.png"
+    },
+    {
+      "file": "54-en-edit-active-alarm.png",
+      "sha256": "47ac55b7a5cf08295ae7174ba1c4fd5897aef6eebffc2302b4e9ca06a0f7dd27",
+      "device": "iPhone 17 Pro",
+      "source": "FED10DF9-B28D-4C83-87C7-14F5D6F12FCD.png"
+    },
+    {
+      "file": "53-en-onda-night.png",
+      "sha256": "b86b3e4923956be80697ff539ba4b0e9a4c008b19564e71a07feb92d1c8e8942",
+      "device": "iPhone 17 Pro",
+      "source": "DA41C679-A1FE-4691-A555-43F859AA3C47.png"
+    }
+  ],
+  "physicalNightAndFPS": "pending",
+  "testflight": "unchanged: 1.3 (1) internal"
+}

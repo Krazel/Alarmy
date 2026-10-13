@@ -11,8 +11,12 @@ Se sustituyen por capacidad real con reserva de seguridad, sin borrar grabacione
 automáticamente. Borrado explícito conserva diario/estadísticas y usa cola durable.
 Onda a 60 FPS solicitados con interpolación y geometría acotada; pausa al ir al fondo
 y respeta Reducir movimiento. Rendimiento físico pendiente.
-Comprobación nativa enfocada pendiente; vigente TestFlight 1.3 (1), sin nueva subida.
+Validación nativa enfocada completada: 11/11 y Release iPhone sin firma correctos,
+run 38387418695, fuente fc561181644e32f306849e4686cf41e5c6446962.
+Capturas nativas ES/EN revisadas y guardadas; vigente TestFlight 1.3 (1), sin nueva subida.
 Evidencias: `sleep-next/Design/night-feedback-2026-10-13`.
+Biblioteca PR-019 actualizada y releída por API, revisión 20; conserva historial,
+versión distribuida 1.3 (1) y tracking (interno, ficha creada, sin anuncios).
 
 ## Entrega completada — TestFlight interno 1.3 (1)
 
