@@ -99,7 +99,7 @@ private struct CategoryPlayer: View {
                 }
                 Slider(value:Binding(get:{ audio.playing == clip.id.uuidString ? audio.playbackTime : 0 },set:{ audio.seek(to:$0) }),in:0...max(1,clip.duration))
                     .disabled(audio.playing != clip.id.uuidString).accessibilityLabel(store.words("playbackPosition"))
-                HStack { Text(DiaryPresentation.duration(clip.duration)); Spacer(); if store.journalPreview { Text(store.words("exampleAudio")) } }.font(.caption).foregroundStyle(Color.ink.opacity(0.6))
+                HStack { Text(DiaryPresentation.clipTime(audio.playing == clip.id.uuidString ? audio.playbackTime : 0)); Spacer(); Text(DiaryPresentation.clipTime(clip.duration)).accessibilityIdentifier("sound-duration") }.font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                 HStack(spacing:34) {
                     Button(action:previous) { Image(systemName:"backward.end.fill").frame(width:44,height:44) }.disabled(index == 0).accessibilityIdentifier("sound-previous").accessibilityLabel(store.words("previousClip"))
                     ClipPlay(clip:clip,audio:audio)

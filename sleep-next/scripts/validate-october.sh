@@ -63,6 +63,13 @@ if [[ "${VALIDATION_SCOPE:-october}" == "onda" ]]; then
     -only-testing:AlarmaNextUITests/NativeFlowTests/testNightModesSwipeAndStatistics
   )
 fi
+if [[ "${VALIDATION_SCOPE:-october}" == "diary_polish" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/DiaryPresentationTests
+    -only-testing:AlarmaNextUITests/DiaryFlowTests/testJournalStatisticsSpanish
+    -only-testing:AlarmaNextUITests/DiaryFlowTests/testMissingHealthAndNightTheme
+  )
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "diary" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/DiaryPresentationTests

@@ -15,6 +15,10 @@ enum DiaryPresentation {
         let minutes = max(0,Int(seconds/60))
         return minutes >= 60 ? "\(minutes/60) h \(String(format:"%02d",minutes%60))" : "\(minutes) min"
     }
+    static func clipTime(_ seconds: Double) -> String {
+        let value = seconds.isFinite ? max(0,Int(seconds)) : 0
+        return String(format:"%02d:%02d",value/60,value%60)
+    }
     // Count only observed transitions from sleep into awake and back into sleep.
     // Missing intervals, initial latency and final waking are not awakenings.
     static func awakenings(_ stages: [SleepStage]) -> Int? {

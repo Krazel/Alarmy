@@ -26,6 +26,7 @@ final class DiaryFlowTests: XCTestCase {
         cough.tap()
         XCTAssertEqual(app.staticTexts["sound-position"].label,"1 / 16")
         XCTAssertFalse(app.buttons["sound-previous"].isEnabled)
+        XCTAssertEqual(app.staticTexts["sound-duration"].label,"00:24")
         app.buttons["sound-next"].tap()
         XCTAssertEqual(app.staticTexts["sound-position"].label,"2 / 16")
         app.buttons["clip-category-snore"].tap()

@@ -131,11 +131,13 @@ struct StatisticsScreen: View {
                 Text(DiaryPresentation.duration(meanSleep)).font(.system(size:36,design:.serif)).accessibilityIdentifier("statistics-sleep")
                 Text(words("meanSleep")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                 if loading { ProgressView() }
+                if !healthNights.isEmpty {
                 Chart(nights) { night in
                     if let seconds = NightMetrics(nights:[night]).healthSeconds(health[night.id] ?? []) {
                         BarMark(x:.value(words("nights"),night.end ?? night.checkpoint,unit:.day),y:.value(words("asleepShort"),seconds/3600)).foregroundStyle(DiaryPresentation.color("core")).cornerRadius(4)
                     }
                 }.frame(height:125).chartYScale(domain:0...max(8,nights.map { NightMetrics(nights:[$0]).healthSeconds(health[$0.id] ?? []) ?? 0 }.max().map {$0/3600} ?? 8)).chartYAxisLabel("h").accessibilityLabel(words("meanSleep"))
+                }
                 HStack {
                     CompactMetric(title:words("meanBed"),value:DiaryPresentation.duration(average(nights.map(\.duration))))
                     Divider()
@@ -149,15 +151,19 @@ struct StatisticsScreen: View {
     private var rhythms: some View {
         let bedtime = SleepMath.clockStats(nights.map(\.start))
         let wake = SleepMath.clockStats(nights.map { $0.end ?? $0.checkpoint })
+        let shown = Array(nights.suffix(14))
+        let starts = shown.map { (SleepMath.clockMinutes($0.start)+720).truncatingRemainder(dividingBy:1440)/60 }
+        let ends = zip(shown,starts).map { $1+$0.duration/3600 }
+        let lower = floor(starts.min() ?? 0), upper = max(lower+1,ceil(ends.max() ?? 24))
         return PaperCard(padding:18) {
             VStack(alignment:.leading,spacing:12) {
                 Text(words("sleepSchedule")).font(.system(size:23,design:.serif))
                 Chart(Array(nights.suffix(14))) { night in
                     let start = (SleepMath.clockMinutes(night.start)+720).truncatingRemainder(dividingBy:1440)/60
-                    BarMark(xStart:.value(words("bedtime"),start),xEnd:.value(words("wakeTime"),start+night.duration/3600),y:.value(words("nights"),(night.end ?? night.checkpoint).formatted(.dateTime.day().month(.abbreviated).locale(words.locale))))
+                    BarMark(xStart:.value(words("bedtime"),start),xEnd:.value(words("wakeTime"),start+night.duration/3600),y:.value(words("nights"),(night.end ?? night.checkpoint).formatted(.dateTime.day().month(.abbreviated).locale(words.locale))),height:.fixed(9))
                         .foregroundStyle(DiaryPresentation.color("deep").opacity(0.65)).cornerRadius(4)
-                }.frame(height:max(65,CGFloat(min(nights.count,14))*17)).chartXAxis {
-                    AxisMarks(values:.stride(by:4)) { value in
+                }.frame(height:max(65,CGFloat(min(nights.count,14))*22)).chartXScale(domain:lower...upper).chartXAxis {
+                    AxisMarks(values:.stride(by:3)) { value in
                         AxisGridLine(); AxisValueLabel { if let hour = value.as(Double.self) { Text(String(format:"%02d:00",(Int(hour)+12)%24)).font(.system(size:9)) } }
                     }
                 }.accessibilityLabel(words("sleepSchedule"))

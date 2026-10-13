@@ -23,5 +23,7 @@ final class DiaryPresentationTests: XCTestCase {
         XCTAssertEqual(sleep,metrics.healthSeconds(values))
         XCTAssertEqual(metrics.healthSeconds(values,key:"awake"),10)
         XCTAssertEqual(DiaryPresentation.duration(nil),"—")
+        XCTAssertEqual(DiaryPresentation.clipTime(24),"00:24")
+        XCTAssertEqual(DiaryPresentation.clipTime(75),"01:15")
     }
 }
