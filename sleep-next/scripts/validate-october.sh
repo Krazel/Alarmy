@@ -30,6 +30,13 @@ FILTERS=(
   -only-testing:AlarmaNextTests/RepositoryTests
   -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection
 )
+if [[ "${VALIDATION_SCOPE:-october}" == "gradual" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/GradualWakeTests
+    -only-testing:AlarmaNextTests/ActiveAlarmTests
+    -only-testing:AlarmaNextTests/DomainTests/testTranslationsComplete
+  )
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "design" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/JournalDesignTests

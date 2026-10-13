@@ -195,7 +195,7 @@ final class SleepStore: ObservableObject {
             if night.mode == .analysis { night.wake = .distantFuture }
             if night.mode == .smart { night.latestWake = wake; night.windowStart = wake.addingTimeInterval(-Double(archive.plan.window)*60) }
             let started = night
-            if !testMode && night.hasAlarm { try await scheduler.schedule(id: night.alarmID, date: wake, filename: ToneLibrary.filename(tone, imported: archive.tones), words: words) }
+            if !testMode && night.hasAlarm { try await scheduler.schedule(id: night.alarmID, date: wake, filename: try await ToneLibrary.alarmFilename(tone, imported: archive.tones, gradual: archive.plan.gradual), words: words) }
             guard await commit({ $0.active = started; $0.lastSound = tone }).value else {
                 try? scheduler.cancel(id: night.alarmID)
                 archive.active = nil; archive.lastSound = previousSound
@@ -272,7 +272,7 @@ final class SleepStore: ObservableObject {
         let original = night
         let old = night.alarmID; night = night.snoozed(until: Date().addingTimeInterval(Double(archive.plan.snoozeMinutes * 60)))
         do {
-            if !testMode { try await scheduler.schedule(id: night.alarmID, date: night.wake, filename: ToneLibrary.filename(night.soundID, imported: archive.tones), words: words) }
+            if !testMode { try await scheduler.schedule(id: night.alarmID, date: night.wake, filename: try await ToneLibrary.alarmFilename(night.soundID, imported: archive.tones, gradual: archive.plan.gradual), words: words) }
             let updated = night
             guard await commit({ $0.active = updated }).value else {
                 try? scheduler.cancel(id: night.alarmID)

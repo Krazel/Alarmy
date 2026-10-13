@@ -28,7 +28,7 @@ extension SleepStore {
             var staged = archive; staged.active?.backupAlarmID = replacement
             try await persistAlarmSnapshot(staged)
             archive.active?.backupAlarmID = replacement
-            if !testMode { try await scheduler.schedule(id: replacement, date: date, filename: ToneLibrary.filename(original.soundID, imported: archive.tones), words: words) }
+            if !testMode { try await scheduler.schedule(id: replacement, date: date, filename: try await ToneLibrary.alarmFilename(original.soundID, imported: archive.tones, gradual: archive.plan.gradual), words: words) }
             var updated = archive
             updated.active?.alarmID = replacement; updated.active?.wake = date
             updated.active?.backupAlarmID = original.alarmID

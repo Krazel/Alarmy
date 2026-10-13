@@ -24,7 +24,7 @@ extension SleepStore {
         let id = UUID(), date = Date().addingTimeInterval(10)
         do {
             // The original latest-time alarm stays scheduled until the replacement is durable.
-            if !testMode { try await scheduler.schedule(id:id,date:date,filename:ToneLibrary.filename(original.soundID,imported:archive.tones),words:words) }
+            if !testMode { try await scheduler.schedule(id:id,date:date,filename:try await ToneLibrary.alarmFilename(original.soundID, imported: archive.tones, gradual: archive.plan.gradual),words:words) }
             guard archive.active?.id == original.id, archive.active?.alarmID == original.alarmID else {
                 if !testMode { try? scheduler.cancel(id:id) }; return
             }

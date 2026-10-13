@@ -132,6 +132,7 @@ struct AlarmEditor: View {
                 DatePicker(store.words("wake"), selection: time, displayedComponents: .hourAndMinute).datePickerStyle(.wheel).labelsHidden()
                 Section {
                     Toggle(store.words("gentle"), isOn: Binding(get: { store.archive.plan.gradual }, set: { value in store.plan { $0.gradual = value } }))
+                    Text(store.words("gentleHint")).font(.caption).foregroundStyle(.secondary)
                     Picker(store.words("snoozeTime"), selection: Binding(get: { store.archive.plan.snoozeMinutes }, set: { value in store.plan { $0.snoozeMinutes = value } })) { ForEach([1,3,5,10,15], id: \.self) { Text("\($0) min").tag($0) } }
                     Toggle(store.words("motion"), isOn: Binding(get: { store.archive.plan.motionSnooze }, set: { value in store.plan { $0.motionSnooze = value } }))
                 } footer: { Text(store.words("motionHint")) }

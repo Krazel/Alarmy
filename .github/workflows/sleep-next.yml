@@ -5,7 +5,7 @@ on:
       scope:
         description: Focused verification scope
         type: choice
-        options: [october, design, analysis, categories, onda, onda_visual, onda_time, feedback, diary, diary_polish]
+        options: [october, design, analysis, categories, onda, onda_visual, onda_time, feedback, diary, diary_polish, gradual]
         default: october
 permissions:
   contents: read
@@ -17,7 +17,7 @@ jobs:
     # Owner selected PUBLIC Alarma on 2026-10-12 for free standard Actions.
     if: github.event.repository.private == false && github.ref == 'refs/heads/codex/native-sleep-rebuild'
     runs-on: macos-26
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Generate and validate the correction candidate
@@ -36,7 +36,7 @@ jobs:
           python3 - <<'PY'
           import json,os
           r=json.load(open('native-test-summary.json'))
-          minimum={'design':5,'analysis':13,'categories':4,'onda':9,'onda_visual':2,'onda_time':6,'feedback':11,'diary':13,'diary_polish':4}.get(os.environ.get('VALIDATION_SCOPE'),15)
+          minimum={'design':5,'analysis':13,'categories':4,'onda':9,'onda_visual':2,'onda_time':6,'feedback':11,'diary':13,'diary_polish':4,'gradual':10}.get(os.environ.get('VALIDATION_SCOPE'),15)
           assert r['failedTests']==0 and r['passedTests']>=minimum, r
           print('Passed native tests:',r['passedTests'])
           PY

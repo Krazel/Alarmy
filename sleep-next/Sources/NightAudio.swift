@@ -23,7 +23,6 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         guard worker != nil, let engine else { return false }
         return !engine.isRunning || engine.inputNode.outputFormat(forBus: 0).sampleRate != capturedRate
     }
-    private var ramp: Timer?
     var onFailure: ((Error) -> Void)?
     var onDeadline: (() -> Void)?
     private let motion = CMMotionManager()
@@ -94,7 +93,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let worker = self.worker
         let endingGeneration = generation
         if reason == "recordReset" {
-            generation = UUID(); ramp?.invalidate(); ramp = nil; player = nil; playing = nil; restoreScreen()
+            generation = UUID(); player = nil; playing = nil; restoreScreen()
             playbackTimer?.invalidate(); playbackTimer = nil; playbackTime = 0; playbackDuration = 0
         } else if let engine { engine.inputNode.removeTap(onBus: 0); engine.stop() }
         engine = nil; self.worker = nil; captureState = reason; waveform = []
@@ -112,7 +111,7 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let audio: AVAudioPlayer
         do {
             audio = try AVAudioPlayer(contentsOf: url)
-            audio.delegate = self; audio.numberOfLoops = loop ? -1 : 0; audio.volume = gradual ? 0.05 : 1
+            audio.delegate = self; audio.numberOfLoops = loop ? -1 : 0; audio.volume = gradual ? GradualWake.gain(at: 0) : 1
             guard audio.play() else { throw CocoaError(.fileReadUnknown) }
         } catch {
             try? session.setActive(false, options: .notifyOthersOnDeactivation)
@@ -125,18 +124,14 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             }
         }
         if gradual {
-            ramp = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
-                Task { @MainActor in
-                guard let player = self?.player else { timer.invalidate(); return }
-                player.volume = min(1, player.volume + 0.025)
-                if player.volume >= 1 { timer.invalidate() }
-                }
-            }
+            // The audio engine interpolates continuously, including between UI updates.
+            audio.setVolume(1, fadeDuration: GradualWake.fadeDuration)
         }
     }
+
     func seek(to seconds: Double) { guard let player else { return }; player.currentTime = max(0, min(player.duration, seconds)); playbackTime = player.currentTime }
     func stopPlayback() {
-        ramp?.invalidate(); ramp = nil; playbackTimer?.invalidate(); playbackTimer = nil
+        playbackTimer?.invalidate(); playbackTimer = nil
         player?.stop(); player = nil; playing = nil; playbackTime = 0; playbackDuration = 0
         if !hasCapture { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
     }
@@ -153,14 +148,16 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
     func updateLight(wake: Date, minutes: Int) {
-        guard minutes > 0 else { return }
+        guard minutes > 0 else { restoreLight(); return }
         if previousBrightness == nil { previousBrightness = UIScreen.main.brightness; previousIdle = UIApplication.shared.isIdleTimerDisabled }
         UIApplication.shared.isIdleTimerDisabled = true
-        let fraction = 1 - wake.timeIntervalSinceNow / Double(minutes * 60)
-        if fraction > 0 { UIScreen.main.brightness = max(previousBrightness ?? 0.2, min(1, fraction)) }
+        UIScreen.main.brightness = CGFloat(GradualWake.brightness(wake: wake, now: Date(), minutes: minutes, original: Double(previousBrightness ?? 0.08)))
     }
     func restoreScreen() {
         motion.stopAccelerometerUpdates()
+        restoreLight()
+    }
+    private func restoreLight() {
         if let previousBrightness { UIScreen.main.brightness = previousBrightness }; previousBrightness = nil
         if let previousIdle { UIApplication.shared.isIdleTimerDisabled = previousIdle }; previousIdle = nil
     }
