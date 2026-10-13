@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-13T11:31:20.383Z",
+  "appId": "6818287946",
+  "appName": "Alarma de Krazel",
+  "bundleId": "com.krazel.alarmanext",
+  "version": "1.3.1",
+  "build": "1",
+  "buildId": "c3d57c3f-fc0e-4f02-a37e-c0945a1de6f4",
+  "processingState": "VALID",
+  "uploadedDate": "2026-10-13T04:29:31-07:00",
+  "expirationDate": "2027-01-11T03:29:31-08:00",
+  "minimumOS": "16.0",
+  "usesNonExemptEncryption": false,
+  "internalBuildState": "IN_BETA_TESTING",
+  "externalBuildState": "READY_FOR_BETA_SUBMISSION",
+  "internalGroup": true,
+  "groupAssigned": true,
+  "ownerOnlyVerified": true,
+  "testerCount": 1,
+  "publicLinkEnabled": false,
+  "notes": {
+    "es-ES": "Correcciones tras la noche de prueba: usa el espacio libre real en vez de límites internos de grabación. Ajustes muestra el almacenamiento ocupado y permite eliminar todas las grabaciones conservando diario y estadísticas. Onda suavizada sin recortes. Nota justo debajo de cómo te has despertado y resumen con contador que lleva a las categorías de sonidos. Un único ajuste Grabar y analizar sonidos; conservación de 90 días por defecto. iPhone iOS 16+, castellano e inglés. Pendientes prueba nocturna y medición de fluidez/batería en dispositivo.",
+    "en-US": "Overnight feedback fixes: uses actual free storage instead of internal recording limits. Settings shows storage usage and lets you delete all recordings while keeping the journal and statistics. Smoother wave with safe peak bounds. Journal note directly below wake-up feelings and a sound count linking to sound categories. One Record and analyse sounds setting; 90-day default retention. iPhone iOS 16+, Spanish and English. Physical overnight, animation performance and battery testing remain pending."
+  },
+  "appStorePublished": false
+}

@@ -1,5 +1,17 @@
 # Estado de Alarma — 13-10-2026
 
+## Entrega completada — TestFlight interno 1.3.1 (1)
+
+Autorizada por «subelo a test». Subida 38389891412 completada; fuente
+06344eb4fbba3045a783d47abbaa99afcf4bacc1, mismo árbol de app que la validación
+38387418695 (11/11 y Release iPhone). API Apple confirma VALID / IN_BETA_TESTING,
+build c3d57c3f-fc0e-4f02-a37e-c0945a1de6f4, mismo grupo interno del titular
+con un tester. Notas ES/EN guardadas y releídas. Sin App Review ni testers externos.
+Siete secretos temporales eliminados y entorno releído vacío. Recibos en
+QA-2026-10-13-feedback. Prueba nocturna física, FPS y batería siguen pendientes.
+Biblioteca PR-019 actualizada y releída por API, revisión 21, versión 1.3.1,
+build 1, distribución interna; historial y tracking conservados.
+
 ## Correcciones tras la primera noche — candidata 1.3.1 (1)
 
 Usuario vio al despertar aviso de espacio; pide almacenamiento/borrado total,
