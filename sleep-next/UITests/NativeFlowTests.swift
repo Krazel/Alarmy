@@ -27,8 +27,11 @@ final class NativeFlowTests: XCTestCase {
         app.tabBars.buttons[settings].tap()
         let toggle = app.switches["record-toggle"]
         XCTAssertTrue(toggle.waitForExistence(timeout:5))
-        XCTAssertEqual(toggle.value as? String,"0"); toggle.tap()
-        XCTAssertEqual(toggle.value as? String,"1")
+        XCTAssertEqual(toggle.value as? String,"0")
+        // Form exposes the whole row as a switch; tap the actual thumb at its trailing edge.
+        toggle.coordinate(withNormalizedOffset:CGVector(dx:0.93,dy:0.5)).tap()
+        let enabled = XCTNSPredicateExpectation(predicate:NSPredicate(format:"value == '1'"),object:toggle)
+        XCTAssertEqual(XCTWaiter.wait(for:[enabled],timeout:5),.completed)
         XCTAssertFalse(app.switches[spanish ? "Analizar sonidos durante la noche" : "Analyse sounds overnight"].exists)
         let erase = app.buttons["delete-all-recordings"]
         for _ in 0..<5 { if erase.isHittable { break }; app.swipeUp() }
