@@ -5,7 +5,7 @@ on:
       scope:
         description: Focused verification scope
         type: choice
-        options: [october, design, analysis, categories, onda, onda_visual]
+        options: [october, design, analysis, categories, onda, onda_visual, onda_time]
         default: october
 permissions:
   contents: read
@@ -36,7 +36,7 @@ jobs:
           python3 - <<'PY'
           import json,os
           r=json.load(open('native-test-summary.json'))
-          minimum={'design':5,'analysis':13,'categories':4,'onda':8,'onda_visual':2}.get(os.environ.get('VALIDATION_SCOPE'),15)
+          minimum={'design':5,'analysis':13,'categories':4,'onda':9,'onda_visual':2,'onda_time':6}.get(os.environ.get('VALIDATION_SCOPE'),15)
           assert r['failedTests']==0 and r['passedTests']>=minimum, r
           print('Passed native tests:',r['passedTests'])
           PY

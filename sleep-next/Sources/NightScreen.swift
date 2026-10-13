@@ -74,7 +74,7 @@ struct NightScreen: View {
             .preferredColorScheme(.dark).interactiveDismissDisabled().disabled(store.busy)
             .sheet(isPresented:$editingTime) {
                 if let night = store.archive.active {
-                    ActiveAlarmEditor(date:night.latestWake ?? night.wake)
+                    ActiveAlarmEditor(date:night.editableAlarmTime)
                         .presentationDetents([.height(410),.large]).presentationDragIndicator(.visible)
                 }
             }
@@ -130,7 +130,7 @@ struct ActiveAlarmEditor: View {
                 Text(next.formatted(.dateTime.weekday(.wide).day().month().hour().minute().locale(store.words.locale)))
                     .font(.subheadline).accessibilityIdentifier("active-alarm-date")
                 Text(store.words("tonightOnly")).font(.caption).foregroundStyle(.secondary)
-                if store.archive.active?.mode == .smart { Text(store.words("activeWindowDeadline")).font(.caption).foregroundStyle(.secondary) }
+                if store.archive.active?.hasActiveSmartWindow == true { Text(store.words("activeWindowDeadline")).font(.caption).foregroundStyle(.secondary) }
                 if saving { ProgressView() }
                 Spacer(minLength:0)
             }.padding(.horizontal,24).padding(.top,12)

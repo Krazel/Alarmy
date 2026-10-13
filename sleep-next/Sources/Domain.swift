@@ -84,6 +84,8 @@ struct SleepSession: Codable, Equatable, Identifiable {
     var soundSummaries: [NightSoundSummary]?
     var soundAnalysisIncomplete: Bool?
     var hasAlarm: Bool { mode != .analysis }
+    var hasActiveSmartWindow: Bool { mode == .smart && windowStart != nil && smartTriggered != true }
+    var editableAlarmTime: Date { hasActiveSmartWindow ? (latestWake ?? wake) : wake }
     var duration: TimeInterval { max(0, (end ?? checkpoint).timeIntervalSince(start)) }
     func snoozed(until wake: Date) -> SleepSession {
         var next = self

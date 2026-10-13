@@ -55,6 +55,28 @@ final class ActiveAlarmTests: XCTestCase {
         let fresh = try await ArchiveRepository(file:file).load()
         XCTAssertEqual(fresh.active,new)
     }
+    func testEditingSnoozedSmartAlarmUsesVisibleTimeAndKeepsExactSnooze() async throws {
+        let (store,_,file,now) = try await fixture(mode:.smart)
+        defer { try? FileManager.default.removeItem(at:file.deletingLastPathComponent()) }
+        let original = try XCTUnwrap(store.archive.active)
+        XCTAssertEqual(original.editableAlarmTime,original.latestWake)
+        var snoozed = original.snoozed(until:now.addingTimeInterval(1800))
+        snoozed.smartTriggered = true
+        XCTAssertEqual(snoozed.editableAlarmTime,snoozed.wake)
+        XCTAssertNotEqual(snoozed.editableAlarmTime,snoozed.latestWake)
+        XCTAssertFalse(snoozed.hasActiveSmartWindow)
+        let snapshot = snoozed
+        _ = await store.commit { $0.active = snapshot }.value
+        let result = await store.changeActiveAlarm(hour:8,minute:45,now:now)
+        XCTAssertTrue(result)
+        if let tail = store.writeTail { _ = await tail.value }
+        let updated = try XCTUnwrap(store.archive.active)
+        XCTAssertEqual(updated.id,original.id)
+        XCTAssertNil(updated.windowStart); XCTAssertNil(updated.latestWake)
+        XCTAssertEqual(updated.editableAlarmTime,updated.wake)
+        XCTAssertEqual(Calendar.current.component(.minute,from:updated.wake),45)
+        XCTAssertEqual(updated.clips,original.clips)
+    }
     func testScheduleFailureKeepsPreviousAlarmAndCapture() async throws {
         let (store,scheduler,file,now) = try await fixture()
         defer { try? FileManager.default.removeItem(at:file.deletingLastPathComponent()) }

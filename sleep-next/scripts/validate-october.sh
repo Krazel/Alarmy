@@ -63,6 +63,12 @@ if [[ "${VALIDATION_SCOPE:-october}" == "onda" ]]; then
     -only-testing:AlarmaNextUITests/NativeFlowTests/testNightModesSwipeAndStatistics
   )
 fi
+if [[ "${VALIDATION_SCOPE:-october}" == "onda_time" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/ActiveAlarmTests
+    -only-testing:AlarmaNextTests/CaptureRetimeTests
+  )
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "onda_visual" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextUITests/NativeFlowTests/testMinimalNightAndInlineAlarmEnglish

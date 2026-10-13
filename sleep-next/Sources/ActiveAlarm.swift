@@ -33,7 +33,7 @@ extension SleepStore {
             updated.active?.alarmID = replacement; updated.active?.wake = date
             updated.active?.backupAlarmID = original.alarmID
             updated.active?.smartTriggered = false
-            if original.mode == .smart {
+            if original.hasActiveSmartWindow {
                 let window = original.latestWake.flatMap { end in original.windowStart.map { end.timeIntervalSince($0) } } ?? Double(archive.plan.window * 60)
                 updated.active?.latestWake = date; updated.active?.windowStart = date.addingTimeInterval(-window)
             } else { updated.active?.latestWake = nil; updated.active?.windowStart = nil }
