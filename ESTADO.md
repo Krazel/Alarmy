@@ -1,5 +1,20 @@
 # Estado de Alarma — 13-10-2026
 
+## Análisis autónomo — investigación y selección de funciones
+
+El usuario rechaza exigir Salud para tiempo dormido y fases. Este objetivo
+sustituye la dependencia de Salud como decisión de producto; el motor autónomo
+todavía no está implementado. El análisis acústico actual detecta actividad y
+periodos tranquilos, no fases fisiológicas. Investigación y propuestas por pasos
+en research/sleep-analysis-2026-10-13.json, pendientes de selección de extras.
+No se ha encontrado todavía un modelo acústico gratuito integrable con licencia
+y validación suficientes; no contratar servicios ni enviar audio a terceros.
+Retirada del código la valoración subjetiva duplicada del resumen; se mantienen
+las caras y la nota inferior. Diff revisado, sin repetir CI nativa para esta
+eliminación mínima. La validación de 1.4.1 descrita debajo precede a este ajuste.
+Distribución vigente: TestFlight interno 1.4 (1), sin nueva subida.
+Biblioteca PR-019 guardada y releída por API, revisión 27; tracking conservado.
+
 ## Corrección validada — volumen y luz gradual, candidata 1.4.1 (1)
 
 Usuario confirma que el fallo ocurre con el iPhone bloqueado. La alarma del

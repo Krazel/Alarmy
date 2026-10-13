@@ -107,8 +107,6 @@ struct JournalScreen: View {
                     Text(store.words("noNightHint")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.6))
                 } else {
                     HStack(alignment:.top,spacing:8) {
-                        CompactMetric(title:store.words("qualityShort"),value:store.words(store.page(store.selectedDay).feeling?.key ?? "unrated"))
-                        Divider()
                         CompactMetric(title:store.words("asleepShort"),value:DiaryPresentation.duration(metrics.healthSeconds(stages)))
                         Divider()
                         CompactMetric(title:store.words("inBed"),value:DiaryPresentation.duration(metrics.inBed))

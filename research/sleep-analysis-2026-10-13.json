@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-13",
+  "productId": "PR-019",
+  "decisions": {
+    "target": "Análisis autónomo de duración y fases sin exigir Apple Salud; español e inglés.",
+    "implemented": "Retirada la valoración subjetiva duplicada del resumen; caras y diario conservados debajo.",
+    "pending": "El código sigue obteniendo sueño/fases de Salud. Falta seleccionar e implementar un modelo acústico con validación adecuada; los periodos tranquilos actuales no son fases del sueño.",
+    "selection": "Presentar propuestas por pasos al usuario antes de implementar extras.",
+    "constraints": "Audio personal local, sin activar servicios de pago ni enviar grabaciones a terceros. No se ha confirmado un modelo acústico gratuito con pesos y licencia adecuados."
+  },
+  "sources": [
+    {
+      "url": "https://www.jmir.org/2023/1/e46216/",
+      "title": "Prediction of Sleep Stages Via Deep Learning Using Smartphone Audio Recordings in Home Environments",
+      "year": 2023,
+      "evidence": "HomeSleepNet: validación independiente en 45 noches domésticas con PSG; exactitud por época 88.5% sueño/vigilia, 76.2% vigilia/REM/NREM y 59.4% vigilia/ligero/profundo/REM.",
+      "limits": "Resultados del modelo del estudio, no de Alarma; muestra pequeña, durmiendo solos, dificultad ligero/profundo. Datos no públicos. No acredita disponibilidad de modelo integrable gratuito."
+    },
+    {
+      "url": "https://pubmed.ncbi.nlm.nih.gov/37738616/",
+      "title": "Sleep regularity is a stronger predictor of mortality risk than sleep duration: A prospective cohort study",
+      "evidence": "Motiva mostrar regularidad de horarios; asociación observacional, no causalidad. La dispersión de horas actual no equivale al índice SRI."
+    },
+    {
+      "url": "https://docs.asleep.ai/docs/data-plan",
+      "evidence": "Proveedor ofrece análisis de dos o cuatro clases según plan. Requiere estudiar contrato, coste, privacidad y arquitectura; no autorizado ni integrado."
+    }
+  ],
+  "ideasForSelection": [
+    {"step":1,"idea":"Resumen: tiempo en cama/sesión, tiempo dormido estimado y horarios; sin valoración duplicada.","dependency":"Modelo sueño/vigilia validado para tiempo dormido."},
+    {"step":2,"idea":"Gráfico de vigilia, ligero, profundo y REM, minutos y porcentaje por fase.","dependency":"Modelo de cuatro clases validado; mostrar estimaciones y huecos sin datos, sin ciclos fijos inventados."},
+    {"step":3,"idea":"Continuidad: latencia, despertares probables, tiempo despierto durante la noche, tramo más largo y eficiencia.","dependency":"Modelo sueño/vigilia fiable; no contar cada sonido como despertar."},
+    {"step":4,"idea":"Sonidos compactos por categoría, clips y duración, distribución horaria, reproducción al tocar.","dependency":"Separar número de clips de número de eventos; porcentajes sobre tiempo observado, sin atribuir sonidos de acompañantes al usuario."},
+    {"step":5,"idea":"Tendencias 7/30/90 días, regularidad de acostarse/despertarse y diferencias del fin de semana.","dependency":"Excluir registros incompletos de comparaciones engañosas; noche ausente no equivale a cero."},
+    {"step":6,"idea":"Etiquetas opcionales de hábitos y relación con duración y sensación al despertar.","dependency":"Comparaciones personales descriptivas, sin presentar correlaciones como causas."},
+    {"step":7,"idea":"Alarmas: posposiciones, hora real de despertar y uso de ventana inteligente.","dependency":"Distinguir detener la sesión de levantarse físicamente; no prometer despertar en fase ligera sin modelo."},
+    {"step":8,"idea":"Calidad de captura: cobertura, interrupciones y aviso si faltan datos; corrección manual de horarios.","dependency":"No confundir calidad de grabación con calidad del sueño."},
+    {"step":9,"idea":"Siestas separadas, objetivo personal de duración, comparación de noches y exportación.","dependency":"Extras pendientes de selección humana; sin puntuación clínica inventada."}
+  ],
+  "validation": {
+    "uiEdit": "Diff revisado: eliminación de una métrica y su separador; no nueva compilación nativa para este cambio mínimo.",
+    "priorCandidate": "1.4.1 (1), motor gradual validado en fuente 3f6031d; validación anterior al cambio UI actual.",
+    "testflight": "Sigue 1.4 (1) interno; sin nueva subida en este encargo."
+  }
+}

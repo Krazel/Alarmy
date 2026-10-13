@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-13T19:48:58.960Z",
+  "id": "PR-019",
+  "previousRevision": 26,
+  "revision": 27,
+  "verifiedSaved": true,
+  "changes": {
+    "detail": "TestFlight interno vigente 1.4 (1). Corrección gradual candidata 1.4.1 (1), validación nativa 10/10 anterior al último ajuste UI. Retirada en código la valoración subjetiva duplicada del resumen; caras y diario conservados. Nuevo requisito: tiempo dormido y fases sin exigir Salud. Investigación acústica y propuestas por pasos guardadas; motor autónomo aún pendiente, no confundir periodos tranquilos con sueño/fases. No nueva subida.",
+    "next": "Seleccionar con el usuario los análisis propuestos y resolver un modelo acústico validado, compatible con audio local y sin costes, antes de implementar fases. Conservar TestFlight 1.4 (1); prueba física del crescendo con iPhone bloqueado pendiente."
+  },
+  "tracking": {
+    "testflight": "Interno",
+    "appStore": "Creada en App Store Connect",
+    "ads": "No",
+    "testflightUrl": "https://appstoreconnect.apple.com/teams/7f069118-9712-49c8-a1f0-fda00b62a281/apps/6818287946/testflight",
+    "appStoreUrl": "https://appstoreconnect.apple.com/apps/6818287946"
+  }
+}
