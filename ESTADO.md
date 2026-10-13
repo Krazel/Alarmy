@@ -1,11 +1,19 @@
 # Estado de Alarma — 13-10-2026
 
-## Subida autorizada de 1.3 (1) — en curso
+## Entrega completada — TestFlight interno 1.3 (1)
 
-El usuario pide subir la candidata aprobada a TestFlight. Se reutilizan la
-validación 38325929640 y firma/entorno autorizados; no cambia el árbol de app
-validado 271e448. Destino: grupo interno existente del titular.
-Recibos separados en `QA-2026-10-13`. Sin App Review ni testers externos.
+El usuario autoriza la subida el 13/10. **1.3 (1) disponible en TestFlight interno
+para el titular**; API Apple `VALID` / `IN_BETA_TESTING`, build
+`b5ab76cb-98c3-4d71-8779-2f07eab709f5`. Notas ES/EN guardadas y releídas,
+mismo grupo interno con un tester. Sin App Review ni testers externos.
+Subida [38327591454](https://github.com/Krazel/Alarmy/actions/runs/38327591454),
+fuente `a200f5eee4fb4ff128c0f41da44f149dbd9b0764`, árbol de app idéntico a
+`271e448`, validación reutilizada 38325929640 (9/9 y Release iPhone).
+Incluye noche A Onda/edición de hora, análisis, estadísticas y clips por categoría.
+Siete secretos temporales eliminados y entorno releído vacío; originales conservados.
+Recibos: `QA-2026-10-13`. Prueba nocturna física/batería pendiente.
+Biblioteca PR-019 guardada y releída por API, **revisión 19**, versión 1.3,
+build 1, TestFlight Interno; historial completo y tracking conservados.
 
 ## A Onda implementada y validada — candidata 1.3 (1)
 
@@ -20,7 +28,8 @@ Fuente `271e448edae68103eff1535e4cb66a991b9abce6`, validación final
 Capturas ES/EN revisadas: sin puntos ni icono, centrado, onda y panel inferior.
 También conserva la hora pospuesta al editarla. No acredita prueba nocturna física.
 Biblioteca PR-019 guardada y releída por API en **revisión 18**, tracking e historial
-conservados. Candidata sin subir; TestFlight interno vigente 1.2 (1).
+conservados. Estado de esa implementación antes del encargo de subida: candidata sin distribuir.
+La entrega posterior 1.3 (1) queda registrada en la sección superior.
 
 ## Propuestas nocturnas minimalistas — 13/10
 

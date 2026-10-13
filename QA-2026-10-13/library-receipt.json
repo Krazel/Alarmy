@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-10-13T00:36:57.910Z",
+  "id": "PR-019",
+  "previousRevision": 18,
+  "revision": 19,
+  "verifiedSaved": true,
+  "changes": {
+    "version": "1.3",
+    "build": 1,
+    "distribution": "TestFlight interno — 1.3 (1) disponible para el titular",
+    "detail": "Alarma 1.3 (1) en TestFlight interno. Noche A Onda, reloj grande, edición de alarma en panel inferior sin terminar sesión y gesto Parar/Stop. Tres modos, diario con estadísticas y análisis acústico estimado; fases solo de Salud. Grabaciones por categoría con contador y navegación. ES/EN, iPhone iOS16+. Validación nativa: 9 pruebas y Release correctos. Pendientes pruebas nocturnas físicas y batería.",
+    "next": "Entrega 13/10/2026 verificada por API: 1.3 (1), VALID / IN_BETA_TESTING, mismo grupo interno del titular, notas ES/EN y secretos temporales eliminados. Recibos e historial: https://github.com/Krazel/Alarmy/tree/codex/native-sleep-rebuild/QA-2026-10-13 . Próximo paso: probar la noche en iPhone, batería, micrófono, Salud y despertar bloqueado en iOS16–25 y 26. Sin App Review ni distribución externa."
+  },
+  "tracking": {
+    "testflight": "Interno",
+    "appStore": "Creada en App Store Connect",
+    "ads": "No",
+    "testflightUrl": "https://appstoreconnect.apple.com/teams/7f069118-9712-49c8-a1f0-fda00b62a281/apps/6818287946/testflight",
+    "appStoreUrl": "https://appstoreconnect.apple.com/apps/6818287946"
+  }
+}

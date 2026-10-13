@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-13T00:36:03.896Z",
+  "appId": "6818287946",
+  "appName": "Alarma de Krazel",
+  "bundleId": "com.krazel.alarmanext",
+  "version": "1.3",
+  "build": "1",
+  "buildId": "b5ab76cb-98c3-4d71-8779-2f07eab709f5",
+  "processingState": "VALID",
+  "uploadedDate": "2026-10-12T17:34:08-07:00",
+  "expirationDate": "2027-01-10T16:34:08-08:00",
+  "minimumOS": "16.0",
+  "usesNonExemptEncryption": false,
+  "internalBuildState": "IN_BETA_TESTING",
+  "externalBuildState": "READY_FOR_BETA_SUBMISSION",
+  "internalGroup": true,
+  "groupAssigned": true,
+  "ownerOnlyVerified": true,
+  "testerCount": 1,
+  "publicLinkEnabled": false,
+  "notes": {
+    "es-ES": "Nueva pantalla nocturna A Onda: reloj grande, fondo aprobado y onda de sonido. Toca la hora de alarma para cambiarla sin detener la sesión; desliza hacia arriba sobre Parar para terminar. Tres modos: sin alarma, hora exacta y ventana inteligente experimental. Diario con tiempo en cama, reposo estimado, cobertura y estadísticas; fases solo si están disponibles en Salud, no inferidas del micrófono. Grabaciones agrupadas por categoría con contador y navegación entre clips. Conserva cuaderno claro/nocturno, ejemplos de noches, caras de despertar y retención de 90 días. iPhone iOS 16+, castellano e inglés. Pendientes pruebas nocturnas en dispositivo y batería.",
+    "en-US": "New A Wave night screen: large clock, approved background and sound wave. Tap the alarm time to change it without ending the session; swipe up over Stop to finish. Three modes: no alarm, exact time and experimental smart window. Journal with time in bed, estimated rest, coverage and statistics; sleep stages only when available from Health, never inferred from the microphone. Recordings grouped by category with counts and clip navigation. Keeps the light/night notebook, sample nights, wake-up feelings and 90-day retention. iPhone iOS 16+, Spanish and English. Physical overnight and battery testing remain pending."
+  },
+  "appStorePublished": false
+}
