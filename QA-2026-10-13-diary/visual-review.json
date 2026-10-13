@@ -1,0 +1,31 @@
+{
+  "candidate": "1.4 (1)",
+  "platform": "iPhone iOS16+ native SwiftUI",
+  "reference": "sleep-next/Design/diary-statistics-2026-10-13/approval.json",
+  "initialValidation": 38418974331,
+  "initialSource": "189c89d1edb6aef7722e20ab901294c0d1e22a4d",
+  "initialResult": "13/13, Debug simulator and Release device compiled",
+  "observed": [
+    "Summary precedes sounds, faces and note",
+    "Faces visible without scrolling at default text size on iPhone17Pro",
+    "Statistics icon immediately left of calendar",
+    "No category or recording list on main journal",
+    "Separate sound grid and one navigable player",
+    "Health ring excludes awake; missing Health values stay unavailable",
+    "Spanish, English and night theme screenshots reviewed"
+  ],
+  "correctionsFromReview": [
+    "Clip duration mm:ss instead of rounded zero minutes",
+    "Readable 9-point schedule bars with domain fitted to observed hours",
+    "Hide empty sleep chart when Health data is missing"
+  ],
+  "finalValidation": 38421555665,
+  "finalSource": "4cc0b89826a3ae1f398ec547df48d46d04d676b6",
+  "physicalOvernight": "Pending; simulator does not prove night-long recording or battery usage",
+  "finalTestsPassed": 4,
+  "finalTestsFailed": 0,
+  "finalNativeBuilds": "Debug and Release succeeded",
+  "finalVisualReview": "Clip durations display 00:24, schedule bars readable, no empty Health chart",
+  "ciConclusion": "cancelled after all steps succeeded during runner shutdown",
+  "nativeValidationAccepted": true
+}

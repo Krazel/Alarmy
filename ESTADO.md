@@ -9,7 +9,11 @@ sonidos en pantalla separada con categorías/reproductor y estadísticas visuale
 La calidad es la valoración humana; no inventar /100. Fases y despertares solo
 con datos de Salud, con estados vacíos explícitos. Fixtures exclusivos de DEBUG.
 Mantiene iOS16+, ES/EN. Candidata 1.4 (1), conserva la línea Apple existente.
-Pendientes validación nativa enfocada y subida API/CI al titular.
+Validación inicial 38418974331: 13/13, Debug simulador y Release iPhone correctos.
+Capturas ES/EN y modo nocturno revisadas: caras visibles y orden solicitado.
+Ajuste final: duración de clips mm:ss y barras de horarios más legibles; segunda
+validación limitada a esos cambios en 38421555665. Subida API/CI pendiente.
+Biblioteca PR-019 guardada y releída, revisión 23; vigente 1.3.1 (1).
 
 ## Reordenación visual de diario/estadísticas — referencias aprobadas
 

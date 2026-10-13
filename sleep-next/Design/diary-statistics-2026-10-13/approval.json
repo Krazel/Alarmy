@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-13",
+  "authorization": "Pero implementalo y subelo a testflight",
+  "platform": "Native SwiftUI iPhone iOS 16+",
+  "languages": [
+    "es",
+    "en"
+  ],
+  "candidate": "1.4 (1)",
+  "referenceDevice": "iPhone portrait",
+  "references": [
+    {
+      "file": "01-diario-sonidos.png",
+      "sha256": "fef7d1d52ff81e272c53939e07ef99e622237e6cf03afd5922b46fdbfc8606dd"
+    },
+    {
+      "file": "02-estadisticas.png",
+      "sha256": "29c89a5824b86f46e119dbde1abc157f83dea957d349a1b66aa4b9a4ea044761"
+    }
+  ],
+  "clarifications": [
+    "Preserve mini feeling faces in week and calendar",
+    "Quality uses human wake-up rating; no invented /100",
+    "Health only for stages, latency and observed awakenings; explicit missing data",
+    "Awake excluded from sleep ring",
+    "Single journal sounds row opens separate category/player modal"
+  ],
+  "nativeEvidence": "QA-2026-10-13-diary"
+}

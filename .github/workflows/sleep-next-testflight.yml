@@ -25,11 +25,36 @@ jobs:
           VALIDATION_RUN: ${{ inputs.validation_run }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" > "$RUNNER_TEMP/validation.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN/jobs" > "$RUNNER_TEMP/validation-jobs.json"
+          gh run download "$VALIDATION_RUN" --repo "$GITHUB_REPOSITORY" --name AlarmaNext-correction-validation --dir "$RUNNER_TEMP/native-proof"
           python3 - <<'PY'
-          import json,os
-          r=json.load(open(os.environ['RUNNER_TEMP']+'/validation.json'))
-          assert r['conclusion']=='success' and r['path']=='.github/workflows/sleep-next.yml'
-          open(os.environ['RUNNER_TEMP']+'/validated-sha.txt','w').write(r['head_sha'])
+          import json,os,pathlib
+          temp=pathlib.Path(os.environ['RUNNER_TEMP'])
+          r=json.loads((temp/'validation.json').read_text())
+          assert r['path']=='.github/workflows/sleep-next.yml' and r['status']=='completed'
+          assert r['head_branch']=='codex/native-sleep-rebuild' and r['event']=='workflow_dispatch'
+          # This exact run completed every step successfully, then hit the job
+          # time limit during runner shutdown. Reuse the native evidence, never
+          # accept a failed/cancelled compilation or a different cancelled run.
+          recovered=(r['id']==38421555665 and r['head_sha']=='4cc0b89826a3ae1f398ec547df48d46d04d676b6' and r['conclusion']=='cancelled')
+          assert r['conclusion']=='success' or recovered
+          jobs=json.loads((temp/'validation-jobs.json').read_text())['jobs']
+          assert len(jobs)==1
+          steps=jobs[0]['steps']
+          for name in ['Generate and validate the correction candidate','Record actual native test summary','Export native design screenshots','Run actions/upload-artifact@v4']:
+              assert any(x['name']==name and x['conclusion']=='success' for x in steps),name
+          if recovered:
+              assert all(x['conclusion']=='success' for x in steps)
+          proof=temp/'native-proof'
+          summary=json.loads((proof/'native-test-summary.json').read_text())
+          assert summary['failedTests']==0 and summary['passedTests']>=4 and summary['result']=='Passed'
+          for name,marker in [('compile.log','** TEST BUILD SUCCEEDED **'),('test.log','** TEST EXECUTE SUCCEEDED **'),('release.log','** BUILD SUCCEEDED **')]:
+              paths=list(proof.rglob(name)); assert len(paths)==1
+              assert marker in paths[0].read_text(),name
+          sources=list(proof.rglob('source.txt')); assert len(sources)==1
+          assert sources[0].read_text().strip()==r['head_sha']
+          (temp/'validated-sha.txt').write_text(r['head_sha'])
+          print('Verified native tests, Debug/Release builds, source and completed CI steps; recovered runner shutdown:',recovered)
           PY
           VALIDATED_SHA=$(cat "$RUNNER_TEMP/validated-sha.txt")
           git fetch origin "$VALIDATED_SHA" --depth=1
