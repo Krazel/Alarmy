@@ -3,6 +3,24 @@ import UIKit
 import CoreMotion
 
 @MainActor
+protocol WakeScreenControl: AnyObject {
+    var brightness: CGFloat { get set }
+    var idleDisabled: Bool { get set }
+}
+
+@MainActor
+private final class SystemWakeScreen: WakeScreenControl {
+    var brightness: CGFloat {
+        get { UIScreen.main.brightness }
+        set { UIScreen.main.brightness = newValue }
+    }
+    var idleDisabled: Bool {
+        get { UIApplication.shared.isIdleTimerDisabled }
+        set { UIApplication.shared.isIdleTimerDisabled = newValue }
+    }
+}
+
+@MainActor
 final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var playing: String?
     private var player: AVAudioPlayer?
@@ -28,6 +46,11 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private let motion = CMMotionManager()
     private var previousBrightness: CGFloat?
     private var previousIdle: Bool?
+    private let screen: any WakeScreenControl
+    init(screen: (any WakeScreenControl)? = nil) {
+        self.screen = screen ?? SystemWakeScreen()
+        super.init()
+    }
     var hasCapture: Bool { worker != nil }
     var isRecording: Bool { engine?.isRunning == true && worker != nil }
     var canResume: Bool { !isRecording && captureState != "recordOff" && captureState != "recordAlarm" }
@@ -149,17 +172,17 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     func updateLight(wake: Date, minutes: Int) {
         guard minutes > 0 else { restoreLight(); return }
-        if previousBrightness == nil { previousBrightness = UIScreen.main.brightness; previousIdle = UIApplication.shared.isIdleTimerDisabled }
-        UIApplication.shared.isIdleTimerDisabled = true
-        UIScreen.main.brightness = CGFloat(GradualWake.brightness(wake: wake, now: Date(), minutes: minutes, original: Double(previousBrightness ?? 0.08)))
+        if previousBrightness == nil { previousBrightness = screen.brightness; previousIdle = screen.idleDisabled }
+        screen.idleDisabled = true
+        screen.brightness = CGFloat(GradualWake.brightness(wake: wake, now: Date(), minutes: minutes, original: Double(previousBrightness ?? 0.08)))
     }
     func restoreScreen() {
         motion.stopAccelerometerUpdates()
         restoreLight()
     }
     private func restoreLight() {
-        if let previousBrightness { UIScreen.main.brightness = previousBrightness }; previousBrightness = nil
-        if let previousIdle { UIApplication.shared.isIdleTimerDisabled = previousIdle }; previousIdle = nil
+        if let previousBrightness { screen.brightness = previousBrightness }; previousBrightness = nil
+        if let previousIdle { screen.idleDisabled = previousIdle }; previousIdle = nil
     }
     func stopAll() async {
         await stopRecording(reason: "recordOff"); stopPlayback(); restoreScreen()
