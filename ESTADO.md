@@ -1,13 +1,19 @@
 # Estado de Alarma — 13-10-2026
 
-## A Onda aprobada e implementada — validación en curso
+## A Onda implementada y validada — candidata 1.3 (1)
 
 El usuario aprueba el diseño y pide quitar puntos e icono de alarma, centrar
 la pantalla y editar la hora en un panel inferior sin finalizar la noche.
 Implementación en candidata 1.3 (1), con cambios de hora transaccionales y
 actualización del límite del capturador. No cambia TestFlight 1.2 (1).
 Evidencias: `sleep-next/Design/onda-implementation-2026-10-13`.
-Biblioteca leída en revisión 17; actualización de resultado pendiente.
+Fuente `271e448edae68103eff1535e4cb66a991b9abce6`, validación final
+[38325929640](https://github.com/Krazel/Alarmy/actions/runs/38325929640):
+**9 pruebas correctas, 0 fallos/omitidas**, Debug simulador y Release iPhone.
+Capturas ES/EN revisadas: sin puntos ni icono, centrado, onda y panel inferior.
+También conserva la hora pospuesta al editarla. No acredita prueba nocturna física.
+Biblioteca PR-019 guardada y releída por API en **revisión 18**, tracking e historial
+conservados. Candidata sin subir; TestFlight interno vigente 1.2 (1).
 
 ## Propuestas nocturnas minimalistas — 13/10
 
@@ -17,7 +23,8 @@ onda, control del micrófono y gesto ascendente sobre el fondo aprobado.
 Imágenes y prompts: `sleep-next/Design/night-variants-2026-10-13`.
 Elegida A · Onda con ajustes: sin mute, hora actual grande, alarma separada,
 flecha menor y «Parar»/«Stop». Propuesta actual `onda-r2-es-en.png`.
-Este encargo visual no cambia código ni distribución.
+Historial: la exploración visual no cambió código ni distribución. La dirección
+A fue aprobada después y su implementación se detalla en la sección superior.
 Biblioteca PR-019 actualizada y releída: revisión 17.
 
 

@@ -1,0 +1,15 @@
+{
+  "source": "fccb4d3ae4ee702143d5581fe3362e1f09046b08",
+  "run": "https://github.com/Krazel/Alarmy/actions/runs/38323396585",
+  "passedTests": 8,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "releaseIPhoneBuild": true,
+  "scope": [
+    "ActiveAlarmTests",
+    "CaptureRetimeTests",
+    "NativeFlowTests: inline editing ES/EN and night modes/swipe"
+  ],
+  "visualReview": "Clock alignment and clipped sheet title corrected after this run. Final screenshots and final source are recorded separately.",
+  "intermediateCancelledRun": "https://github.com/Krazel/Alarmy/actions/runs/38324421393"
+}

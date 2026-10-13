@@ -20,8 +20,24 @@ una instantánea anterior revierta el cambio. Un error conserva la alarma previa
 La app usa [AlarmManager](https://developer.apple.com/documentation/alarmkit/alarmmanager)
 en iOS26 y la vía de notificaciones existente en iOS16–25.
 
-Validación nativa enfocada pendiente: continuidad/cambios concurrentes, errores,
-recuperación de respaldo, límite de captura y UI ES/EN con cancelar/guardar/gesto.
+Validación final correcta: **9 pruebas, cero fallos/omitidas**, compilación Debug
+para simulador y Release para iPhone. Fuente `271e448edae68103eff1535e4cb66a991b9abce6`.
+[Ejecución final](https://github.com/Krazel/Alarmy/actions/runs/38325929640).
+Cubre continuidad de captura y escrituras concurrentes, rollback ante errores,
+recuperación de respaldo, edición tras posponer, guardar/cancelar en ES/EN y gesto.
+La edición de una alarma pospuesta parte de la hora visible y conserva su carácter
+exacto, sin reactivar la ventana inteligente anterior.
+Seis capturas nativas, con manifiesto SHA-256 en `validation.json`; revisión visual
+de pantalla y editor en ambos idiomas. Simulador iPhone 17 Pro / iOS26.4.1.
+
+- [Pantalla nocturna ES](runtime/50-es-onda-night.png)
+- [Panel de hora ES](runtime/51-es-edit-active-alarm.png)
+- [Pantalla nocturna EN](runtime/53-en-onda-night.png)
+- [Panel de hora EN](runtime/54-en-edit-active-alarm.png)
+
+Biblioteca PR-019 actualizada por API y releída: **revisión 18**, historial y
+tracking conservados. Recibo `library-receipt.json`.
+
 Las capturas de onda usan una señal de prueba marcada por argumento DEBUG;
 no acreditan micrófono físico ni pruebas nocturnas/batería.
 Candidata 1.3 (1). TestFlight interno vigente 1.2 (1), sin nueva subida.
