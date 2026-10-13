@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-13T15:53:20.678Z",
+  "appId": "6818287946",
+  "appName": "Alarma de Krazel",
+  "bundleId": "com.krazel.alarmanext",
+  "version": "1.4",
+  "build": "1",
+  "buildId": "507e17fd-e366-4d8e-a84d-7408c755edd7",
+  "processingState": "VALID",
+  "uploadedDate": "2026-10-13T08:51:27-07:00",
+  "expirationDate": "2027-01-11T07:51:27-08:00",
+  "minimumOS": "16.0",
+  "usesNonExemptEncryption": false,
+  "internalBuildState": "IN_BETA_TESTING",
+  "externalBuildState": "READY_FOR_BETA_SUBMISSION",
+  "internalGroup": true,
+  "groupAssigned": true,
+  "ownerOnlyVerified": true,
+  "testerCount": 1,
+  "publicLinkEnabled": false,
+  "notes": {
+    "es-ES": "Diario rediseñado: resumen y gráfico antes de las caras, nota justo debajo y sonidos resumidos en una única fila. Pantalla de sonidos con categorías, contadores y reproductor para recorrer los fragmentos. Estadísticas visuales con periodos de 7, 30 y 90 días o todo el historial, gráficos de duración y horarios, regularidad y distribución de fases de Salud. La vigilia se muestra por separado del tiempo dormido. La calidad refleja cómo te has despertado; no se inventan puntuaciones ni fases a partir del micrófono. Castellano e inglés, iPhone iOS 16+.",
+    "en-US": "Redesigned journal: summary and chart before wake-up feelings, note directly below, and one compact sound row. Dedicated sounds screen with categories, counts and a player to browse recordings. Visual statistics for 7, 30, 90 days or all history, duration and schedule charts, regularity and Health sleep-stage distribution. Awake time is separate from sleep. Quality reflects your wake-up rating; no invented scores or microphone-based sleep stages. Spanish and English, iPhone iOS 16+."
+  },
+  "appStorePublished": false
+}

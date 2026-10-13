@@ -1,5 +1,24 @@
 # Estado de Alarma — 13-10-2026
 
+## Entrega completada — TestFlight interno 1.4 (1)
+
+Implementación solicitada por «Pero implementalo y subelo a testflight».
+API Apple confirma VALID / IN_BETA_TESTING, build
+507e17fd-e366-4d8e-a84d-7408c755edd7, mismo grupo interno con un tester,
+sin enlace público, sin App Review externo ni publicación en tienda.
+Subida 38424950867 correcta; fuente af3ca04bd7bcab022cbbd02cad7f9c051edb1835,
+árbol de app idéntico al validado 4cc0b89826a3ae1f398ec547df48d46d04d676b6.
+Incluye diario compacto, sonidos separados por categorías/reproductor y estadísticas
+visuales. ES/EN, iPhone iOS16+. Fases de Salud; calidad percibida sin /100 inventado.
+Notas de TestFlight ES/EN guardadas y releídas. Siete secretos temporales eliminados
+y entorno releído vacío. Comprobantes y capturas nativas en QA-2026-10-13-diary.
+13 pruebas iniciales y 4 finales correctas; Debug y Release compilados. La segunda
+CI agotó tiempo en el cierre del runner tras todas las etapas exitosas; el guard
+verificó esos resultados y el SHA exacto, sin repetir pruebas ni omitir fallos.
+Prueba nocturna física/FPS/batería pendiente.
+Biblioteca PR-019 guardada y releída por API, revisión 24; historial
+y tracking conservados. Ya figura la entrega 1.4 (1) en la web de proyectos.
+
 ## Diario y estadísticas — candidata 1.4 (1), implementación autorizada
 
 El usuario pide «Pero implementalo y subelo a testflight». Referencias aprobadas:
@@ -12,7 +31,11 @@ Mantiene iOS16+, ES/EN. Candidata 1.4 (1), conserva la línea Apple existente.
 Validación inicial 38418974331: 13/13, Debug simulador y Release iPhone correctos.
 Capturas ES/EN y modo nocturno revisadas: caras visibles y orden solicitado.
 Ajuste final: duración de clips mm:ss y barras de horarios más legibles; segunda
-validación limitada a esos cambios en 38421555665. Subida API/CI pendiente.
+validación limitada a esos cambios en 38421555665: 4/4 y Debug/Release correctos.
+La ejecución terminó cancelled por tiempo al cerrar el runner tras todas las
+etapas exitosas. Guard explícito verifica etapas, artefacto, logs y SHA exacto;
+no acepta otros runs cancelados ni cambios de app. Firma/subida 38424950867 en curso,
+fuente af3ca04 con árbol nativo idéntico a 4cc0b89.
 Biblioteca PR-019 guardada y releída, revisión 23; vigente 1.3.1 (1).
 
 ## Reordenación visual de diario/estadísticas — referencias aprobadas

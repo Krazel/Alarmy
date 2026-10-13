@@ -1,13 +1,16 @@
 {
-  "checkedAt": "2026-10-13T15:17:56.830Z",
+  "checkedAt": "2026-10-13T15:54:43.757Z",
   "id": "PR-019",
-  "previousRevision": 22,
-  "revision": 23,
+  "previousRevision": 23,
+  "revision": 24,
   "verifiedSaved": true,
   "changes": {
+    "version": "1.4",
+    "build": 1,
+    "distribution": "TestFlight interno — 1.4 (1) disponible para el titular",
     "stage": "En producción",
-    "detail": "Diario y estadísticas rediseñados en candidata 1.4 (1), autorizada para TestFlight. Resumen primero, sonidos en pantalla separada y nota bajo las caras. Validación nativa en curso; distribuida sigue 1.3.1 (1).",
-    "next": "Completar validación nativa y subir 1.4 (1) al mismo TestFlight interno del titular por API/CI. Fases solo de Salud, calidad percibida sin puntuaciones inventadas. Evidencias: https://github.com/Krazel/Alarmy/tree/codex/native-sleep-rebuild/sleep-next/Design/diary-statistics-2026-10-13 . Prueba nocturna física pendiente; sin distribución externa ni App Review."
+    "detail": "Alarma 1.4 (1) disponible en TestFlight interno del titular, verificado por API Apple. Diario: resumen/gráfico, sonidos en una sola fila que abre categorías/reproductor, caras visibles y nota debajo. Estadísticas visuales de sueño, horarios, regularidad y fases de Salud. ES/EN, iPhone iOS16+. Calidad percibida, sin puntuaciones inventadas. 13 pruebas iniciales y 4 finales; Debug/Release correctos. Siete secretos temporales eliminados.",
+    "next": "Actualizar en TestFlight y probar el nuevo diario, categorías/reproductor y estadísticas. Fases y tiempo dormido requieren registros de Salud; no se infieren del micrófono. Prueba nocturna física/FPS/batería pendiente. Sin testers externos ni App Review. Evidencias y capturas nativas: https://github.com/Krazel/Alarmy/tree/codex/native-sleep-rebuild/QA-2026-10-13-diary . Subida: https://github.com/Krazel/Alarmy/actions/runs/38424950867 ."
   },
   "tracking": {
     "testflight": "Interno",

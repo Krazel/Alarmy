@@ -34,3 +34,12 @@ Procedimiento vigente consultado:
 - https://docs.github.com/en/billing/concepts/product-billing/github-actions
 Repo público por excepción expresa de Alarma, runner estándar macos-26;
 no se activan gastos, runners ampliados ni servicios nuevos.
+
+## Entrega verificada
+
+1.4 (1) disponible en TestFlight interno para el titular, API VALID /
+IN_BETA_TESTING; build 507e17fd-e366-4d8e-a84d-7408c755edd7. Un tester,
+enlace público desactivado. Notas ES/EN guardadas/releídas. Subida 38424950867,
+fuente af3ca04 (mismo árbol nativo que 4cc0b89), completada en 3m45s.
+Siete secretos temporales eliminados; originales privados conservados.
+Sin distribución externa, App Review ni publicación App Store.
