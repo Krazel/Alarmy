@@ -91,6 +91,14 @@ final class SleepStore: ObservableObject {
                         }
                     }
                 }
+                if ProcessInfo.processInfo.arguments.contains("--health-fixture"), let latest = archive.sessions.first {
+                    for offset in 1...6 {
+                        let end = latest.checkpoint.addingTimeInterval(-Double(offset)*86400+Double(offset%3)*600)
+                        let begin = end.addingTimeInterval(-Double([430,390,465,360,440,420][offset-1])*60)
+                        archive.sessions.append(SleepSession(id:UUID(),start:begin,checkpoint:end,end:end,wake:end,alarmID:UUID(),soundID:"aurora"))
+                        archive.pages[CalendarDay.key(end)] = JournalPage(feeling:MorningFeeling.allCases[offset%5],text:"")
+                    }
+                }
                 let fixture = archive
                 _ = try await repository.update { $0 = fixture }
             }

@@ -15,7 +15,7 @@ final class NativeFlowTests: XCTestCase {
         XCTAssertTrue(note.waitForExistence(timeout:5))
         XCTAssertGreaterThan(note.frame.minY,app.buttons["feeling-2"].frame.maxY)
         let summary = app.buttons["summary-sounds"]
-        XCTAssertLessThan(note.frame.maxY,summary.frame.minY)
+        XCTAssertLessThan(summary.frame.maxY,app.buttons["feeling-2"].frame.minY)
         shot(spanish ? "60-es-journal-note" : "63-en-journal-note")
         for _ in 0..<5 { if summary.isHittable { break }; app.swipeUp() }
         XCTAssertEqual(summary.value as? String,"30")
@@ -24,6 +24,7 @@ final class NativeFlowTests: XCTestCase {
         let visible = XCTNSPredicateExpectation(predicate:NSPredicate(format:"hittable == true"),object:category)
         XCTAssertEqual(XCTWaiter.wait(for:[visible],timeout:5),.completed)
         shot(spanish ? "61-es-sound-categories" : "64-en-sound-categories")
+        app.buttons["close-sounds"].tap()
         app.tabBars.buttons[settings].tap()
         let toggle = app.switches["record-toggle"]
         XCTAssertTrue(toggle.waitForExistence(timeout:5))
@@ -180,11 +181,12 @@ final class NativeFlowTests: XCTestCase {
     func testClipDetailPlaybackNavigationAndCorrection() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--english", "--design-fixture", "--clip-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); app.tabBars.buttons["Journal"].tap()
+        app.buttons["summary-sounds"].tap()
         let cough = app.buttons["clip-category-cough"]
         reveal(cough, in: app)
         XCTAssertEqual(cough.value as? String, "16 saved clips")
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'clip-category-'")).count, 5)
-        shot("40-en-sound-categories"); cough.tap()
+        shot("40-en-sound-categories"); cough.tap(); app.buttons["sound-clip-details"].tap()
         XCTAssertTrue(app.navigationBars["Cough"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["clip-position"].label, "1 / 16")
         XCTAssertFalse(app.buttons["previous-clip"].isEnabled)
@@ -206,7 +208,7 @@ final class NativeFlowTests: XCTestCase {
         XCTAssertEqual(cough.value as? String, "14 saved clips")
         XCTAssertEqual(app.buttons["clip-category-snore"].value as? String, "8 saved clips")
         // Deleting a category's last clip returns to the diary and removes it.
-        let other = app.buttons["clip-category-other"]; reveal(other, in: app); other.tap()
+        let other = app.buttons["clip-category-other"]; reveal(other, in: app); other.tap(); app.buttons["sound-clip-details"].tap()
         XCTAssertTrue(app.navigationBars["Unlabelled"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["next-clip"].isEnabled)
         reveal(app.buttons["delete-clip"], in: app)
@@ -217,9 +219,10 @@ final class NativeFlowTests: XCTestCase {
     func testSpanishClipDetail() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test", "--reset-test", "--spanish", "--design-fixture", "--clip-fixture", "--night-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["begin-night"].waitForExistence(timeout: 10)); app.tabBars.buttons["Diario"].tap()
+        app.buttons["summary-sounds"].tap()
         let cough = app.buttons["clip-category-cough"]; reveal(cough, in: app)
         XCTAssertEqual(cough.value as? String, "16 fragmentos guardados"); shot("42-es-night-categories")
-        cough.tap(); XCTAssertTrue(app.navigationBars["Tos"].waitForExistence(timeout: 5))
+        cough.tap(); app.buttons["sound-clip-details"].tap(); XCTAssertTrue(app.navigationBars["Tos"].waitForExistence(timeout: 5))
         app.buttons["next-clip"].tap(); XCTAssertEqual(app.staticTexts["clip-position"].label, "2 / 16"); shot("43-es-night-category-player")
         for _ in 0..<14 { app.buttons["next-clip"].tap() }
         XCTAssertEqual(app.staticTexts["clip-position"].label, "16 / 16")

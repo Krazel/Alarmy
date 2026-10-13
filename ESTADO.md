@@ -1,6 +1,17 @@
 # Estado de Alarma — 13-10-2026
 
-## Reordenación visual de diario/estadísticas — propuesta pendiente
+## Diario y estadísticas — candidata 1.4 (1), implementación autorizada
+
+El usuario pide «Pero implementalo y subelo a testflight». Referencias aprobadas:
+01-diario-sonidos.png y 02-estadisticas.png de diary-statistics-2026-10-13.
+Implementados resumen compacto antes de las caras, nota inmediatamente debajo,
+sonidos en pantalla separada con categorías/reproductor y estadísticas visuales.
+La calidad es la valoración humana; no inventar /100. Fases y despertares solo
+con datos de Salud, con estados vacíos explícitos. Fixtures exclusivos de DEBUG.
+Mantiene iOS16+, ES/EN. Candidata 1.4 (1), conserva la línea Apple existente.
+Pendientes validación nativa enfocada y subida API/CI al titular.
+
+## Reordenación visual de diario/estadísticas — referencias aprobadas
 
 Usuario corrige el orden: resumen y gráfico primero, sonidos en una única fila
 que abre detalle, luego caras visibles desde el primer vistazo y nota debajo.

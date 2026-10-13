@@ -26,3 +26,7 @@ de versión/build ya aceptada. Registrar y verificar la entrega por API Apple.
 Prueba nocturna física/batería pendiente: no acreditarla con XCTest o simulador.
 Biblioteca PR-019: leer revisión fresca, conservar tracking/historial, guardar por
 API admitida y releer. No modificar ni desplegar el repositorio de la biblioteca.
+
+El 13/10 el usuario aprueba las láminas de diario/estadísticas y pide
+«Pero implementalo y subelo a testflight»: autorizada 1.4 (1) al mismo grupo
+interno del titular, reutilizando firma temporal y CI públicas sin gasto.

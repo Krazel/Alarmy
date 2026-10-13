@@ -6,6 +6,24 @@ struct Words {
     var locale: Locale { Locale(identifier: spanish ? "es_ES" : "en_GB") }
     func callAsFunction(_ key: String) -> String { Self.entries[key].map { $0[spanish ? 0 : 1] } ?? key }
     static let entries: [String: [String]] = [
+        "usualRating":["Despertar más habitual","Most common wake-up rating"],
+        "qualityShort":["Calidad percibida", "Your rating"],
+        "asleepShort":["Durmiendo", "Asleep"],
+        "stagesHealth":["Fases · Salud", "Stages · Health"],
+        "compactHealthEmpty":["Conecta Salud para ver tiempo dormido y fases. Sin registros, no se estiman a partir del sonido.", "Connect Health to see sleep duration and stages. Without records, sounds are not used to estimate them."],
+        "soundEvents":["fragmentos registrados", "recorded clips"],
+        "clipDetails":["Detalles y etiqueta", "Details and label"],
+        "sleepStages":["Fases del sueño", "Sleep stages"],
+        "meanSleep":["Sueño medio · Salud", "Average sleep · Health"],
+        "meanBed":["En cama · promedio", "In bed · average"],
+        "healthAwakenings":["Despertares · Salud", "Awakenings · Health"],
+        "awakeSeparate":["Vigilia · fuera del sueño", "Awake · outside sleep"],
+        "healthMean":["Promedio por sesión con datos · Salud", "Average per recorded session · Health"],
+        "latestSchedule":["Últimas 14 sesiones", "Latest 14 sessions"],
+        "acousticDetails":["Análisis acústico y registro", "Acoustic analysis and history"],
+        "ratingHint":["Tu valoración al despertar", "Your rating on waking"],
+        "soundSummaryHistory":["Los totales incluyen audio eliminado o caducado.", "Totals include deleted or expired audio."],
+
         "recordAndAnalyze":["Grabar y analizar sonidos", "Record and analyse sounds"],
         "recordAndAnalyzeHint":["Guarda los fragmentos nocturnos y los analiza siempre en este iPhone. Al desactivarlo, el micrófono no escucha ni graba.", "Saves night clips and always analyses them on this iPhone. When off, the microphone does not listen or record."],
         "storage":["Almacenamiento", "Storage"],
@@ -144,7 +162,7 @@ struct Words {
         "morning":["Buenos días","Good morning"], "dismiss":["Ya estoy despierto","I’m awake"],
         "recording":["Grabación de sonidos activa","Sound recording active"], "noRecording":["Sin grabación de sonidos","Sound recording off"],
         "today":["Hoy","Today"], "yourNight":["Tu noche, a tu ritmo.","Your night, in your words."],
-        "overview":["RESUMEN DE LA NOCHE","NIGHT AT A GLANCE"], "inBed":["Tiempo en cama","Time in bed"],
+        "overview":["Resumen de la noche","Night at a glance"], "inBed":["Tiempo en cama","Time in bed"],
         "noNight":["Tu próxima noche empieza aquí","Your next night starts here"],
         "noNightHint":["Pulsa «Empezar noche» en Alarma. Por la mañana encontrarás aquí tu registro.","Tap “Begin night” in Alarm. Your record will be here in the morning."],
         "feeling":["¿Cómo te has despertado?","How did you wake up?"], "feelingHint":["Un momento para escucharte.","A moment to check in with yourself."],

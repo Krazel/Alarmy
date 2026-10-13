@@ -87,6 +87,14 @@ struct NightMetrics {
         epochs = Dictionary(grouping:nights.flatMap { $0.acousticEpochs ?? [] },by: \.id).values.compactMap(\.first).sorted { $0.start < $1.start }
     }
     var soundCount: Int { Set(nights.flatMap { ($0.soundSummaries ?? []).map(\.id) + $0.clips.map(\.id) }).count }
+    var recordedSeconds: Double {
+        var ranges: [UUID:DateInterval] = [:]
+        for night in nights {
+            for summary in night.soundSummaries ?? [] { ranges[summary.id] = DateInterval(start:summary.start,duration:max(0,summary.duration)) }
+            for clip in night.clips { ranges[clip.id] = DateInterval(start:clip.created,duration:max(0,clip.duration)) }
+        }
+        return SleepMath.seconds(clipped(Array(ranges.values)))
+    }
     var inBed: Double { SleepMath.seconds(bed) }
     func clipped(_ ranges: [DateInterval]) -> [DateInterval] {
         // Binary-search the already merged bed windows. Long histories must not

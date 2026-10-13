@@ -63,6 +63,13 @@ if [[ "${VALIDATION_SCOPE:-october}" == "onda" ]]; then
     -only-testing:AlarmaNextUITests/NativeFlowTests/testNightModesSwipeAndStatistics
   )
 fi
+if [[ "${VALIDATION_SCOPE:-october}" == "diary" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/DiaryPresentationTests
+    -only-testing:AlarmaNextTests/SleepAnalysisTests
+    -only-testing:AlarmaNextUITests/DiaryFlowTests
+  )
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "feedback" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/NightFeedbackTests
