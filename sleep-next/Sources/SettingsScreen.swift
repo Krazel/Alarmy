@@ -90,8 +90,8 @@ struct SettingsScreen: View {
                 } header: { Text(store.words("designExamples")) } footer: { Text(store.words("exampleOnly")) }
             }.scrollContentBackground(.hidden).background(Color.paper).navigationTitle(store.words("settings")).toolbarBackground(.visible, for: .tabBar)
                 .task { await store.refreshRecordingUsage() }
-                .confirmationDialog(store.words("deleteAllRecordings"),isPresented:$confirmErase,titleVisibility:.visible) {
-                    Button(store.words("deleteAllRecordings"),role:.destructive) { Task { await store.deleteAllRecordings() } }.accessibilityIdentifier("confirm-delete-all-recordings")
+                .alert(store.words("deleteAllRecordings"),isPresented:$confirmErase) {
+                    Button(store.words("deleteAllRecordings"),role:.destructive) { Task { await store.deleteAllRecordings() } }
                     Button(store.words("cancel"),role:.cancel) {}
                 } message: { Text(store.words("deleteRecordingsConfirm")) }
                 .sheet(isPresented: $examples) { JournalExamples(language: store.archive.preferences.language, appearance: store.archive.preferences.appearance) }
