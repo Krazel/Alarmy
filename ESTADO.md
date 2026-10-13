@@ -1,4 +1,32 @@
-# Estado de Alarma — 13-10-2026
+# Estado de Alarma — 14-10-2026
+
+## Candidata 1.5 (1) — análisis local experimental y estadísticas ampliadas
+
+Usuario aprueba los nueve bloques y confirma «quiero todo local, que hagamos
+nuestra propia forma a partir del audio, aunq no sea 100% buena». Implementado
+estimador heurístico v1: envolvente de energía a 10 Hz y observaciones de 30 s,
+contraste, periodicidad y variación de intervalos; contexto sostenido compatible
+con respiración sugiere sueño. Patrones estables/variables generan hipótesis de
+profundo/REM; ligero es la hipótesis restante. No entrenado con PSG, precisión
+no validada: puede confundir respiración despierto, acompañantes o ruido rítmico.
+Aviso experimental visible, cobertura explícita y huecos desconocidos. No inventa
+ciclos ni porcentajes. Noche antigua sin características necesarias queda sin
+estimación. Permisos, consultas y capacidad de Salud retirados.
+
+Incluye hábitos opcionales (sin registrar distinto de ninguno), asociaciones
+con mínimo de días, comparación de sesiones, siestas separadas, objetivo personal,
+edición/restauración de horarios conservando original, continuidad del sueño,
+sonidos por categorías/duración/hora, calidad de captura y CSV sin notas/audio.
+Alarmas: cuenta posposiciones futuras y hora observada solo cuando la app sabe
+que reprodujo; hora programada separada y datos antiguos desconocidos.
+Se conservan correcciones previas de crescendo/luz. Audio y análisis locales.
+
+Fuente 60e228d. CI inicial 38476297503 falló por expresión CSV demasiado compleja
+para el compilador Swift; dividida en pasos tipados. Validación final nativa
+38477797364 en curso. No afirmar precisión fisiológica ni prueba en iPhone real.
+TestFlight vigente sigue 1.4 (1) interno; sin subida de 1.5 en este encargo.
+Biblioteca pendiente de conciliar al completar la validación.
+
 
 ## Análisis autónomo — investigación y selección de funciones
 

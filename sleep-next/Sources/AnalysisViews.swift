@@ -18,12 +18,12 @@ struct HabitEditor: View {
                 ForEach(SleepHabit.allCases) { habit in
                     Button { store.setHabit(habit,day:day) } label: {
                         HStack { Text(store.words(habit.rawValue)); Spacer(); Image(systemName:store.page(day).habits?.contains(habit) == true ? "checkmark.circle.fill" : "circle") }
-                    }.accessibilityIdentifier("habit-"+habit.rawValue)
+                    }.accessibilityIdentifier("habit-"+habit.rawValue).accessibilityValue(store.words(store.page(day).habits?.contains(habit) == true ? "yes" : "no"))
                 }
                 Button(store.words("noHabits")) { store.recordNoHabits(day:day) }.font(.caption)
                 Text(store.words(store.page(day).habits == nil ? "habitsUnknown" : "habitsSaved")).font(.caption).foregroundStyle(.secondary)
             }.padding(.top,12)
-        }.tint(.rust).accessibilityIdentifier("habits-editor")
+        }.tint(.rust)
     }
 }
 

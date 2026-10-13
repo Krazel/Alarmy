@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "authorizationDate": "2026-10-14",
+  "type": "Experimental deterministic heuristic; not a clinically trained or validated model",
+  "processing": "On-device only. Energy envelope retained in RAM for 30 seconds, then discarded. Only compact numeric features are persisted. No network service.",
+  "features": {
+    "envelopeHz": 10,
+    "epochSeconds": 30,
+    "autocorrelationLagsSeconds": [
+      1.5,
+      8
+    ],
+    "contrastDbRange": [
+      2,
+      24
+    ],
+    "peakCountRange": [
+      4,
+      22
+    ]
+  },
+  "inference": {
+    "sleepCandidateSeconds": 300,
+    "sustainedActivityThreshold": 0.4,
+    "deepHypothesis": "600 s of regular usable envelope after initial sleep context; correlation >=0.65, interval CV <=0.15, acoustic activity <0.05",
+    "remHypothesis": "90 s of variable usable envelope after initial sleep context; correlation >=0.25, interval CV >=0.22, acoustic activity <0.1",
+    "otherSleepHypothesis": "core/light",
+    "unknown": "Capture gap, no usable envelope, legacy epoch without features, speech contamination, partial epoch, or insufficient sustained context",
+    "cycles": "No clock-driven 90-minute cycles or target phase proportions"
+  },
+  "limits": [
+    "Pattern similarity is not physiological measurement",
+    "No accuracy number established",
+    "Awake breathing and other people/noise may be misclassified",
+    "Unknown spans excluded, never interpolated as sleep",
+    "Time asleep is detected estimated time, not extrapolated through missing intervals",
+    "Efficiency/goal comparison require >=99% classified coverage",
+    "Synthetic tests check code behavior only; physical overnight comparison pending"
+  ]
+}

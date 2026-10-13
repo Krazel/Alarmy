@@ -30,3 +30,11 @@ API admitida y releer. No modificar ni desplegar el repositorio de la biblioteca
 El 13/10 el usuario aprueba las láminas de diario/estadísticas y pide
 «Pero implementalo y subelo a testflight»: autorizada 1.4 (1) al mismo grupo
 interno del titular, reutilizando firma temporal y CI públicas sin gasto.
+
+El 14/10 el usuario aprueba los nueve bloques de análisis y elige expresamente
+un método propio a partir del audio, completamente local, aunque sea aproximado.
+No exigir Salud ni usar procesamiento externo. Candidata 1.5: estimaciones
+experimentales, no fases clínicamente validadas. Conservar el aviso de método,
+la cobertura y los tramos desconocidos; no convertir silencio en sueño ni
+crear ciclos prefijados. Esta elección no autoriza servicios de pago ni subida
+de 1.5 a TestFlight. Los tests sintéticos no acreditan precisión fisiológica.

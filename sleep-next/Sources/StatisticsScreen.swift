@@ -82,7 +82,7 @@ struct StatisticsScreen: View {
             }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust)
                 .navigationTitle(words("statistics")).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement:.confirmationAction) { Button { dismiss() } label: { Image(systemName:"xmark") }.accessibilityIdentifier("close-statistics").accessibilityLabel(words("done")) } }
-                .task(id:"\(days)-\(showNaps)-\(store.archive.revision)") { await loadAnalysis() }
+                .task(id:"\(days)-\(showNaps)-\(LocalSleepEstimator.cacheKey(nights))") { await loadAnalysis() }
                 .sheet(isPresented:$sounds) { SoundsScreen(sessionIDs:nights.map(\.id)) }
         }
     }

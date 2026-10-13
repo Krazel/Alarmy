@@ -22,13 +22,14 @@ Seleccionar el equipo de desarrollo para instalar en un iPhone. Identificador in
 - AlarmKit a partir de iOS 26; notificaciones con sonido de hasta 29 segundos en iOS 16–25. En versiones anteriores hay que activar sonidos y desactivar Silencio/Concentración. La app explica estos límites. No se usa audio silencioso para mantenerla artificialmente activa.
 - Sesión nocturna persistente, inicio y final explícitos, luz gradual con la pantalla abierta, micrófono opcional y detector adaptativo con clips locales, pausa visible, sensibilidad configurable y recuperación tras cierres. El diario muestra los periodos de captura separados del tiempo en cama.
 - Diario con calendario, tiempo en cama, cinco estados de ánimo originales y notas guardadas automáticamente. Detalle de clips con navegación, reproducción desplazable, sugerencias por intervalos, reintento de análisis, etiquetas corregibles y eliminación confirmada después del guardado.
-- Lectura opcional de las fases existentes en Salud. Sin fases o puntuaciones inventadas. Se elige una sola fuente de Salud por noche para evitar duplicar registros de diferentes aplicaciones.
+- Estimación local experimental de sueño y fases desde características acústicas (v1, no validada clínicamente), con cobertura y huecos explícitos. No usa Salud ni servicios externos. Requiere observaciones respiratorias compatibles; silencio por sí solo no se convierte en sueño.
+- Estadísticas, hábitos opcionales, siestas, comparación, objetivo personal, corrección/restauración de horarios y exportación CSV. Notas y audio quedan fuera del CSV.
 - Castellano e inglés, apariencia automática/amanecer/noche, retención de grabaciones y controles de privacidad.
 - Sin cuenta, servidor de grabaciones, anuncios, compras ni dependencias externas de la aplicación.
 
 ## Arquitectura
 
-`Domain.swift` contiene los datos serializables. `ArchiveRepository` es el único escritor del archivo JSON: valida el esquema y publica cada cambio después de escribir atómicamente. `SleepStore` coordina transacciones ordenadas, alarma y sesión; conserva el estado ante un relanzamiento. Los servicios de alarmas, audio y Salud están separados de SwiftUI.
+`Domain.swift` contiene los datos serializables. `ArchiveRepository` es el único escritor del archivo JSON: valida el esquema y publica cada cambio después de escribir atómicamente. `SleepStore` coordina transacciones ordenadas, alarma y sesión; conserva el estado ante un relanzamiento. Los servicios de alarmas, audio y estimación local están separados de SwiftUI.
 
 Las correcciones locales de octubre incorporan una cola de borrado persistente:
 se guarda la intención, se eliminan WAV y auxiliares y se confirma la retirada
@@ -49,8 +50,8 @@ La automatización `.github/workflows/sleep-next.yml` compila para simulador e i
 
 Antes de una distribución final se necesita una prueba nocturna en iPhones físicos: iOS 16–25 y iOS 26, pantalla bloqueada, Silencio/Concentración, permisos denegados, interrupción del micrófono, cambio de ruta de audio, reinicio, volumen y consumo de batería. El simulador no demuestra la fiabilidad acústica en esas condiciones.
 
-La candidata **1.1.1 (1)** reúne las correcciones de octubre posteriores a la
-entrega 1.1 (1). [Corpus anterior, procedencia y método](Tests/Corpus/README.md).
+La candidata **1.5 (1)** incorpora el análisis local experimental y las estadísticas
+ampliadas, además de las correcciones de octubre. [Corpus anterior, procedencia y método](Tests/Corpus/README.md).
 Se conserva la línea heredada 1.x; candidata no implica publicación comercial.
 El estado de compilación y paquete se registran en [ESTADO.md](../ESTADO.md).
 
@@ -63,3 +64,9 @@ y sin gastos. La validación es manual; firma/subida exigen un run nuevo correct
 con el mismo árbol del proyecto. [Entrega actual](../QA-2026-10-12/README.md).
 La noche física sigue pendiente. La firma ad hoc y
 la [corrección 1.0.1](Evidence/recording-2026-09-21/README.md) quedan como historial.
+
+El método acústico v1 y sus umbrales están documentados en
+`../research/local-estimator-v1.json`. Las pruebas con señales sintéticas no
+acreditan precisión fisiológica. Respiración despierto, acompañantes y ruidos
+rítmicos pueden confundirse; las noches antiguas sin características suficientes
+quedan sin estimación. La distribución vigente se consulta en ESTADO.md.

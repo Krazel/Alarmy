@@ -1,4 +1,2 @@
-"NSMicrophoneUsageDescription" = "Analyse night sounds locally to estimate quiet periods and identify sound events. Save replayable clips only when you enable recording storage.";
-"NSHealthShareUsageDescription" = "Show the sleep stages already recorded in Health in your journal.";
-"NSHealthUpdateUsageDescription" = "Alarma uses Health to show your sleep stages in the journal. This version does not request permission to write Health data.";
+"NSMicrophoneUsageDescription" = "Record and analyse night sounds on this iPhone to provide experimental sleep estimates and identify sound events. Audio stays on this device.";
 "NSAlarmKitUsageDescription" = "Schedule your wake-up alarm so it can ring even when Alarma is closed.";

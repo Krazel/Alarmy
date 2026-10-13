@@ -1,4 +1,2 @@
-"NSMicrophoneUsageDescription" = "Analiza sonidos localmente para estimar periodos tranquilos e identificar eventos. Solo conserva fragmentos para escucharlos si activas guardar grabaciones.";
-"NSHealthShareUsageDescription" = "Muestra en tu diario las fases de sueño ya registradas en Salud.";
-"NSHealthUpdateUsageDescription" = "Alarma utiliza Salud para mostrar tus fases de sueño en el diario. Esta versión no solicita permiso para escribir datos en Salud.";
+"NSMicrophoneUsageDescription" = "Graba y analiza los sonidos de la noche en este iPhone para estimar el sueño de forma experimental e identificar sonidos. El audio se queda en el dispositivo.";
 "NSAlarmKitUsageDescription" = "Programa tu alarma para que pueda sonar aunque Alarma esté cerrada.";

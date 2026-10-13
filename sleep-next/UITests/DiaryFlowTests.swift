@@ -73,11 +73,12 @@ final class DiaryFlowTests: XCTestCase {
         XCTAssertFalse(app.buttons["Connect Health"].exists)
         capture("90-en-insights-diary")
         app.swipeUp()
-        let habits = app.buttons["habits-editor"]
+        let habits = app.buttons["Today’s habits"]
         XCTAssertTrue(habits.waitForExistence(timeout:5)); habits.tap()
         let coffee = app.buttons["habit-lateCoffee"]
         if !coffee.isHittable {app.swipeUp()}
         XCTAssertTrue(coffee.waitForExistence(timeout:5)); coffee.tap()
+        XCTAssertEqual(coffee.value as? String,"Yes")
         capture("91-en-habits")
         app.swipeDown(); app.swipeDown()
         app.buttons["night-details"].tap()

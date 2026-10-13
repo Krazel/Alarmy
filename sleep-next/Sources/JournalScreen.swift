@@ -63,7 +63,7 @@ struct JournalScreen: View {
             }
         }
     }
-    private var analysisKey: String { CalendarDay.key(store.selectedDay) + nights.map { "\($0.id)-\($0.acousticEpochs?.count ?? 0)-\($0.correction?.start.timeIntervalSince1970 ?? 0)-\($0.correction?.end.timeIntervalSince1970 ?? 0)" }.joined() }
+    private var analysisKey: String { CalendarDay.key(store.selectedDay) + String(LocalSleepEstimator.cacheKey(nights)) }
     private var header: some View {
         HStack {
             Text(store.words("journal")).font(.system(size:32,design:.serif))

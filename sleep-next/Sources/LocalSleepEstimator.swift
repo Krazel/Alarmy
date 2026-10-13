@@ -47,6 +47,19 @@ enum RespiratoryEnvelope {
 
 enum LocalSleepEstimator {
     static let version = 1
+    static func cacheKey(_ nights: [SleepSession]) -> Int {
+        var hash = Hasher(); hash.combine(version)
+        for night in nights {
+            hash.combine(night.id); hash.combine(night.acousticEpochs?.count)
+            hash.combine(night.correction?.start); hash.combine(night.correction?.end)
+            hash.combine(night.soundSummaries?.count)
+            for clip in night.clips {
+                hash.combine(clip.id); hash.combine(clip.kind.rawValue); hash.combine(clip.analysisDone)
+                for event in clip.events ?? [] {hash.combine(event.kind.rawValue); hash.combine(event.confidence)}
+            }
+        }
+        return hash.finalize()
+    }
     static func stages(nights: [SleepSession]) -> [SleepStage] { SleepStageTimeline.normalize(nights.flatMap {stages(night:$0)}) }
     static func stages(night raw: SleepSession) -> [SleepStage] {
         guard raw.localAnalysisVersion == nil || raw.localAnalysisVersion == version else {return []}

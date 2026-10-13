@@ -14,7 +14,7 @@
 <key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
 <key>UIBackgroundModes</key><array><string>audio</string></array>
-<key>NSMicrophoneUsageDescription</key><string>Analyse night sounds locally to estimate quiet periods and identify sound events. Save replayable clips only when you enable recording storage.</string>
+<key>NSMicrophoneUsageDescription</key><string>Record and analyse night sounds on this iPhone to provide experimental sleep estimates and identify sound events. Audio stays on this device.</string>
 <key>NSAlarmKitUsageDescription</key><string>Schedule your wake-up alarm so it can ring even when Alarma is closed.</string>
 <key>ITSAppUsesNonExemptEncryption</key><false/>
 </dict></plist>

@@ -46,6 +46,18 @@ final class LocalSleepEstimatorTests: XCTestCase {
         n.acousticEpochs?[4] = AcousticEpoch(id:UUID(),start:start.addingTimeInterval(120),duration:30,activeSeconds:25,meanDBFS:-25)
         XCTAssertTrue(LocalSleepEstimator.stages(night:n).isEmpty)
     }
+    func testCacheChangesAfterSoundCorrectionAndSessionTrim() {
+        var n = night(count:20,features:nil)
+        let original = LocalSleepEstimator.cacheKey([n])
+        n.clips = [NightClip(id:UUID(),created:start,filename:"sample.wav",duration:30)]
+        let withClip = LocalSleepEstimator.cacheKey([n])
+        XCTAssertNotEqual(original,withClip)
+        n.clips[0].kind = .voice; n.clips[0].analysisDone = true
+        let corrected = LocalSleepEstimator.cacheKey([n])
+        XCTAssertNotEqual(withClip,corrected)
+        n.correction = SessionCorrection(start:start.addingTimeInterval(60),end:n.end!)
+        XCTAssertNotEqual(corrected,LocalSleepEstimator.cacheKey([n]))
+    }
     func testAccumulatorPersistsFeaturesWithoutRetainingEnvelope() {
         var epochs:[AcousticEpoch] = []
         let accumulator = EpochAccumulator(start:start) {epochs.append($0)}
