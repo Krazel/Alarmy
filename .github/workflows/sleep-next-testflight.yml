@@ -47,7 +47,7 @@ jobs:
               assert all(x['conclusion']=='success' for x in steps)
           proof=temp/'native-proof'
           summary=json.loads((proof/'native-test-summary.json').read_text())
-          assert summary['failedTests']==0 and summary['passedTests']>=4 and summary['result']=='Passed'
+          assert summary['failedTests']==0 and summary['passedTests']>=25 and summary['result']=='Passed'
           for name,marker in [('compile.log','** TEST BUILD SUCCEEDED **'),('test.log','** TEST EXECUTE SUCCEEDED **'),('release.log','** BUILD SUCCEEDED **')]:
               paths=list(proof.rglob(name)); assert len(paths)==1
               assert marker in paths[0].read_text(),name
@@ -104,8 +104,8 @@ jobs:
           const app=(await get('/v1/apps/'+process.env.APP_ID)).data;
           if(app.attributes.bundleId!=='com.krazel.alarmanext')throw Error('Wrong destination app');
           const builds=await get('/v1/builds?filter[app]='+app.id+'&filter[version]=1&include=preReleaseVersion&limit=200');
-          if(builds.data.some(b=>builds.included?.some(v=>v.id===b.relationships.preReleaseVersion.data.id&&v.attributes.version==='1.4')))throw Error('Version/build already uploaded');
-          console.log('Destination verified; Alarma 1.4 (1) not previously uploaded.');
+          if(builds.data.some(b=>builds.included?.some(v=>v.id===b.relationships.preReleaseVersion.data.id&&v.attributes.version==='1.5')))throw Error('Version/build already uploaded');
+          console.log('Destination verified; Alarma 1.5 (1) not previously uploaded.');
           JS
       - name: Archive and export for TestFlight
         run: |
@@ -118,11 +118,11 @@ jobs:
           import os,plistlib
           info=plistlib.load(open(os.environ['RUNNER_TEMP']+'/AlarmaNext.xcarchive/Products/Applications/AlarmaNext.app/Info.plist','rb'))
           assert info['UIDeviceFamily']==[1], 'Alarma is iPhone only'
-          assert info['NSHealthShareUsageDescription'] and info['NSHealthUpdateUsageDescription']
-          assert info['CFBundleIdentifier']=='com.krazel.alarmanext' and info['CFBundleShortVersionString']=='1.4' and info['CFBundleVersion']=='1'
+          assert 'NSHealthShareUsageDescription' not in info and 'NSHealthUpdateUsageDescription' not in info
+          assert info['CFBundleIdentifier']=='com.krazel.alarmanext' and info['CFBundleShortVersionString']=='1.5' and info['CFBundleVersion']=='1'
           assert info['MinimumOSVersion']=='16.0' and info['ITSAppUsesNonExemptEncryption']==False
           p=plistlib.load(open(os.environ['RUNNER_TEMP']+'/profile.plist','rb')); e=p['Entitlements']
-          assert e['application-identifier'].endswith('.com.krazel.alarmanext') and e['com.apple.developer.healthkit']
+          assert e['application-identifier'].endswith('.com.krazel.alarmanext')
           assert e['beta-reports-active'] and not e.get('get-task-allow',False) and not p.get('ProvisionedDevices')
           options={'method':'app-store-connect','destination':'export','signingStyle':'manual','teamID':p['TeamIdentifier'][0], 'provisioningProfiles':{'com.krazel.alarmanext':p['Name']},'manageAppVersionAndBuildNumber':False,'uploadSymbols':True}
           plistlib.dump(options,open(os.environ['RUNNER_TEMP']+'/ExportOptions.plist','wb'))
@@ -141,7 +141,7 @@ jobs:
           python3 - <<'PY'
           import os,json,glob,hashlib
           p=glob.glob(os.environ['RUNNER_TEMP']+'/export/*.ipa')[0]
-          r={'appId':os.environ['APP_ID'],'bundleId':'com.krazel.alarmanext','version':'1.4','build':'1','source':os.environ['GITHUB_SHA'],'run':os.environ['GITHUB_RUN_ID'],'purpose':'TestFlight','uploadAccepted':True,'sha256':hashlib.sha256(open(p,'rb').read()).hexdigest()}
+          r={'appId':os.environ['APP_ID'],'bundleId':'com.krazel.alarmanext','version':'1.5','build':'1','source':os.environ['GITHUB_SHA'],'run':os.environ['GITHUB_RUN_ID'],'purpose':'TestFlight','uploadAccepted':True,'sha256':hashlib.sha256(open(p,'rb').read()).hexdigest()}
           json.dump(r,open('testflight-evidence/upload.json','w'),indent=2)
           PY
       - uses: actions/upload-artifact@v4

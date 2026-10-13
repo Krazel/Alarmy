@@ -38,3 +38,7 @@ experimentales, no fases clínicamente validadas. Conservar el aviso de método,
 la cobertura y los tramos desconocidos; no convertir silencio en sueño ni
 crear ciclos prefijados. Esta elección no autoriza servicios de pago ni subida
 de 1.5 a TestFlight. Los tests sintéticos no acreditan precisión fisiológica.
+
+El 14/10, después de validar 1.5 (1), el usuario pide «subelo a test»: autorizada
+la subida al mismo TestFlight interno, con el entorno y firma temporal existentes.
+Mantener las notas ES/EN explícitas sobre estimación experimental local.
