@@ -51,7 +51,7 @@ extension SleepStore {
             }
         }
         Task { if await write.value { do { try ClipSpool.acknowledge(receipt, directory: DiskLocation.clips); let owner = self.archive.active?.id == receipt.nightID ? self.archive.active : self.archive.sessions.first { $0.id == receipt.nightID }
-                    if owner?.retainAudio != nil { await self.analyze(receipt.clip) } } catch { self.error = error.localizedDescription } } }
+                    if owner?.retainAudio != nil { self.scheduleClipAnalysis() } } catch { self.error = error.localizedDescription } } }
     }
     func recoverClips() async {
         guard !audio.hasCapture, await acquireClipFiles() else { return }

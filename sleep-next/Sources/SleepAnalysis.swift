@@ -88,12 +88,14 @@ struct NightMetrics {
         bed = SleepMath.union(nights.compactMap { n in n.duration > 0 ? DateInterval(start:n.start,duration:n.duration) : nil })
         epochs = Dictionary(grouping:nights.flatMap { $0.acousticEpochs ?? [] },by: \.id).values.compactMap(\.first).sorted { $0.start < $1.start }
     }
-    var soundCount: Int { Set(nights.flatMap { ($0.soundSummaries ?? []).map(\.id) + $0.clips.map(\.id) }).count }
+    var soundCount: Int { Set(summaries.filter {$0.completed && $0.events.contains(where:{$0.kind != .other})}.map(\.id)).count }
+    var pendingSoundCount: Int { nights.flatMap(\.clips).filter {!$0.analysisDone && $0.analysisFailed != true}.count }
+    var failedSoundCount: Int { nights.flatMap(\.clips).filter {$0.analysisFailed == true}.count }
     var recordedSeconds: Double {
         var ranges: [UUID:DateInterval] = [:]
         for night in nights {
-            for summary in night.soundSummaries ?? [] { ranges[summary.id] = DateInterval(start:summary.start,duration:max(0,summary.duration)) }
-            for clip in night.clips { ranges[clip.id] = DateInterval(start:clip.created,duration:max(0,clip.duration)) }
+            for summary in night.soundSummaries ?? [] where summary.completed && summary.events.contains(where:{$0.kind != .other}) { ranges[summary.id] = DateInterval(start:summary.start,duration:max(0,summary.duration)) }
+            for clip in night.clips where clip.recognized { ranges[clip.id] = DateInterval(start:clip.created,duration:max(0,clip.duration)) }
         }
         return SleepMath.seconds(clipped(Array(ranges.values)))
     }
@@ -144,6 +146,13 @@ struct NightMetrics {
         let all = clipped(stages.map { DateInterval(start:$0.start,end:$0.end) })
         guard !all.isEmpty else { return nil }
         return SleepMath.seconds(clipped(stages.filter { key == nil ? $0.key != "awake" : $0.key == key }.map { DateInterval(start:$0.start,end:$0.end) }))
+    }
+    // A short classified fragment is not a whole-night estimate. Keep partial
+    // observations in the timeline, but exclude them from totals/averages/export.
+    func sleepEstimate(_ stages: [SleepStage]) -> Double? {
+        let classified = SleepMath.seconds(clipped(stages.map {DateInterval(start:$0.start,end:$0.end)}))
+        guard inBed > 0, classified/inBed >= 0.9 else {return nil}
+        return sleepSeconds(stages)
     }
     func sleepLatency(_ stages: [SleepStage]) -> Double? {
         guard nights.count == 1, let begin = bed.first?.start,

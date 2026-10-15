@@ -30,6 +30,16 @@ FILTERS=(
   -only-testing:AlarmaNextTests/RepositoryTests
   -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection
 )
+if [[ "${VALIDATION_SCOPE:-october}" == "recognition_fix" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/RecognitionQueueTests
+    -only-testing:AlarmaNextTests/RecognitionTests
+    -only-testing:AlarmaNextTests/LocalSleepEstimatorTests
+    -only-testing:AlarmaNextTests/SleepAnalysisTests
+    -only-testing:AlarmaNextTests/DomainTests/testTranslationsComplete
+    -only-testing:AlarmaNextUITests/DiaryFlowTests/testJournalStatisticsSpanish
+  )
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "insights" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/AnalysisInsightsTests

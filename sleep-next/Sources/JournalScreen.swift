@@ -108,10 +108,13 @@ struct JournalScreen: View {
                     Text(store.words("noNightHint")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.6))
                 } else {
                     HStack(alignment:.top,spacing:8) {
-                        CompactMetric(title:store.words("asleepShort"),value:DiaryPresentation.duration(metrics.sleepSeconds(stages)))
+                        CompactMetric(title:store.words("asleepShort"),value:DiaryPresentation.duration(metrics.sleepEstimate(stages)))
                         Divider()
                         CompactMetric(title:store.words("inBed"),value:DiaryPresentation.duration(metrics.inBed))
                     }.fixedSize(horizontal:false,vertical:true)
+                    if metrics.sleepEstimate(stages) == nil {
+                        Text(store.words("partialSleepHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
+                    }
                     if stages.isEmpty {
                         Text(store.words("compactHealthEmpty")).font(.caption).foregroundStyle(Color.ink.opacity(0.55)).fixedSize(horizontal:false,vertical:true)
                         AcousticTimeline(metrics:metrics,words:store.words)

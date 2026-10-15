@@ -46,7 +46,7 @@ enum RespiratoryEnvelope {
 }
 
 enum LocalSleepEstimator {
-    static let version = 1
+    static let version = 2
     static func cacheKey(_ nights: [SleepSession]) -> Int {
         var hash = Hasher(); hash.combine(version)
         for night in nights {
@@ -62,16 +62,36 @@ enum LocalSleepEstimator {
     }
     static func stages(nights: [SleepSession]) -> [SleepStage] { SleepStageTimeline.normalize(nights.flatMap {stages(night:$0)}) }
     static func stages(night raw: SleepSession) -> [SleepStage] {
-        guard raw.localAnalysisVersion == nil || raw.localAnalysisVersion == version else {return []}
+        guard raw.localAnalysisVersion == nil || raw.localAnalysisVersion == 1 || raw.localAnalysisVersion == version else {return []}
         let night = raw.analysisSession
         let epochs = (night.acousticEpochs ?? []).filter {$0.duration >= 29 && $0.start >= night.start && $0.end <= (night.end ?? night.checkpoint)}.sorted {$0.start < $1.start}
         guard !epochs.isEmpty else {return []}
         // Speech-labelled fragments are a competing sound source, not breathing.
         let voices = NightMetrics(nights:[night]).summaries.flatMap { s in s.events.filter {$0.kind == .voice && $0.confidence >= 0.5}.map {DateInterval(start:s.start.addingTimeInterval($0.start),duration:max(0,$0.duration))} }
+        // Bridge only short, actually recorded quiet interruptions bounded by
+        // respiratory evidence on both sides. Never fill capture gaps or silence alone.
+        let supported = epochs.map { epoch in
+            epoch.breathing?.usable == true && (epoch.breathing?.periodicity ?? 0) >= 0.25 &&
+            epoch.meanDBFS > -80 && epoch.meanDBFS < -12 && epoch.activeSeconds/epoch.duration < 0.4 &&
+            !voices.contains {$0.start < epoch.end && $0.end > epoch.start}
+        }
+        var bridged = Set<Int>()
+        var index = 0
+        while index < epochs.count {
+            if supported[index] { index += 1; continue }
+            let begin = index
+            while index < epochs.count && !supported[index] { index += 1 }
+            guard begin > 0, index < epochs.count, index-begin <= 3,
+                  epochs[begin..<index].allSatisfy({$0.quiet && $0.meanDBFS > -80 && $0.meanDBFS < -12}),
+                  !voices.contains({$0.start < epochs[index].start && $0.end > epochs[begin].start}) else {continue}
+            let block = Array(epochs[(begin-1)...index])
+            guard zip(block,block.dropFirst()).allSatisfy({abs($1.start.timeIntervalSince($0.end)) < 0.1}) else {continue}
+            bridged.formUnion(begin..<index)
+        }
         var result: [SleepStage] = [], candidate: [AcousticEpoch] = []
         var sleeping = false, stableSeconds = 0.0, variableSeconds = 0.0
         var prior: AcousticEpoch?
-        for epoch in epochs {
+        for (index, epoch) in epochs.enumerated() {
             if let prior, abs(epoch.start.timeIntervalSince(prior.end)) > 0.1 {
                 candidate = []; sleeping = false; stableSeconds = 0; variableSeconds = 0
             }
@@ -79,14 +99,14 @@ enum LocalSleepEstimator {
             let speech = voices.contains {$0.start < epoch.end && $0.end > epoch.start}
             let activity = epoch.activeSeconds/epoch.duration
             let feature = epoch.breathing
-            let breathing = feature?.usable == true && epoch.meanDBFS > -80 && epoch.meanDBFS < -12 && !speech
+            let breathing = (supported[index] || bridged.contains(index)) && !speech
             // An isolated cough is not a wake event; need sustained activity.
             let priorActive = prior.map {$0.activeSeconds/$0.duration >= 0.4 && abs(epoch.start.timeIntervalSince($0.end)) < 0.1} ?? false
             if activity >= 0.4 && priorActive && !breathing {
                 candidate = []; sleeping = false; stableSeconds = 0; variableSeconds = 0
                 result.append(SleepStage(id:epoch.id,start:epoch.start,end:epoch.end,key:"awake")); continue
             }
-            guard breathing, let feature, activity < 0.4 else {
+            guard breathing, activity < 0.4 else {
                 candidate = []; stableSeconds = 0; variableSeconds = 0
                 // Unknown epochs remain holes; no carry-forward of sleep across gaps.
                 sleeping = false
@@ -98,8 +118,8 @@ enum LocalSleepEstimator {
                 sleeping = true
                 for item in candidate.dropLast() {result.append(SleepStage(id:item.id,start:item.start,end:item.end,key:"core"))}
             }
-            let regular = feature.periodicity >= 0.65 && (feature.intervalVariation ?? 1) <= 0.15 && activity < 0.05
-            let variable = feature.periodicity >= 0.25 && (feature.intervalVariation ?? 0) >= 0.22 && activity < 0.1
+            let regular = !bridged.contains(index) && (feature?.periodicity ?? 0) >= 0.65 && (feature?.intervalVariation ?? 1) <= 0.15 && activity < 0.05
+            let variable = !bridged.contains(index) && (feature?.periodicity ?? 0) >= 0.25 && (feature?.intervalVariation ?? 0) >= 0.22 && activity < 0.1
             stableSeconds = regular ? stableSeconds+epoch.duration : 0
             variableSeconds = variable ? variableSeconds+epoch.duration : 0
             // Experimental stage hypotheses from observed stability/variability.

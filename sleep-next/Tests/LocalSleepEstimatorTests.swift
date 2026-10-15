@@ -58,6 +58,23 @@ final class LocalSleepEstimatorTests: XCTestCase {
         n.correction = SessionCorrection(start:start.addingTimeInterval(60),end:n.end!)
         XCTAssertNotEqual(corrected,LocalSleepEstimator.cacheKey([n]))
     }
+    func testShortWeakSignalBetweenRespiratoryAnchorsDoesNotResetTheNight() {
+        let f = BreathingFeatures(version:1,contrast:8,periodicity:0.9,intervalVariation:0.05,peaks:8)
+        var n = night(count:120,features:f)
+        // One weak 30-second observation every four minutes previously prevented onset.
+        for i in stride(from:7,to:119,by:8) { n.acousticEpochs?[i].breathing = nil }
+        let stages = LocalSleepEstimator.stages(night:n)
+        XCTAssertGreaterThan(NightMetrics(nights:[n]).sleepEstimate(stages) ?? 0,3300)
+    }
+    func testLongUnknownSpanCannotBeFilledFromItsEndpoints() {
+        let f = BreathingFeatures(version:1,contrast:8,periodicity:0.9,intervalVariation:0.05,peaks:8)
+        var n = night(count:120,features:f)
+        for i in 30..<90 { n.acousticEpochs?[i].breathing = nil }
+        let stages = LocalSleepEstimator.stages(night:n)
+        let unknown = start.addingTimeInterval(1800)
+        XCTAssertFalse(stages.contains {$0.start <= unknown && $0.end > unknown})
+        XCTAssertNil(NightMetrics(nights:[n]).sleepEstimate(stages))
+    }
     func testAccumulatorPersistsFeaturesWithoutRetainingEnvelope() {
         var epochs:[AcousticEpoch] = []
         let accumulator = EpochAccumulator(start:start) {epochs.append($0)}

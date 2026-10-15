@@ -16,6 +16,8 @@ final class SleepStore: ObservableObject {
     @Published var saving = false
     @Published var writeFailed = false
     @Published var selectedDay = Date()
+    var classifyClip: (URL) async -> SoundSuggestion = { await SoundTagger.suggest(url:$0) }
+    var analysisWorker: Task<Void, Never>?
     @Published var analyzing = Set<UUID>()
     @Published var clipPresented = false
     @Published var developerMode = UserDefaults.standard.bool(forKey: "journalDeveloperMode") {
@@ -114,6 +116,7 @@ final class SleepStore: ObservableObject {
             await recoverClips()
             await prune()
             await recoverTemporaryAnalysis()
+            scheduleClipAnalysis()
             await cleanUpAlarmBackup()
             if archive.active != nil {
                 audio.captureState = "recordRecovered"
@@ -336,19 +339,19 @@ final class SleepStore: ObservableObject {
     }
     func analyzeClips(for day: Date) async {
         guard !journalPreview else { return }
-        let pending = sessions(day).flatMap(\.clips).filter {
-            $0.analysisFailed != true && (!$0.analysisDone || ($0.suggestion && $0.analysisVersion != SoundTagger.version))
-        }
-        for clip in pending {
-            guard !Task.isCancelled else { return }
-            await analyze(clip)
-        }
+        scheduleClipAnalysis()
     }
+
     func analyze(_ clip: NightClip) async {
         guard !journalPreview else { return }
         guard !analyzing.contains(clip.id), let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) else { return }
+        while !analyzing.isEmpty {
+            do { try await Task.sleep(nanoseconds:20_000_000) } catch {return}
+        }
+        let current = (archive.sessions + (archive.active.map {[$0]} ?? [])).flatMap(\.clips)
+        guard current.contains(clip), archive.pendingClipDeletions?.contains(clip.filename) != true else {return}
         analyzing.insert(clip.id); defer { analyzing.remove(clip.id) }
-        let result = await SoundTagger.suggest(url: url)
+        let result = await classifyClip(url)
         guard !Task.isCancelled else { return }
         let saved = await commit { value in
             func update(_ night: inout SleepSession) {
@@ -366,7 +369,7 @@ final class SleepStore: ObservableObject {
             if value.active != nil { update(&value.active!) }
             for i in value.sessions.indices { update(&value.sessions[i]) }
         }.value
-        if saved { await discardTemporaryClip(clip) }
+        if saved { await discardUnrecognizedClips(); await discardTemporaryClip(clip) }
     }
     func discardTemporaryClip(_ clip: NightClip) async {
         let all = archive.sessions + (archive.active.map { [$0] } ?? [])

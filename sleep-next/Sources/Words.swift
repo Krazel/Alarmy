@@ -6,7 +6,10 @@ struct Words {
     var locale: Locale { Locale(identifier: spanish ? "es_ES" : "en_GB") }
     func callAsFunction(_ key: String) -> String { Self.entries[key].map { $0[spanish ? 0 : 1] } ?? key }
     static let entries: [String: [String]] = [
-        "localMethodHint":["Método local experimental, sin validación clínica. Estima sueño tras varios minutos de un patrón compatible con respiración. La estabilidad sugiere profundo y la variabilidad sugiere REM, pero el audio no confirma estas fases. Puede confundir respiración despierto, acompañantes o ruidos repetitivos. Los huecos quedan sin clasificar.", "Experimental local method, not clinically validated. Estimates sleep after several minutes of a breathing-like pattern. Stability suggests deep sleep and variability suggests REM, but audio cannot confirm these stages. Awake breathing, another person or repetitive noise can be misclassified. Gaps stay unclassified."],
+        "partialSleepHint":["Señal insuficiente para estimar toda la noche. Los tramos reconocidos no equivalen al tiempo total dormido.", "Not enough signal for a whole-night estimate. Recognised intervals are not your total time asleep."],
+        "soundQueue":["fragmentos pendientes de analizar", "clips awaiting analysis"],
+        "soundRetry":["fragmentos pendientes de reintento", "clips awaiting retry"],
+        "localMethodHint":["Método local experimental, sin validación clínica. Estima sueño tras varios minutos de un patrón compatible con respiración. La estabilidad sugiere profundo y la variabilidad sugiere REM, pero el audio no confirma estas fases. Puede confundir respiración despierto, acompañantes o ruidos repetitivos. Une interrupciones acústicas tranquilas de hasta 90 segundos solo entre señales respiratorias. Los huecos de captura quedan sin clasificar. El total requiere al menos un 90 % de cobertura clasificada.", "Experimental local method, not clinically validated. Estimates sleep after several minutes of a breathing-like pattern. Stability suggests deep sleep and variability suggests REM, but audio cannot confirm these stages. Awake breathing, another person or repetitive noise can be misclassified. Quiet acoustic interruptions up to 90 seconds are joined only between breathing signals. Capture gaps remain unclassified. Totals require at least 90% classified coverage."],
         "stageCoverage":["Registro clasificado", "Classified recording"],
         "localEstimate":["Estimación acústica · experimental", "Acoustic estimate · experimental"],
         "csv-observed":["Alarma observada ISO UTC", "Observed alarm ISO UTC"],
@@ -112,7 +115,7 @@ struct Words {
         "soundSummaryHistory":["Los totales incluyen audio eliminado o caducado.", "Totals include deleted or expired audio."],
 
         "recordAndAnalyze":["Grabar y analizar sonidos", "Record and analyse sounds"],
-        "recordAndAnalyzeHint":["Guarda los fragmentos nocturnos y los analiza siempre en este iPhone. Al desactivarlo, el micrófono no escucha ni graba.", "Saves night clips and always analyses them on this iPhone. When off, the microphone does not listen or record."],
+        "recordAndAnalyzeHint":["Analiza en este iPhone y guarda solo los fragmentos reconocidos. Descarta los que quedan sin etiqueta. Al desactivarlo, el micrófono no escucha ni graba.", "Analyses on this iPhone and saves only recognised clips. Unlabelled clips are discarded. When off, the microphone does not listen or record."],
         "storage":["Almacenamiento", "Storage"],
         "savedRecordings":["Grabaciones guardadas", "Saved recordings"],
         "deleteAllRecordings":["Eliminar todas las grabaciones", "Delete all recordings"],

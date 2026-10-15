@@ -44,9 +44,9 @@ struct StatisticsScreen: View {
         let cutoff = Calendar.current.date(byAdding:.day,value:-(days-1),to:Calendar.current.startOfDay(for:Date())) ?? .distantPast
         return store.archive.sessions.filter { ($0.isNap == true) == showNaps && (days == 0 || ($0.end ?? $0.checkpoint) >= cutoff) }.sorted { $0.start < $1.start }
     }
-    private var estimatedNights: [SleepSession] { nights.filter { NightMetrics(nights:[$0]).sleepSeconds(estimates[$0.id] ?? []) != nil } }
+    private var estimatedNights: [SleepSession] { nights.filter { NightMetrics(nights:[$0]).sleepEstimate(estimates[$0.id] ?? []) != nil } }
     private func average(_ values:[Double?]) -> Double? { let n = values.compactMap {$0}; return n.isEmpty ? nil : n.reduce(0,+)/Double(n.count) }
-    private var meanSleep: Double? { average(nights.map { NightMetrics(nights:[$0]).sleepSeconds(estimates[$0.id] ?? []) }) }
+    private var meanSleep: Double? { average(nights.map { NightMetrics(nights:[$0]).sleepEstimate(estimates[$0.id] ?? []) }) }
     private var meanGoalSleep: Double? { average(nights.map { let c = SleepContinuity(nights:[$0],stages:estimates[$0.id] ?? []); return c.coverage >= 0.99 ? c.asleep : nil }) }
     private func stageMean(_ key: String) -> Double? { average(estimatedNights.map { NightMetrics(nights:[$0]).sleepSeconds(estimates[$0.id] ?? [],key:key) }) }
     private func feelingCount(_ feeling: MorningFeeling) -> Int {
@@ -103,10 +103,10 @@ struct StatisticsScreen: View {
                 if loading { ProgressView() }
                 if !estimatedNights.isEmpty {
                 Chart(nights) { night in
-                    if let seconds = NightMetrics(nights:[night]).sleepSeconds(estimates[night.id] ?? []) {
+                    if let seconds = NightMetrics(nights:[night]).sleepEstimate(estimates[night.id] ?? []) {
                         BarMark(x:.value(words("nights"),night.end ?? night.checkpoint,unit:.day),y:.value(words("asleepShort"),seconds/3600)).foregroundStyle(DiaryPresentation.color("core")).cornerRadius(4)
                     }
-                }.frame(height:125).chartYScale(domain:0...max(8,nights.map { NightMetrics(nights:[$0]).sleepSeconds(estimates[$0.id] ?? []) ?? 0 }.max().map {$0/3600} ?? 8)).chartYAxisLabel("h").accessibilityLabel(words("meanSleep"))
+                }.frame(height:125).chartYScale(domain:0...max(8,nights.map { NightMetrics(nights:[$0]).sleepEstimate(estimates[$0.id] ?? []) ?? 0 }.max().map {$0/3600} ?? 8)).chartYAxisLabel("h").accessibilityLabel(words("meanSleep"))
                 }
                 HStack {
                     CompactMetric(title:words("meanBed"),value:DiaryPresentation.duration(average(nights.map {NightMetrics(nights:[$0]).inBed})))

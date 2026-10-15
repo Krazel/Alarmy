@@ -97,7 +97,7 @@ enum AnalysisInsights {
         for raw in nights.sorted(by:{$0.start < $1.start}) {
             let night = raw.analysisSession, m = NightMetrics(nights:[night])
             let page = pages[CalendarDay.key(raw.end ?? raw.checkpoint)]
-            let sleep = m.sleepSeconds(stages[raw.id] ?? [])
+            let sleep = m.sleepEstimate(stages[raw.id] ?? [])
             let continuity = SleepContinuity(nights:[raw],stages:stages[raw.id] ?? [])
             var values: [String] = []
             values.append(CalendarDay.key(raw.end ?? raw.checkpoint))

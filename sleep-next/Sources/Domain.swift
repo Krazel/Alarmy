@@ -60,6 +60,8 @@ struct NightClip: Codable, Equatable, Identifiable {
     var events: [SoundEvent]?
     var analysisVersion: Int?
     var analysisFailed: Bool?
+    var recognized: Bool { analysisDone && analysisFailed != true && kind != .other }
+    var needsAnalysis: Bool { !analysisDone || analysisFailed == true || (suggestion && analysisVersion != SoundTagger.version) }
 }
 struct SleepSession: Codable, Equatable, Identifiable {
     let id: UUID

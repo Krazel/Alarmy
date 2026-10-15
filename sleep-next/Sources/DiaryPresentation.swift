@@ -115,6 +115,7 @@ struct SoundSummaryRow: View {
                 VStack(alignment:.leading,spacing:3) {
                     Text(words("sounds")).font(.system(size:18,design:.serif))
                     Text("\(NightMetrics(nights:nights).soundCount) " + words("soundEvents") + " · " + DiaryPresentation.duration(NightMetrics(nights:nights).recordedSeconds)).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
+                    SoundAnalysisStatus(nights:nights,words:words)
                 }
                 Spacer(); Image(systemName:"chevron.right").font(.caption)
             }.foregroundStyle(Color.ink)

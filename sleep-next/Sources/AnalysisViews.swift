@@ -205,7 +205,7 @@ struct CompareNights: View {
                     if let night = nights.first(where:{$0.id == slot.id}) {
                         Section(night.start.formatted(date:.abbreviated,time:.shortened)) {
                             MetricRow(title:store.words("inBed"),value:SleepMath.duration(NightMetrics(nights:[night]).inBed))
-                            MetricRow(title:store.words("asleepShort"),value:SleepMath.duration(NightMetrics(nights:[night]).sleepSeconds(stages[night.id] ?? [])))
+                            MetricRow(title:store.words("asleepShort"),value:SleepMath.duration(NightMetrics(nights:[night]).sleepEstimate(stages[night.id] ?? [])))
                             MetricRow(title:store.words("analysisCoverage"),value:NightMetrics(nights:[night]).coverage.map {"\(Int($0*100))%"} ?? "—")
                             MetricRow(title:store.words("feeling"),value:store.words(store.page(night.end ?? night.checkpoint).feeling?.key ?? "unrated"))
                             MetricRow(title:store.words("sounds"),value:"\(NightMetrics(nights:[night]).soundCount)")

@@ -16,6 +16,7 @@ final class DiaryFlowTests: XCTestCase {
         XCTAssertLessThan(app.staticTexts["night-summary-title"].frame.maxY,summary.frame.minY)
         XCTAssertLessThan(summary.frame.maxY,face.frame.minY)
         XCTAssertGreaterThan(app.textViews["journal-note"].frame.minY,face.frame.maxY)
+        XCTAssertFalse(app.buttons["clip-category-other"].exists)
         XCTAssertFalse(app.buttons["clip-category-cough"].exists)
         XCTAssertLessThan(app.buttons["statistics"].frame.maxX,app.buttons["calendar"].frame.midX)
         capture(spanish ? "70-es-diary" : "75-en-diary")

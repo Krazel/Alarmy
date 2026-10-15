@@ -64,7 +64,7 @@ private final class ClassificationObserver: NSObject, SNResultsObserving {
     }
 }
 struct SoundTagger {
-    static let version = 2
+    static let version = 3
     static func request(seconds desired: Double = 1) throws -> SNClassifySoundRequest {
         let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
         // A supported window near one second retains brief respiratory events.

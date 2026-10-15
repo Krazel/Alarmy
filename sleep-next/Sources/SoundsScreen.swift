@@ -8,7 +8,7 @@ struct SoundsScreen: View {
     @State private var selectedID: UUID?
     @State private var detail: NightClip?
     private var nights: [SleepSession] { store.archive.sessions.filter { sessionIDs.contains($0.id) } }
-    private var clips: [NightClip] { nights.flatMap(\.clips).sorted { $0.created < $1.created } }
+    private var clips: [NightClip] { nights.flatMap(\.clips).filter(\.recognized).sorted { $0.created < $1.created } }
     private var group: [NightClip] { clips.filter { $0.kind == category } }
     private var selected: NightClip? { group.first { $0.id == selectedID } ?? group.first }
     private var index: Int { group.firstIndex { $0.id == selected?.id } ?? 0 }
@@ -23,6 +23,7 @@ struct SoundsScreen: View {
                     DisclosureGroup(store.words("soundSchedule")) {
                         ChartSoundHours(clips:clips,words:store.words)
                     }
+                    SoundAnalysisStatus(nights:nights,words:store.words)
                     if clips.isEmpty { Text(store.words("noClips")).font(.subheadline) }
                     else {
                         LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],spacing:10) {
@@ -37,7 +38,7 @@ struct SoundsScreen: View {
                     }
                     DisclosureGroup(store.words("soundTotals")) {
                         VStack(spacing:8) {
-                            ForEach(SoundKind.allCases,id:\.self) { kind in
+                            ForEach(SoundKind.allCases.filter {$0 != .other},id:\.self) { kind in
                                 MetricRow(title:store.words(kind.rawValue),value:SleepMath.duration(NightMetrics(nights:nights).soundSeconds(kind)))
                             }
                             Text(store.words("soundStatsHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
