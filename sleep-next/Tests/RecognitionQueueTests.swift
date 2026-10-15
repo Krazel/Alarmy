@@ -10,7 +10,7 @@ final class RecognitionQueueTests: XCTestCase {
         return clip
     }
     private func night(_ clips: [NightClip]) -> SleepSession {
-        let start = Date().addingTimeInterval(-3600), end = Date()
+        let start = Date().addingTimeInterval(-3600), end = Date().addingTimeInterval(60)
         return SleepSession(id:UUID(),start:start,checkpoint:end,end:end,wake:end,alarmID:UUID(),soundID:"aurora",clips:clips)
     }
     func testUnknownCleanupPreservesPendingFailedAndRecognized() throws {
