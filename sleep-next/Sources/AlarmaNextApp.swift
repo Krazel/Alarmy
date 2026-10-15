@@ -42,7 +42,7 @@ struct AlarmaNextApp: App {
                     Task { await store.pauseCapture(reason: "recordReset") }
                 }
                 .onChange(of: phase) { newValue in
-                    if newValue == .active { Task { await store.resume(); store.scheduleClipAnalysis() } }
+                    if newValue == .active { Task { await store.resume(); store.retryPendingClipAnalysis() } }
                     else { Task { await store.flush() }; store.audio.restoreScreen(); if store.archive.active == nil { store.audio.stopPlayback() } }
                 }
         }

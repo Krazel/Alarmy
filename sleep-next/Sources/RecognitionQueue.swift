@@ -24,15 +24,19 @@ extension SleepStore {
         analysisWorker = Task { [weak self] in
             guard let self else {return}
             defer {self.analysisWorker = nil}
-            var attempted = Set<UUID>()
             while !Task.isCancelled {
                 let clips = (self.archive.sessions + (self.archive.active.map {[$0]} ?? [])).flatMap(\.clips)
-                guard let clip = clips.first(where:{$0.needsAnalysis && !attempted.contains($0.id) && self.archive.pendingClipDeletions?.contains($0.filename) != true}) else {break}
-                attempted.insert(clip.id)
+                guard let clip = clips.first(where:{$0.needsAnalysis && !self.analysisAttempts.contains($0.id) && self.archive.pendingClipDeletions?.contains($0.filename) != true}) else {break}
+                self.analysisAttempts.insert(clip.id)
                 await self.analyze(clip)
             }
             await self.discardUnrecognizedClips()
         }
+    }
+    func retryPendingClipAnalysis() {
+        guard analysisWorker == nil else {return}
+        analysisAttempts = []
+        scheduleClipAnalysis()
     }
     func discardUnrecognizedClips() async {
         var next = archive; next.queueUnrecognizedClips()

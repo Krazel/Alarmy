@@ -43,6 +43,8 @@ final class RecognitionQueueTests: XCTestCase {
         XCTAssertEqual(attempts,1); XCTAssertEqual(store.archive.sessions[0].clips.count,1)
         XCTAssertEqual(store.archive.sessions[0].clips[0].analysisFailed,true)
         store.scheduleClipAnalysis(); await store.analysisWorker?.value
+        XCTAssertEqual(attempts,1,"A new clip callback must not keep retrying a persistent failure")
+        store.retryPendingClipAnalysis(); await store.analysisWorker?.value
         XCTAssertEqual(attempts,2); XCTAssertTrue(store.archive.sessions[0].clips[0].recognized)
         XCTAssertEqual(store.archive.sessions[0].clips[0].kind,.cough)
         let saved = try await store.repository.load()

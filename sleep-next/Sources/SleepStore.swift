@@ -17,6 +17,7 @@ final class SleepStore: ObservableObject {
     @Published var writeFailed = false
     @Published var selectedDay = Date()
     var classifyClip: (URL) async -> SoundSuggestion = { await SoundTagger.suggest(url:$0) }
+    var analysisAttempts = Set<UUID>()
     var analysisWorker: Task<Void, Never>?
     @Published var analyzing = Set<UUID>()
     @Published var clipPresented = false
