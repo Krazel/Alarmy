@@ -83,7 +83,7 @@ enum LocalSleepEstimator {
             while index < epochs.count && !supported[index] { index += 1 }
             guard begin > 0, index < epochs.count, index-begin <= 3,
                   epochs[begin..<index].allSatisfy({$0.quiet && $0.meanDBFS > -80 && $0.meanDBFS < -12}),
-                  !voices.contains({$0.start < epochs[index].start && $0.end > epochs[begin].start}) else {continue}
+                  !voices.contains(where: {$0.start < epochs[index].start && $0.end > epochs[begin].start}) else {continue}
             let block = Array(epochs[(begin-1)...index])
             guard zip(block,block.dropFirst()).allSatisfy({abs($1.start.timeIntervalSince($0.end)) < 0.1}) else {continue}
             bridged.formUnion(begin..<index)
