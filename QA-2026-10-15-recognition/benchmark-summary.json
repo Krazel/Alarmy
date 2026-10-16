@@ -1,0 +1,43 @@
+{
+  "clean": {
+    "count": 22,
+    "correct": 22,
+    "errors": []
+  },
+  "quiet-minus18dB": {
+    "count": 22,
+    "correct": 20,
+    "errors": [
+      {
+        "file": "breath-265040.mp3",
+        "expected": "breath",
+        "predicted": "other",
+        "confidence": 0
+      },
+      {
+        "file": "breath-274769.mp3",
+        "expected": "breath",
+        "predicted": "other",
+        "confidence": 0
+      }
+    ]
+  },
+  "real-fan-10dB": {
+    "count": 22,
+    "correct": 20,
+    "errors": [
+      {
+        "file": "snore-577384.mp3",
+        "expected": "snore",
+        "predicted": "breath",
+        "confidence": 0.9795559048652649
+      },
+      {
+        "file": "breath-233260.mp3",
+        "expected": "breath",
+        "predicted": "snore",
+        "confidence": 0.8988887071609497
+      }
+    ]
+  }
+}

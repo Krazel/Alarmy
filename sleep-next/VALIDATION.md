@@ -1,5 +1,17 @@
 # Validación de AlarmaNext
 
+## Candidata 1.5.1 (1) — verificada el 16/10/2026
+
+Corrección tras reporte físico de duración de sueño escasa y clips sin etiqueta.
+Fuente `3cc7ab2`: **26/26 pruebas**, cero fallos/omitidas, Debug y Release iPhone
+sin firma correctos. [CI 38894811965](https://github.com/Krazel/Alarmy/actions/runs/38894811965).
+Cola serial independiente de la vista, reintentos limitados, borrado persistente
+de desconocidos, categorías reconocidas y estimador v2 con cobertura mínima.
+[QA y capturas](../QA-2026-10-15-recognition/README.md) · [Método v2](../research/local-estimator-v2.json).
+Banco repetido de 22 fuentes/66 variantes: 22/22 limpio, 20/22 bajo volumen,
+20/22 con ventilador. No acredita precisión nocturna ni fisiológica.
+Sin nueva subida: TestFlight interno vigente 1.5 (1).
+
 ## Candidata 1.5 (build 1) — 14 de octubre de 2026
 
 Fuente de aplicación `132d279`; ajuste de prueba `d6700fc`. Análisis acústico propio y local, con hipótesis

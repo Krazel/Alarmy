@@ -42,3 +42,8 @@ de 1.5 a TestFlight. Los tests sintéticos no acreditan precisión fisiológica.
 El 14/10, después de validar 1.5 (1), el usuario pide «subelo a test»: autorizada
 la subida al mismo TestFlight interno, con el entorno y firma temporal existentes.
 Mantener las notas ES/EN explícitas sobre estimación experimental local.
+
+El 15/10 se solicita corregir estimación y reconocimiento, eliminar
+los desconocidos y no conservarlos en noches nuevas. Analizar antes de descartar;
+un fallo o análisis pendiente no equivale a un sonido desconocido. Mantener todo
+local. Candidata 1.5.1 (1); este encargo no incluye una nueva subida a TestFlight.

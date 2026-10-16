@@ -1,4 +1,29 @@
-# Estado de Alarma — 14-10-2026
+# Estado de Alarma — 16-10-2026
+
+## Candidata 1.5.1 (1) — corrección tras la noche del usuario
+
+Corrección de totales parciales y resultados acústicos desconocidos.
+Las pruebas usan datos sintéticos y corpus público; no contienen audio personal.
+
+Cola local independiente de la pantalla, serializada, con reintentos limitados
+por activación. Los completados sin categoría se eliminan; pendientes y fallos
+se muestran aparte y se reintentan. Lista/recuentos solo de sonidos reconocidos.
+El modelo Apple y umbral se conservan; revisión 3 fuerza revisión de resultados
+automáticos antiguos. La limpieza se aplicará cuando se instale y abra la candidata.
+
+Estimador experimental v2: tolera hasta 90 s de señal débil registrada entre
+patrones respiratorios, sin rellenar huecos reales ni generar profundo/REM con
+los tramos puente. Total nocturno solo con >=90 % de cobertura clasificada;
+el diario mantiene los intervalos parciales y explica cuándo faltan datos.
+No es validación fisiológica ni garantía de acierto en una noche física.
+
+Validación final correcta: 26/26, cero fallos/omitidas, Debug y Release iPhone,
+fuente `3cc7ab2`:
+https://github.com/Krazel/Alarmy/actions/runs/38894811965 .
+Historial/evidencias: QA-2026-10-15-recognition. Banco repetido: 22/22 limpio,
+20/22 tenue y 20/22 con ventilador, sin mejora acreditada del modelo.
+Registro privado del producto actualizado y verificado; comprobante solo local.
+**No subida a TestFlight en este encargo**; sigue disponible 1.5 (1) interno.
 
 ## Entrega TestFlight interno 1.5 (1) — verificada por API
 

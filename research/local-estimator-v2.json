@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "date": "2026-10-15",
+  "previousMethod": "local-estimator-v1.json",
+  "reason": "Avoid presenting sparse classified intervals as a whole-night total; tolerate bounded, recorded short weak-signal intervals.",
+  "processing": "On-device only; same envelope features and physiological limitations as v1.",
+  "changes": {
+    "shortWeakSignal": "Bridge at most 3 contiguous recorded 30-second quiet epochs bounded on both sides by respiratory evidence; reject speech, capture gaps and invalid levels.",
+    "stageSafeguard": "Bridged epochs do not count toward stable/variable evidence for deep/REM hypotheses.",
+    "total": "Expose a whole-night sleep estimate only when at least 90% of in-bed time has classified intervals. Otherwise show partial evidence, not a misleading whole-night duration.",
+    "historical": "Recompute from retained v1/v2 numeric features. Cannot reconstruct missing observations or recover deleted audio."
+  },
+  "limits": [
+    "Experimental heuristic, not clinically validated.",
+    "No extrapolation through capture gaps or long unsupported intervals.",
+    "May confuse awake breathing, companions or rhythmic noise.",
+    "Synthetic regression tests verify logic, not real-night accuracy."
+  ]
+}
