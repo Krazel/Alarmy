@@ -47,3 +47,7 @@ El 15/10 se solicita corregir estimación y reconocimiento, eliminar
 los desconocidos y no conservarlos en noches nuevas. Analizar antes de descartar;
 un fallo o análisis pendiente no equivale a un sonido desconocido. Mantener todo
 local. Candidata 1.5.1 (1); este encargo no incluye una nueva subida a TestFlight.
+
+El 16/10 el usuario pide «sube»: autorizada la candidata validada 1.5.1 (1)
+al mismo TestFlight interno, con la firma temporal y el entorno existentes.
+Conservar recibos privados solo en almacenamiento local excluido de Git.
