@@ -1,6 +1,19 @@
 # Estado de Alarma — 16-10-2026
 
-## Candidata 1.5.1 (1) — corrección tras la noche del usuario
+## TestFlight interno 1.5.1 (1) — entrega verificada el 16/10
+
+Autorización «sube». Apple confirma `VALID` / `IN_BETA_TESTING`, mismo grupo
+interno, notas ES/EN guardadas y releídas. Código idéntico al validado con
+26/26 pruebas; fuente de entrega `c98e1ee`. Firma/subida correctas:
+https://github.com/Krazel/Alarmy/actions/runs/38896956945 .
+Siete secretos temporales eliminados y entorno vacío. Recibos privados locales;
+evidencia técnica pública en QA-2026-10-16-TestFlight.
+Incluye la corrección descrita debajo. Pendiente contrastar una nueva noche
+física; estimación experimental sin precisión fisiológica acreditada.
+Registro privado del producto actualizado y releído: versión 1.5.1 (1),
+TestFlight interno, resto de tracking e historial conservados.
+
+## Historial de implementación: candidata 1.5.1 (1) — corrección tras la noche del usuario
 
 Corrección de totales parciales y resultados acústicos desconocidos.
 Las pruebas usan datos sintéticos y corpus público; no contienen audio personal.

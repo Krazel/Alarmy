@@ -1,0 +1,18 @@
+{
+  "version": "1.5.1",
+  "build": "1",
+  "source": "c98e1eed3637959c502df2762e057b1f4fa435f5",
+  "run": "38896956945",
+  "purpose": "TestFlight",
+  "uploadAccepted": true,
+  "sha256": "532ead2666dd0e1325af80c8cdc0841742d00baa008ec571f38e7712beaa7b80",
+  "verifiedDate": "2026-10-16",
+  "processingState": "VALID",
+  "internalBuildState": "IN_BETA_TESTING",
+  "distribution": "Internal TestFlight",
+  "validationRun": 38894811965,
+  "passedTests": 26,
+  "sameValidatedApp": true,
+  "temporarySecretsRemoved": true,
+  "privateReceipts": "Retained locally outside Git"
+}

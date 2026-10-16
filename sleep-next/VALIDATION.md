@@ -10,7 +10,8 @@ de desconocidos, categorías reconocidas y estimador v2 con cobertura mínima.
 [QA y capturas](../QA-2026-10-15-recognition/README.md) · [Método v2](../research/local-estimator-v2.json).
 Banco repetido de 22 fuentes/66 variantes: 22/22 limpio, 20/22 bajo volumen,
 20/22 con ventilador. No acredita precisión nocturna ni fisiológica.
-Sin nueva subida: TestFlight interno vigente 1.5 (1).
+Entrega posterior autorizada el 16/10: **TestFlight interno 1.5.1 (1)**,
+VALID / IN_BETA_TESTING. [Recibo público](../QA-2026-10-16-TestFlight/README.md).
 
 ## Candidata 1.5 (build 1) — 14 de octubre de 2026
 
