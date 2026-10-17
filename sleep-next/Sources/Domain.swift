@@ -10,6 +10,8 @@ struct AlarmPlan: Codable, Equatable {
     var hour = 7
     var minute = 30
     var sounds = ["aurora", "lumen", "brisa"]
+    var shuffle: Bool?
+    var shuffled: Bool { shuffle ?? (sounds.count > 1) }
     var gradual = true
     var snoozeMinutes = 5
     var motionSnooze = true
@@ -21,6 +23,7 @@ struct AlarmPlan: Codable, Equatable {
     }
     func sound(excluding previous: String?) -> String {
         let choices = sounds.isEmpty ? ["aurora"] : sounds
+        if !shuffled { return choices[0] }
         let remaining = choices.filter { $0 != previous }
         return (remaining.isEmpty ? choices : remaining).randomElement() ?? "aurora"
     }

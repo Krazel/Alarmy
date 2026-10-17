@@ -38,38 +38,52 @@ struct NightScreen: View {
     private let ivory = Color(red:0.96,green:0.94,blue:0.87)
     var body: some View {
         ZStack {
-            NightLandscape()
+            if store.ringing {
+                GeometryReader { geo in
+                    Image("DawnArtwork").resizable().scaledToFill().frame(width: geo.size.width, height: geo.size.height).clipped()
+                        .overlay(LinearGradient(colors: [.black.opacity(0.25), .black.opacity(0.15), .black.opacity(0.75)], startPoint: .top, endPoint: .bottom))
+                }.ignoresSafeArea().accessibilityHidden(true)
+            } else { NightLandscape() }
             GeometryReader { geo in
-                VStack(spacing: 8) {
-                    TimelineView(.periodic(from:.now,by:1)) { context in
-                        Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM:.omitted)).minute(.twoDigits).locale(store.words.locale)))
-                            .font(.system(size:76,weight:.light,design:.rounded)).monospacedDigit()
+                VStack(spacing: 12) {
+                    Spacer(minLength: 12)
+                    if store.ringing { Text(store.words("goodMorning")).font(.system(size: 28, design: .serif)) }
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).locale(store.words.locale)))
+                            .font(.system(size: 84, weight: .regular, design: .serif)).monospacedDigit()
                             .lineLimit(1).minimumScaleFactor(0.6).accessibilityIdentifier("night-current-time")
                             .accessibilityLabel(store.words("currentTime"))
-                            .accessibilityValue(context.date.formatted(date:.omitted,time:.shortened))
                     }
-                    if let night = store.archive.active {
+                    if let night = store.archive.active, !store.ringing {
                         if night.hasAlarm {
                             Button { editingTime = true } label: {
-                                HStack(spacing:7) {
-                                    Text(alarmLabel(night)).underline(color:ivory.opacity(0.55))
-                                    Image(systemName:"chevron.down").font(.system(size:10,weight:.semibold))
-                                }.font(.system(size:20,design:.serif)).lineLimit(1).minimumScaleFactor(0.65)
-                                    .frame(minHeight:44).contentShape(Rectangle())
-                            }.buttonStyle(.plain).disabled(store.ringing)
-                                .accessibilityIdentifier("night-edit-alarm").accessibilityHint(store.words("changeAlarmTime"))
-                        } else { Text(store.words("analysis")).font(.system(size:20,design:.serif)).frame(minHeight:44) }
+                                HStack(spacing: 7) {
+                                    Text(alarmLabel(night)).underline(color: ivory.opacity(0.55))
+                                    Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+                                }.font(.system(size: 19)).lineLimit(1).minimumScaleFactor(0.65).frame(minHeight: 44)
+                            }.buttonStyle(.plain).accessibilityIdentifier("night-edit-alarm").accessibilityHint(store.words("changeAlarmTime"))
+                        } else { Text(store.words("analysis")).font(.system(size: 19)).frame(minHeight: 44) }
                     }
-                    Spacer()
-                }.padding(.horizontal,24).padding(.top,20).frame(width:geo.size.width)
-                NightRibbon(audio:store.audio).frame(width:max(0,geo.size.width-36),height:100)
-                    .position(x:geo.size.width/2,y:geo.size.height*0.85)
-                if store.ringing {
-                    Button { Task { await store.snooze() } } label: {
-                        Text(store.words("snooze") + " · \(store.archive.plan.snoozeMinutes) min")
-                            .padding(16).background(.black.opacity(0.25),in:Capsule())
-                    }.position(x:geo.size.width/2,y:geo.size.height*0.9)
-                }
+                    Spacer(minLength: 24)
+                    if !store.ringing { NightRibbon(audio: store.audio).frame(height: 100) }
+                    Spacer(minLength: 24)
+                    if store.ringing {
+                        if let night = store.archive.active {
+                            HStack(spacing: 14) {
+                                Image("DawnArtwork").resizable().scaledToFill().frame(width: 58, height: 58).clipShape(RoundedRectangle(cornerRadius: 12))
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(store.archive.tones.first { $0.id == night.soundID }?.name ?? night.soundID.capitalized).font(.system(size: 20, design: .serif))
+                                    Text(store.words("music")).font(.caption).opacity(0.7)
+                                }
+                                Spacer()
+                            }.padding(.bottom, 18)
+                        }
+                        Button { Task { await store.snooze() } } label: {
+                            Text(store.words("snooze") + " · \(store.archive.plan.snoozeMinutes) min")
+                                .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 20).background(.ultraThinMaterial, in: Capsule())
+                        }.accessibilityIdentifier("snooze-night")
+                    }
+                }.padding(.horizontal, 30).padding(.bottom, 10).frame(width: geo.size.width, height: geo.size.height)
             }
         }.foregroundStyle(ivory)
             .safeAreaInset(edge:.bottom) {
@@ -79,7 +93,7 @@ struct NightScreen: View {
             .sheet(isPresented:$editingTime) {
                 if let night = store.archive.active {
                     ActiveAlarmEditor(date:night.editableAlarmTime)
-                        .presentationDetents([.height(410),.large]).presentationDragIndicator(.visible)
+                        .presentationDetents([.height(500),.large]).presentationDragIndicator(.visible)
                 }
             }
             .onChange(of:store.ringing) { ringing in if ringing { editingTime = false } }
@@ -129,16 +143,16 @@ struct ActiveAlarmEditor: View {
     var body: some View {
         NavigationStack {
             VStack(spacing:8) {
+                PageHeading(title: store.words("alarmTime"), subtitle: store.words("tonightOnly"))
                 DatePicker(store.words("wake"),selection:$date,displayedComponents:.hourAndMinute)
                     .datePickerStyle(.wheel).labelsHidden().accessibilityIdentifier("active-alarm-time")
                 Text(next.formatted(.dateTime.weekday(.wide).day().month().hour().minute().locale(store.words.locale)))
                     .font(.subheadline).accessibilityIdentifier("active-alarm-date")
-                Text(store.words("tonightOnly")).font(.caption).foregroundStyle(.secondary)
                 if store.archive.active?.hasActiveSmartWindow == true { Text(store.words("activeWindowDeadline")).font(.caption).foregroundStyle(.secondary) }
                 if saving { ProgressView() }
                 Spacer(minLength:0)
             }.padding(.horizontal,24).padding(.top,12)
-                .navigationTitle(store.words("alarmTime")).navigationBarTitleDisplayMode(.inline)
+                .background(Color.paper).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement:.cancellationAction) { Button(store.words("cancel")) { dismiss() }.accessibilityIdentifier("cancel-active-alarm") }
                     ToolbarItem(placement:.confirmationAction) {
@@ -157,7 +171,7 @@ struct ActiveAlarmEditor: View {
                     if store.writeFailed { Button(store.words("retrySave")) { Task { await store.retrySaving() } } }
                     Button(store.words("done")) { store.error = nil }
                 } message: { Text(store.error ?? "") }
-        }.preferredColorScheme(.dark).tint(Color(red:0.96,green:0.94,blue:0.87))
+        }.preferredColorScheme(.light).foregroundStyle(Color.ink).tint(.rust)
     }
 }
 
@@ -171,9 +185,9 @@ struct SwipeToFinish: View {
             ZStack(alignment:.bottom) {
                 Color.clear
                 Image(systemName:"chevron.up").font(.system(size:13,weight:.medium))
-                    .frame(width:28,height:28).background(.white.opacity(0.12),in:Circle())
+                    .frame(width:28,height:28)
                     .frame(width:48,height:48).offset(y:-lift)
-            }.frame(width:100,height:112).contentShape(Rectangle())
+            }.frame(width:100,height:80).contentShape(Rectangle())
                 .highPriorityGesture(DragGesture(minimumDistance:8)
                     .onChanged { value in guard !submitted else { return }; lift = min(80,max(0,-value.translation.height)) }
                     .onEnded { value in

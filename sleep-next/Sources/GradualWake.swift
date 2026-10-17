@@ -13,13 +13,6 @@ enum GradualWake {
         return Float(pow(10, (-40 + 40 * progress) / 20))
     }
 
-    static func brightness(wake: Date, now: Date, minutes: Int, original: Double) -> Double {
-        guard minutes > 0 else { return original }
-        let progress = max(0, min(1, 1 - wake.timeIntervalSince(now) / (Double(minutes) * 60)))
-        let start = min(original, 0.08)
-        return start + (1 - start) * progress
-    }
-
     static func render(source: URL, destination: URL) throws {
         let input = try AVAudioFile(forReading: source, commonFormat: .pcmFormatFloat32, interleaved: false)
         let format = input.processingFormat

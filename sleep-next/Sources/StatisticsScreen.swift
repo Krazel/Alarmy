@@ -56,31 +56,46 @@ struct StatisticsScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment:.leading,spacing:14) {
-                    if let first = nights.first, let last = nights.last {
-                        Text((first.end ?? first.checkpoint).formatted(.dateTime.day().month(.abbreviated).locale(words.locale)) + " – " + (last.end ?? last.checkpoint).formatted(.dateTime.day().month(.abbreviated).locale(words.locale)))
-                            .font(.subheadline).frame(maxWidth:.infinity)
-                    }
-                    Picker(words("period"),selection:$days) { ForEach([7,30,90,0],id:\.self) { n in Text(n == 0 ? words("allTime") : "\(n) " + words("days")).tag(n) } }.pickerStyle(.segmented).accessibilityIdentifier("statistics-period")
+                    PageHeading(title: words("statistics"))
+                    Picker(words("period"), selection: $days) {
+                        Text(words("weekPeriod")).tag(7); Text(words("monthPeriod")).tag(30); Text(words("yearPeriod")).tag(365); Text(words("allTime")).tag(0)
+                    }.pickerStyle(.segmented).accessibilityIdentifier("statistics-period")
                     Picker(words("sessionType"),selection:$showNaps) { Text(words("nightSession")).tag(false); Text(words("nap")).tag(true) }.pickerStyle(.segmented).accessibilityIdentifier("statistics-session-type")
                     if store.journalPreview { Text(words("exampleOnly")).font(.caption).foregroundStyle(Color.rust) }
                     if nights.isEmpty { Text(words("noNight")).padding(.vertical,32) }
                     else {
                         overview
-                        if !showNaps { rhythms }
-                        stagesCard
-                        HStack(alignment:.top,spacing:12) {
-                            statTile("latencyHealth",value:DiaryPresentation.duration(average(nights.map { NightMetrics(nights:[$0]).sleepLatency(estimates[$0.id] ?? []) })),symbol:"clock")
-                            statTile("healthAwakenings",value:average(nights.map { SleepContinuity(nights:[$0],stages:estimates[$0.id] ?? []).awakenings.map(Double.init) }).map { String(format:"%.1f",$0) } ?? "—",symbol:"moon.zzz")
+                        HStack(alignment: .top, spacing: 12) {
+                            statTile("bedRegularity", value: nights.count > 1 ? "± " + DiaryPresentation.duration(SleepMath.clockStats(nights.map { $0.analysisSession.start }).map { $0.spread * 60 }) : "—", symbol: "chart.bar.fill")
+                            statTile("inBed", value: DiaryPresentation.duration(average(nights.map { NightMetrics(nights: [$0]).inBed })), symbol: "bed.double")
                         }
-                        feelings
-                        Button { sounds = true } label: { SoundSummaryRow(nights:nights,words:words) }.buttonStyle(.plain).accessibilityIdentifier("statistics-sounds")
-                        ExtraStatistics(nights:nights,stages:estimates)
-                        DisclosureGroup(words("acousticDetails")) { details.padding(.top,14) }
+                        if !showNaps {
+                            NavigationLink { ScrollView { rhythms.padding(20) }.background(Color.paper).navigationTitle(words("scheduleLink")) } label: {
+                                ReviewLink(title: words("scheduleLink"), symbol: "clock", subtitle: words("scheduleSubtitle"))
+                            }.buttonStyle(.plain)
+                        }
+                        Button { sounds = true } label: { ReviewLink(title: words("sounds"), symbol: "waveform", subtitle: words("soundSubtitle")) }.buttonStyle(.plain).accessibilityIdentifier("statistics-sounds")
+                        NavigationLink {
+                            ScrollView { ExtraStatistics(nights: nights, stages: estimates).padding(20) }.background(Color.paper).navigationTitle(words("habits"))
+                        } label: { ReviewLink(title: words("habits"), symbol: "leaf", subtitle: words("habitsSubtitle")) }.buttonStyle(.plain)
+                        NavigationLink {
+                            ScrollView {
+                                VStack(spacing: 16) {
+                                    stagesCard
+                                    HStack(alignment: .top, spacing: 12) {
+                                        statTile("latencyHealth",value:DiaryPresentation.duration(average(nights.map { NightMetrics(nights:[$0]).sleepLatency(estimates[$0.id] ?? []) })),symbol:"clock")
+                                        statTile("healthAwakenings",value:average(nights.map { SleepContinuity(nights:[$0],stages:estimates[$0.id] ?? []).awakenings.map(Double.init) }).map { String(format:"%.1f",$0) } ?? "—",symbol:"moon.zzz")
+                                    }
+                                    feelings
+                                    details
+                                }.padding(20)
+                            }.background(Color.paper).navigationTitle(words("sleepDetails"))
+                        } label: { ReviewLink(title: words("sleepDetails"), symbol: "chart.xyaxis.line", subtitle: words("moreStatistics")) }.buttonStyle(.plain).accessibilityIdentifier("statistics-stage-details")
                         Text("\(nights.count) · " + words("nights")).font(.caption).foregroundStyle(Color.ink.opacity(0.5)).frame(maxWidth:.infinity)
                     }
                 }.padding(20)
             }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust)
-                .navigationTitle(words("statistics")).navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement:.confirmationAction) { Button { dismiss() } label: { Image(systemName:"xmark") }.accessibilityIdentifier("close-statistics").accessibilityLabel(words("done")) } }
                 .task(id:"\(days)-\(showNaps)-\(LocalSleepEstimator.cacheKey(nights))") { await loadAnalysis() }
                 .sheet(isPresented:$sounds) { SoundsScreen(sessionIDs:nights.map(\.id)) }
@@ -97,8 +112,7 @@ struct StatisticsScreen: View {
     private var overview: some View {
         PaperCard(padding:18) {
             VStack(alignment:.leading,spacing:12) {
-                Text(words("averages")).font(.system(size:23,design:.serif))
-                Text(DiaryPresentation.duration(meanSleep)).font(.system(size:36,design:.serif)).accessibilityIdentifier("statistics-sleep")
+                Text(DiaryPresentation.duration(meanSleep)).font(.system(size:44,design:.serif)).accessibilityIdentifier("statistics-sleep")
                 Text(words("meanSleep")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                 if loading { ProgressView() }
                 if !estimatedNights.isEmpty {
@@ -106,16 +120,7 @@ struct StatisticsScreen: View {
                     if let seconds = NightMetrics(nights:[night]).sleepEstimate(estimates[night.id] ?? []) {
                         BarMark(x:.value(words("nights"),night.end ?? night.checkpoint,unit:.day),y:.value(words("asleepShort"),seconds/3600)).foregroundStyle(DiaryPresentation.color("core")).cornerRadius(4)
                     }
-                }.frame(height:125).chartYScale(domain:0...max(8,nights.map { NightMetrics(nights:[$0]).sleepEstimate(estimates[$0.id] ?? []) ?? 0 }.max().map {$0/3600} ?? 8)).chartYAxisLabel("h").accessibilityLabel(words("meanSleep"))
-                }
-                HStack {
-                    CompactMetric(title:words("meanBed"),value:DiaryPresentation.duration(average(nights.map {NightMetrics(nights:[$0]).inBed})))
-                    Divider()
-                    CompactMetric(title:words("usualRating"),value:MorningFeeling.allCases.max { feelingCount($0) < feelingCount($1) }.flatMap { feelingCount($0) > 0 ? words($0.key) : nil } ?? "—")
-                }.fixedSize(horizontal:false,vertical:true)
-                if !showNaps {
-                MetricRow(title:words("sleepGoal"),value:SleepMath.duration(Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60))
-                MetricRow(title:words("goalDifference"),value:meanGoalSleep.map { ($0 >= Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60 ? "+ " : "− ") + SleepMath.duration(abs($0-Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60)) } ?? "—")
+                }.frame(height:210).chartYScale(domain:0...max(8,nights.map { NightMetrics(nights:[$0]).sleepEstimate(estimates[$0.id] ?? []) ?? 0 }.max().map {$0/3600} ?? 8)).chartYAxisLabel("h").accessibilityLabel(words("meanSleep"))
                 }
                 Text("\(estimatedNights.count) / \(nights.count) · " + words("healthNights")).font(.caption2).foregroundStyle(Color.ink.opacity(0.5))
                 if estimatedNights.isEmpty { Text(words("compactHealthEmpty")).font(.caption).foregroundStyle(Color.ink.opacity(0.55)) }

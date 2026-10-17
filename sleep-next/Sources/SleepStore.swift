@@ -259,7 +259,6 @@ final class SleepStore: ObservableObject {
             Task { await self.pauseCapture(reason: "recordDenied") }
         }
         guard night.hasAlarm, UIApplication.shared.applicationState == .active else { return }
-        audio.updateLight(wake: night.wake, minutes: archive.plan.lightMinutes)
         if Date() >= night.wake && !ringing && !audioInterrupted {
             ringing = true
             Task { await self.ring(night) }

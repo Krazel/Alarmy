@@ -19,6 +19,7 @@ struct JournalCalendar: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 22) {
+                    PageHeading(title: store.words("calendar"))
                     HStack {
                         Button { move(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.accessibilityLabel(store.words("previousMonth"))
                         Spacer()
@@ -34,7 +35,7 @@ struct JournalCalendar: View {
                             if let day = dates[index] {
                                 let selected = Calendar.current.isDate(day, inSameDayAs: store.selectedDay)
                                 let future = Calendar.current.startOfDay(for: day) > Calendar.current.startOfDay(for: Date())
-                                Button { store.selectedDay = day; dismiss() } label: {
+                                Button { store.selectedDay = day } label: {
                                     VStack(spacing: 3) {
                                         Text(day.formatted(.dateTime.day())).font(.system(size: 15, weight: selected ? .semibold : .regular))
                                         DayFeeling(feeling: store.page(day).feeling).frame(width: 22, height: 22)
@@ -48,17 +49,27 @@ struct JournalCalendar: View {
                         }
                     }
                     Text(store.words("calendarFeelingHint")).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
-                    HStack(alignment: .top, spacing: 3) {
+                    PaperCard(padding: 12) { HStack(alignment: .top, spacing: 3) {
                         ForEach(MorningFeeling.allCases) { feeling in
                             VStack(spacing: 6) {
                                 FeelingFace(feeling: feeling).frame(width: 32, height: 32)
                                 Text(store.words(feeling.key)).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.7)
                             }.frame(maxWidth: .infinity)
                         }
+                    } }
+                    PaperCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text(store.selectedDay.formatted(.dateTime.day().month(.wide).locale(store.words.locale))).font(.system(size: 24, design: .serif))
+                                Spacer(); DayFeeling(feeling: store.page(store.selectedDay).feeling).frame(width: 38, height: 38)
+                            }
+                            if !store.page(store.selectedDay).text.isEmpty { Text(store.page(store.selectedDay).text).font(.subheadline).lineLimit(3) }
+                            Button { dismiss() } label: { Label(store.words("openDay"), systemImage: "chevron.right") }.accessibilityIdentifier("open-calendar-day")
+                        }
                     }
                 }.padding(20)
             }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust)
-                .navigationTitle(store.words("calendar")).navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { dismiss() }.accessibilityIdentifier("close-journal-calendar") } }
         }
     }

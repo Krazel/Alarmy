@@ -58,6 +58,7 @@ struct CompactMetric: View {
 struct StageChart: View {
     let stages: [SleepStage]
     let words: Words
+    var chartHeight: CGFloat = 50
     @State private var selected: SleepStage?
     var body: some View {
         VStack(spacing:4) {
@@ -67,7 +68,7 @@ struct StageChart: View {
                 let total = end.timeIntervalSince(start)
                 for stage in stages {
                     let level: CGFloat = stage.key == "awake" ? 0 : (stage.key == "rem" ? 1 : (stage.key == "deep" ? 3 : 2))
-                    let rect = CGRect(x:stage.start.timeIntervalSince(start)/total*size.width,y:level*12,width:stage.end.timeIntervalSince(stage.start)/total*size.width,height:13)
+                    let rect = CGRect(x:stage.start.timeIntervalSince(start)/total*size.width,y:level*(size.height/4),width:stage.end.timeIntervalSince(stage.start)/total*size.width,height:size.height/4+1)
                     context.fill(Path(roundedRect:rect,cornerRadius:2),with:.color(DiaryPresentation.color(stage.key)))
                 }
             }.contentShape(Rectangle()).gesture(DragGesture(minimumDistance:0).onChanged { gesture in
@@ -75,7 +76,7 @@ struct StageChart: View {
                 let date = start.addingTimeInterval(min(1,max(0,gesture.location.x/geometry.size.width))*end.timeIntervalSince(start))
                 selected = stages.first { $0.start <= date && $0.end > date }
             })
-            }.frame(height:50).accessibilityLabel(words("localEstimate"))
+            }.frame(height:chartHeight).accessibilityLabel(words("localEstimate"))
             if let selected {
                 Text(words(selected.key) + " · " + selected.start.formatted(date:.omitted,time:.shortened) + "–" + selected.end.formatted(date:.omitted,time:.shortened)).font(.caption2)
             }

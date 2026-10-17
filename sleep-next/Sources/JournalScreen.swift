@@ -103,7 +103,11 @@ struct JournalScreen: View {
         let stages = SleepContinuity(nights:nights,stages:self.stages).stages
         return PaperCard(padding:16) {
             VStack(alignment:.leading,spacing:10) {
-                Text(store.words("overview")).font(.system(size:22,design:.serif)).accessibilityIdentifier("night-summary-title")
+                HStack {
+                    Text(store.words("overview")).font(.system(size:22,design:.serif)).accessibilityIdentifier("night-summary-title")
+                    Spacer()
+                    if !nights.isEmpty { Button { details = true } label: { Image(systemName: "chevron.right").font(.caption).frame(width: 30, height: 30) }.accessibilityIdentifier("night-details").accessibilityLabel(store.words("nightDetails")) }
+                }
                 if nights.isEmpty {
                     Text(store.words("noNightHint")).font(.subheadline).foregroundStyle(Color.ink.opacity(0.6))
                 } else {
@@ -124,7 +128,6 @@ struct JournalScreen: View {
                         Text(store.words("stageCoverage") + ": \(Int(SleepContinuity(nights:nights,stages:stages).coverage*100))%").font(.caption2).foregroundStyle(Color.ink.opacity(0.6))
                         Text(store.words("localEstimate")).font(.system(size:10)).foregroundStyle(Color.ink.opacity(0.5)).frame(maxWidth:.infinity,alignment:.trailing)
                     }
-                    Button(store.words("nightDetails")) { details = true }.font(.caption).accessibilityIdentifier("night-details")
                     if nights.contains(where: \.interrupted) { Text(store.words("interrupted")).font(.caption2).foregroundStyle(Color.rust) }
                 }
             }

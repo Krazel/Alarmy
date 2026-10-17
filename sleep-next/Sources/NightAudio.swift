@@ -23,6 +23,7 @@ private final class SystemWakeScreen: WakeScreenControl {
 @MainActor
 final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var playing: String?
+    @Published var playbackPaused = false
     private var player: AVAudioPlayer?
     @Published var captureState = "recordOff"
     @Published var waveform: [Double] = []
@@ -44,8 +45,6 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
     var onFailure: ((Error) -> Void)?
     var onDeadline: (() -> Void)?
     private let motion = CMMotionManager()
-    private var previousBrightness: CGFloat?
-    private var previousIdle: Bool?
     private let screen: any WakeScreenControl
     init(screen: (any WakeScreenControl)? = nil) {
         self.screen = screen ?? SystemWakeScreen()
@@ -152,9 +151,15 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
 
+    func togglePause() {
+        guard let player else { return }
+        if player.isPlaying { player.pause(); playbackPaused = true }
+        else { playbackPaused = !player.play() }
+    }
     func seek(to seconds: Double) { guard let player else { return }; player.currentTime = max(0, min(player.duration, seconds)); playbackTime = player.currentTime }
     func stopPlayback() {
         playbackTimer?.invalidate(); playbackTimer = nil
+        playbackPaused = false
         player?.stop(); player = nil; playing = nil; playbackTime = 0; playbackDuration = 0
         if !hasCapture { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
     }
@@ -170,20 +175,10 @@ final class NightAudio: NSObject, ObservableObject, AVAudioPlayerDelegate {
             if sqrt(a.x*a.x + a.y*a.y + a.z*a.z) > 1.65 { self?.motion.stopAccelerometerUpdates(); action() }
         }
     }
-    func updateLight(wake: Date, minutes: Int) {
-        guard minutes > 0 else { restoreLight(); return }
-        if previousBrightness == nil { previousBrightness = screen.brightness; previousIdle = screen.idleDisabled }
-        screen.idleDisabled = true
-        screen.brightness = CGFloat(GradualWake.brightness(wake: wake, now: Date(), minutes: minutes, original: Double(previousBrightness ?? 0.08)))
-    }
-    func restoreScreen() {
-        motion.stopAccelerometerUpdates()
-        restoreLight()
-    }
-    private func restoreLight() {
-        if let previousBrightness { screen.brightness = previousBrightness }; previousBrightness = nil
-        if let previousIdle { screen.idleDisabled = previousIdle }; previousIdle = nil
-    }
+    // Sunrise light is suspended. Legacy settings must never change brightness
+    // or prevent the screen from locking, including after restoring an old night.
+    func updateLight(wake: Date, minutes: Int) {}
+    func restoreScreen() { motion.stopAccelerometerUpdates() }
     func stopAll() async {
         await stopRecording(reason: "recordOff"); stopPlayback(); restoreScreen()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)

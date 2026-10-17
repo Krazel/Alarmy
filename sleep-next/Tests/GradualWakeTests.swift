@@ -52,42 +52,22 @@ final class GradualWakeTests: XCTestCase {
         XCTAssertEqual(fallback, name)
     }
 
-    func testSunriseRisesEvenWhenInitialBrightnessWasFull() {
-        let wake = Date(timeIntervalSince1970: 1000)
-        for original in [0.0,0.2,1.0] {
-            let start = GradualWake.brightness(wake: wake, now: wake.addingTimeInterval(-600), minutes: 5, original: original)
-            let middle = GradualWake.brightness(wake: wake, now: wake.addingTimeInterval(-150), minutes: 5, original: original)
-            let end = GradualWake.brightness(wake: wake, now: wake, minutes: 5, original: original)
-            XCTAssertLessThanOrEqual(start, 0.08); XCTAssertGreaterThan(middle, start)
-            XCTAssertGreaterThan(end, middle); XCTAssertEqual(end, 1)
-            XCTAssertEqual(GradualWake.brightness(wake: wake, now: wake, minutes: 0, original: original), original)
+    @MainActor
+    func testDisabledSunriseNeverChangesBrightnessOrAutoLock() {
+        let screen = TestWakeScreen(), audio = NightAudio(screen: screen)
+        for original in [0.0, 0.4, 1.0] {
+            screen.brightness = original
+            for minutes in [0,3,5,10,15] {
+                for offset in [-600.0,0,600] {
+                    audio.updateLight(wake: Date().addingTimeInterval(offset), minutes: minutes)
+                    audio.restoreScreen()
+                    XCTAssertEqual(screen.brightness, original)
+                    XCTAssertFalse(screen.idleDisabled)
+                }
+            }
         }
     }
-
-    @MainActor
-    func testSunriseRestoresBrightnessAndIdleSetting() {
-        let screen = TestWakeScreen(), audio = NightAudio(screen: screen)
-        let original = screen.brightness, idle = screen.idleDisabled
-        audio.updateLight(wake: Date().addingTimeInterval(600), minutes: 5)
-        XCTAssertEqual(screen.brightness, 0.08, accuracy: 0.001)
-        XCTAssertTrue(screen.idleDisabled)
-        audio.updateLight(wake: Date().addingTimeInterval(150), minutes: 5)
-        XCTAssertEqual(screen.brightness, 0.54, accuracy: 0.01)
-        audio.updateLight(wake: Date().addingTimeInterval(-1), minutes: 5)
-        XCTAssertEqual(screen.brightness, 1)
-        audio.restoreScreen()
-        XCTAssertEqual(screen.brightness, original)
-        XCTAssertEqual(screen.idleDisabled, idle)
-        // Repeated restore must not overwrite a later user brightness change.
-        screen.brightness = 0.4; audio.restoreScreen()
-        XCTAssertEqual(screen.brightness, 0.4)
-        audio.updateLight(wake: Date(), minutes: 5)
-        audio.updateLight(wake: Date(), minutes: 0)
-        XCTAssertEqual(screen.brightness, 0.4)
-        XCTAssertEqual(screen.idleDisabled, idle)
-    }
 }
-
 @MainActor
 private final class TestWakeScreen: WakeScreenControl {
     var brightness: CGFloat = 0.7

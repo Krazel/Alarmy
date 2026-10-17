@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import UniformTypeIdentifiers
 
 struct AnalysisCSV: FileDocument {
@@ -43,14 +44,22 @@ struct SessionEditor: View {
     }
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    DatePicker(store.words("bedtime"),selection:$start,in:night.start...(night.end ?? night.checkpoint))
-                    DatePicker(store.words("wakeTime"),selection:$end,in:night.start...(night.end ?? night.checkpoint))
-                    Toggle(store.words("nap"),isOn:$nap).accessibilityIdentifier("session-nap")
-                } footer: { Text(store.words("correctionHint")) }
-                Button(store.words("restoreTimes")) { Task { saving = true; defer {saving = false}; if await store.correctSession(id:night.id,start:start,end:end,nap:nap,reset:true) {dismiss()} } }.disabled(saving)
-            }.navigationTitle(store.words("editSession")).navigationBarTitleDisplayMode(.inline)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    PageHeading(title: store.words("editSession"), subtitle: store.words("editBedHint"))
+                    PaperCard {
+                        VStack(spacing: 20) {
+                            DatePicker(selection: $start, in: night.start...(night.end ?? night.checkpoint)) { Label(store.words("bedtime"), systemImage: "bed.double") }
+                            Divider()
+                            DatePicker(selection: $end, in: night.start...(night.end ?? night.checkpoint)) { Label(store.words("wakeTime"), systemImage: "sun.max") }
+                        }
+                    }
+                    PaperCard { MetricRow(title: store.words("duration"), value: DiaryPresentation.duration(max(0, end.timeIntervalSince(start)))) }
+                    PaperCard { Toggle(isOn: $nap) { Label(store.words("nap"), systemImage: "moon") }.accessibilityIdentifier("session-nap") }
+                    ReviewNotice(text: store.words("correctionHint"))
+                    Button(store.words("restoreTimes")) { Task { saving = true; defer {saving = false}; if await store.correctSession(id:night.id,start:start,end:end,nap:nap,reset:true) {dismiss()} } }.disabled(saving).frame(maxWidth: .infinity).padding()
+                }.padding(20)
+            }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement:.cancellationAction) { Button(store.words("cancel")) { dismiss() } }
                     ToolbarItem(placement:.confirmationAction) {
@@ -68,13 +77,38 @@ struct NightDetails: View {
     let ids: [UUID]
     let stages: [SleepStage]
     @State private var editing: SleepSession?
+    @State private var sounds = false
     private var nights: [SleepSession] { store.archive.sessions.filter {ids.contains($0.id)} }
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing:16) {
+                    let metrics = NightMetrics(nights: nights)
+                    let normalized = SleepContinuity(nights: nights, stages: stages).stages
+                    PaperCard {
+                        HStack {
+                            CompactMetric(title: store.words("asleepShort"), value: DiaryPresentation.duration(metrics.sleepEstimate(normalized)))
+                            Divider()
+                            CompactMetric(title: store.words("inBed"), value: DiaryPresentation.duration(metrics.inBed))
+                        }.fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !normalized.isEmpty {
+                        PaperCard { VStack(spacing: 12) {
+                            StageChart(stages: normalized, words: store.words, chartHeight: 160)
+                            Text(store.words("localEstimate")).font(.caption).foregroundStyle(.secondary)
+                        } }
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                            ForEach(DiaryPresentation.keys.filter { key in normalized.contains { $0.key == key } }, id: \.self) { key in
+                                PaperCard(padding: 18) { VStack(alignment: .leading, spacing: 8) {
+                                    Text(DiaryPresentation.duration(metrics.sleepSeconds(normalized, key: key))).font(.system(size: 27, design: .serif))
+                                    Label { Text(store.words(key)) } icon: { Circle().fill(DiaryPresentation.color(key)).frame(width: 9, height: 9) }.font(.caption)
+                                } }
+                            }
+                        }
+                    } else { ReviewNotice(text: store.words("compactHealthEmpty")) }
+                    Button { sounds = true } label: { SoundSummaryRow(nights: nights, words: store.words) }.buttonStyle(.plain)
                     ContinuityCard(nights:nights,stages:stages,words:store.words)
-                    Text(store.words("localMethodHint")).font(.caption).foregroundStyle(.secondary)
+                    DisclosureGroup(store.words("localEstimate")) { Text(store.words("localMethodHint")).font(.caption).foregroundStyle(.secondary) }
                     ForEach(nights) { night in
                         PaperCard {
                             VStack(alignment:.leading,spacing:12) {
@@ -100,6 +134,7 @@ struct NightDetails: View {
             }.background(Color.paper).navigationTitle(store.words("nightAnalysis")).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement:.confirmationAction) { Button(store.words("done")) {dismiss()} } }
                 .sheet(item:$editing) { SessionEditor(night:$0) }
+                .sheet(isPresented: $sounds) { SoundsScreen(sessionIDs: ids) }
         }.foregroundStyle(Color.ink).tint(.rust)
     }
 }
@@ -196,27 +231,56 @@ struct CompareNights: View {
     let stages: [UUID:[SleepStage]]
     @State private var first: UUID?
     @State private var second: UUID?
+    private var chosen: [SleepSession] { [first, second].compactMap { id in nights.first { $0.id == id } } }
     var body: some View {
         NavigationStack {
-            Form {
-                selection(store.words("firstNight"),value:$first)
-                selection(store.words("secondNight"),value:$second)
-                ForEach([first,second].compactMap {$0}.enumerated().map {ComparisonSlot(index:$0.offset,id:$0.element)},id:\.index) { slot in
-                    if let night = nights.first(where:{$0.id == slot.id}) {
-                        Section(night.start.formatted(date:.abbreviated,time:.shortened)) {
-                            MetricRow(title:store.words("inBed"),value:SleepMath.duration(NightMetrics(nights:[night]).inBed))
-                            MetricRow(title:store.words("asleepShort"),value:SleepMath.duration(NightMetrics(nights:[night]).sleepEstimate(stages[night.id] ?? [])))
-                            MetricRow(title:store.words("analysisCoverage"),value:NightMetrics(nights:[night]).coverage.map {"\(Int($0*100))%"} ?? "—")
-                            MetricRow(title:store.words("feeling"),value:store.words(store.page(night.end ?? night.checkpoint).feeling?.key ?? "unrated"))
-                            MetricRow(title:store.words("sounds"),value:"\(NightMetrics(nights:[night]).soundCount)")
+            ScrollView {
+                VStack(spacing: 20) {
+                    PageHeading(title: store.words("compareNights"))
+                    HStack(spacing: 12) {
+                        PaperCard(padding: 12) { selection(store.words("firstNight"), value: $first) }
+                        PaperCard(padding: 12) { selection(store.words("secondNight"), value: $second) }
+                    }
+                    PaperCard {
+                        VStack(alignment: .leading, spacing: 20) {
+                            Text(store.words("asleepShort")).font(.system(size: 24, design: .serif))
+                            Chart(Array(chosen.enumerated()), id: \.offset) { slot in
+                                if let value = NightMetrics(nights: [slot.element]).sleepEstimate(stages[slot.element.id] ?? []) {
+                                    BarMark(x: .value("Night", slot.offset == 0 ? store.words("firstNight") : store.words("secondNight")), y: .value("Hours", value/3600), width: .ratio(0.55))
+                                        .foregroundStyle(slot.offset == 0 ? DiaryPresentation.color("core") : DiaryPresentation.color("deep"))
+                                        .cornerRadius(6).annotation(position: .top) { Text(DiaryPresentation.duration(value)).font(.system(size: 21, design: .serif)) }
+                                }
+                            }.frame(height: 210).chartYAxis(.hidden)
+                            HStack { ForEach(Array(chosen.enumerated()), id: \.offset) { _, night in
+                                Text((night.end ?? night.checkpoint).formatted(.dateTime.day().month(.abbreviated).locale(store.words.locale))).font(.caption).frame(maxWidth: .infinity)
+                            } }
                         }
                     }
-                }
-            }.navigationTitle(store.words("compareNights")).navigationBarTitleDisplayMode(.inline)
-                .toolbar {ToolbarItem(placement:.confirmationAction) {Button(store.words("done")) {dismiss()}}}
-                .onAppear {first = nights.last?.id; second = nights.dropLast().last?.id}
+                    PaperCard {
+                        VStack(spacing: 15) {
+                            comparisonRow("inBed") { DiaryPresentation.duration(NightMetrics(nights: [$0]).inBed) }
+                            Divider()
+                            comparisonRow("sleepLatency") { DiaryPresentation.duration(NightMetrics(nights: [$0]).sleepLatency(stages[$0.id] ?? [])) }
+                            Divider()
+                            comparisonRow("sounds") { "\(NightMetrics(nights: [$0]).soundCount)" }
+                            Divider()
+                            comparisonRow("analysisCoverage") { NightMetrics(nights: [$0]).coverage.map { "\(Int($0*100))%" } ?? "—" }
+                        }
+                    }
+                    ReviewNotice(text: store.words("localEstimate"))
+                }.padding(20)
+            }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust).navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { dismiss() } } }
+                .onAppear { if first == nil { first = nights.dropLast().last?.id; second = nights.last?.id } }
         }
     }
+    private func comparisonRow(_ key: String, value: @escaping (SleepSession) -> String) -> some View {
+        HStack {
+            Text(store.words(key)).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
+            ForEach(Array(chosen.enumerated()), id: \.offset) { _, night in Text(value(night)).font(.system(size: 18, design: .serif)).frame(maxWidth: .infinity).monospacedDigit() }
+        }
+    }
+
     private func selection(_ title: String,value: Binding<UUID?>) -> some View {
         Picker(title,selection:value) {ForEach(nights) {night in Text(night.start.formatted(date:.abbreviated,time:.shortened)).tag(Optional(night.id))}}
     }

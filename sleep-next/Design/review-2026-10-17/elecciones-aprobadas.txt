@@ -1,0 +1,20 @@
+Alarma · Elecciones visuales
+
+1. Principal · día: A
+2. Principal · noche: Pendiente
+   Quiero algo mas limpio aqui
+3. Configurar alarma: B
+4. Sonido de alarma: B
+5. Noche en curso: B
+6. Alarma sonando: B
+7. Cambiar hora durante la noche: B
+8. Diario: B
+9. Calendario: B
+10. Estadísticas: B
+11. Detalle de la noche: B
+12. Editar horarios: B
+13. Sonidos de la noche: B
+14. Escuchar un fragmento: B
+15. Comparar noches: B
+16. Ajustes: B
+17. Ejemplos del diario: A
