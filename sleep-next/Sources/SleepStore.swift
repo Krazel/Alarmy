@@ -307,7 +307,7 @@ final class SleepStore: ObservableObject {
                 return
             }
             if !testMode { try? scheduler.cancel(id: old); if let backup = original.backupAlarmID { try? scheduler.cancel(id: backup) } }
-            ringing = false; audio.stopPlayback(); await stopConnectedMusic()
+            ringing = false; await stopConnectedMusic()
             audio.stopPlayback(); audio.restoreScreen()
             try await beginRecordingIfNeeded()
         } catch { self.error = error.localizedDescription }
@@ -319,7 +319,7 @@ final class SleepStore: ObservableObject {
                 for id in [night.alarmID, night.backupAlarmID].compactMap({ $0 }) { do { try scheduler.cancel(id: id) } catch { self.error = error.localizedDescription } }
             }
             await pauseCapture(reason: "recordOff")
-            ringing = false; audio.stopPlayback(); await stopConnectedMusic()
+            ringing = false; await stopConnectedMusic()
             await audio.stopAll()
             // stopAll flushes the last clip before we snapshot the session.
             guard var night = archive.active else { return false }
