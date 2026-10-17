@@ -30,6 +30,9 @@ FILTERS=(
   -only-testing:AlarmaNextTests/RepositoryTests
   -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection
 )
+if [[ "${VALIDATION_SCOPE:-october}" == "catalogue" ]]; then
+  FILTERS=(-only-testing:AlarmaNextUITests/DesignCatalogueTests)
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "recognition_fix" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/RecognitionQueueTests

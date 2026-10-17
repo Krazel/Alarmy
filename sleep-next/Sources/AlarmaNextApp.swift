@@ -18,9 +18,18 @@ struct AlarmaNextApp: App {
         bar.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.secondaryLabel]
         UITabBar.appearance().standardAppearance = bar; UITabBar.appearance().scrollEdgeAppearance = bar
     }
+    @ViewBuilder private var appContent: some View {
+        #if DEBUG
+        if let route = DesignCapture.route {
+            if store.loaded {DesignCaptureScreen(route:route)} else {ProgressView()}
+        } else {RootScreen()}
+        #else
+        RootScreen()
+        #endif
+    }
     var body: some Scene {
         WindowGroup {
-            RootScreen().environmentObject(store)
+            appContent.environmentObject(store)
                 .environment(\.locale, store.words.locale)
                 .preferredColorScheme(store.archive.preferences.appearance == "night" ? .dark : (store.archive.preferences.appearance == "dawn" ? .light : nil))
                 .task { await store.load() }
