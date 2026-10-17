@@ -215,6 +215,10 @@ struct StatisticsScreen: View {
     private var details: some View {
         VStack(alignment:.leading,spacing:16) {
             let metrics = NightMetrics(nights:nights)
+            if !showNaps {
+                MetricRow(title:words("sleepGoal"),value:SleepMath.duration(Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60))
+                MetricRow(title:words("goalDifference"),value:meanGoalSleep.map { ($0 >= Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60 ? "+ " : "− ") + SleepMath.duration(abs($0-Double(store.archive.preferences.sleepGoalMinutes ?? 480)*60)) } ?? "—")
+            }
             MetricRow(title:words("estimatedRest"),value:SleepMath.duration(average(nights.map { NightMetrics(nights:[$0]).rest })))
             MetricRow(title:words("quietLatency"),value:SleepMath.duration(average(nights.map { NightMetrics(nights:[$0]).quietLatency })))
             MetricRow(title:words("analysisCoverage"),value:metrics.coverage.map { "\(Int($0*100))%" } ?? "—")

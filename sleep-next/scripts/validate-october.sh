@@ -30,6 +30,14 @@ FILTERS=(
   -only-testing:AlarmaNextTests/RepositoryTests
   -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection
 )
+if [[ "${VALIDATION_SCOPE:-october}" == "ui_finish" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextTests/GradualWakeTests
+    -only-testing:AlarmaNextTests/ApprovedReviewTests
+    -only-testing:AlarmaNextTests/DomainTests/testTranslationsComplete
+    -only-testing:AlarmaNextUITests/DesignCatalogueTests/testPolishedScreens
+  )
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "ui_revision" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/GradualWakeTests

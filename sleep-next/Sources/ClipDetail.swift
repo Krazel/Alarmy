@@ -26,7 +26,7 @@ struct ClipDetail: View {
                     VStack(alignment: .leading, spacing: 24) {
                         if store.journalPreview { Text(store.words("exampleAudio")).font(.caption).foregroundStyle(Color.rust) }
                         PageHeading(title: store.words(clip.kind.rawValue), subtitle: store.words("fragment") + " \(index+1) " + store.words("of") + " \(clips.count)")
-                        Text(clip.created.formatted(.dateTime.hour().minute().locale(store.words.locale)) + " · " + DiaryPresentation.duration(clip.duration)).font(.subheadline)
+                        Text(clip.created.formatted(.dateTime.hour().minute().locale(store.words.locale)) + " · " + clock(clip.duration)).font(.subheadline)
                         VStack(spacing: 20) {
                             if envelope.isEmpty { Text(store.words("waveUnavailable")).font(.caption).foregroundStyle(.secondary).frame(height: 160) }
                             else { RecordedWaveform(values: envelope, progress: audio.playing == clip.id.uuidString ? audio.playbackTime/max(1,clip.duration) : 0).frame(height: 160) }
@@ -64,6 +64,7 @@ struct ClipDetail: View {
                                     do {
                                         if audio.playing != clip.id.uuidString, let url = DiskLocation.child(clip.filename, of: DiskLocation.clips) { try audio.play(url: url, id: clip.id.uuidString) }
                                         audio.seek(to: event.start)
+                                        if audio.playbackPaused { audio.togglePause() }
                                     } catch { store.error = error.localizedDescription }
                                 } label: {
                                     HStack { Image(systemName: "play.circle"); Text(store.words(event.kind.rawValue)); Spacer(); Text(clock(event.start) + " – " + clock(event.start+event.duration)).monospacedDigit() }.font(.subheadline).padding(14).background(Color.card, in: RoundedRectangle(cornerRadius: 14))

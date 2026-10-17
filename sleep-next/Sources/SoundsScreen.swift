@@ -40,7 +40,7 @@ struct SoundsScreen: View {
                     Image(systemName: kind.symbol).font(.system(size: 34, weight: .light)).frame(width: 48).foregroundStyle(kind == .snore ? Color.rust : Color.ink)
                     VStack(alignment: .leading, spacing: 8) {
                         Text(store.words(kind.rawValue)).font(.system(size: 23, design: .serif))
-                        Text("\(group.count) " + store.words("savedClips") + " · " + DiaryPresentation.duration(duration)).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
+                        Text("\(group.count) " + store.words("savedClips") + " · " + (duration < 60 ? DiaryPresentation.clipTime(duration) : DiaryPresentation.duration(duration))).font(.caption).foregroundStyle(Color.ink.opacity(0.6))
                         GeometryReader { geo in
                             Capsule().fill(Color.ink.opacity(0.1))
                             Capsule().fill(kind == .snore ? Color.rust : Color.ink.opacity(0.7)).frame(width: geo.size.width * Double(group.count) / Double(max(1, clips.count)))

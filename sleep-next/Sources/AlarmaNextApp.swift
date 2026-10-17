@@ -201,7 +201,11 @@ struct AlarmEditor: View {
                         }
                         PaperCard(padding: 18) {
                             VStack(spacing: 16) {
-                                Picker(selection: $draft.snoozeMinutes) { ForEach([1,3,5,10,15], id: \.self) { Text("\($0) min").tag($0) } } label: { Label(store.words("snoozeTime"), systemImage: "zzz") }
+                                HStack {
+                                    Label(store.words("snoozeTime"), systemImage: "zzz")
+                                    Spacer()
+                                    Picker(store.words("snoozeTime"), selection: $draft.snoozeMinutes) { ForEach([1,3,5,10,15], id: \.self) { Text("\($0) min").tag($0) } }.labelsHidden()
+                                }
                                 Divider()
                                 Toggle(isOn: $draft.gradual) { Label(store.words("gentle"), systemImage: "speaker.wave.2") }
                                 DisclosureGroup(store.words("moreOptions")) {

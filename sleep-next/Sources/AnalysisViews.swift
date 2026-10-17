@@ -244,6 +244,7 @@ struct CompareNights: View {
                     PaperCard {
                         VStack(alignment: .leading, spacing: 20) {
                             Text(store.words("asleepShort")).font(.system(size: 24, design: .serif))
+                            if chosen.contains(where: { NightMetrics(nights: [$0]).sleepEstimate(stages[$0.id] ?? []) != nil }) {
                             Chart(Array(chosen.enumerated()), id: \.offset) { slot in
                                 if let value = NightMetrics(nights: [slot.element]).sleepEstimate(stages[slot.element.id] ?? []) {
                                     BarMark(x: .value("Night", slot.offset == 0 ? store.words("firstNight") : store.words("secondNight")), y: .value("Hours", value/3600), width: .ratio(0.55))
@@ -251,6 +252,7 @@ struct CompareNights: View {
                                         .cornerRadius(6).annotation(position: .top) { Text(DiaryPresentation.duration(value)).font(.system(size: 21, design: .serif)) }
                                 }
                             }.frame(height: 210).chartYAxis(.hidden)
+                            } else { ReviewNotice(text: store.words("partialSleepHint")) }
                             HStack { ForEach(Array(chosen.enumerated()), id: \.offset) { _, night in
                                 Text((night.end ?? night.checkpoint).formatted(.dateTime.day().month(.abbreviated).locale(store.words.locale))).font(.caption).frame(maxWidth: .infinity)
                             } }
@@ -271,7 +273,7 @@ struct CompareNights: View {
                 }.padding(20)
             }.background(Color.paper).foregroundStyle(Color.ink).tint(.rust).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button(store.words("done")) { dismiss() } } }
-                .onAppear { if first == nil { first = nights.dropLast().last?.id; second = nights.last?.id } }
+                .onAppear { if first == nil { let ordered = nights.sorted { $0.start < $1.start }; first = ordered.dropLast().last?.id; second = ordered.last?.id } }
         }
     }
     private func comparisonRow(_ key: String, value: @escaping (SleepSession) -> String) -> some View {
@@ -282,7 +284,7 @@ struct CompareNights: View {
     }
 
     private func selection(_ title: String,value: Binding<UUID?>) -> some View {
-        Picker(title,selection:value) {ForEach(nights) {night in Text(night.start.formatted(date:.abbreviated,time:.shortened)).tag(Optional(night.id))}}
+        Picker(title,selection:value) {ForEach(nights.sorted { $0.start > $1.start }) {night in Text(night.start.formatted(.dateTime.day().month(.abbreviated).hour().minute().locale(store.words.locale))).tag(Optional(night.id))}}
     }
 }
 private struct ComparisonSlot {let index: Int; let id: UUID}
