@@ -38,6 +38,12 @@ if [[ "${VALIDATION_SCOPE:-october}" == "ui_finish" ]]; then
     -only-testing:AlarmaNextUITests/DesignCatalogueTests/testPolishedScreens
   )
 fi
+if [[ "${VALIDATION_SCOPE:-october}" == "ui_swipe" ]]; then
+  FILTERS=(
+    -only-testing:AlarmaNextUITests/NativeFlowTests/testMinimalNightAndInlineAlarmEnglish
+    -only-testing:AlarmaNextUITests/DesignCatalogueTests/testNightControls
+  )
+fi
 if [[ "${VALIDATION_SCOPE:-october}" == "ui_revision" ]]; then
   FILTERS=(
     -only-testing:AlarmaNextTests/GradualWakeTests

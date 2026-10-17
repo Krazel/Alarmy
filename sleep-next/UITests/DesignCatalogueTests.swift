@@ -2,6 +2,16 @@ import XCTest
 
 final class DesignCatalogueTests: XCTestCase {
     override func setUpWithError() throws {continueAfterFailure = false}
+    func testNightControls() {
+        for route in ["night", "ringing"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-test","--reset-test","--archive-id",UUID().uuidString,"--spanish","--design-fixture","--gallery="+route]
+            app.launch()
+            XCTAssertTrue(app.otherElements["design-capture-ready"].waitForExistence(timeout:15))
+            capture("actual-"+route,app)
+            app.terminate()
+        }
+    }
     func testPolishedScreens() {
         for route in ["alarm-editor", "clip", "sounds", "details", "compare", "statistics"] {
             let app = XCUIApplication()

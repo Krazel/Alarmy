@@ -187,7 +187,7 @@ struct SwipeToFinish: View {
                 Image(systemName:"chevron.up").font(.system(size:13,weight:.medium))
                     .frame(width:28,height:28)
                     .frame(width:48,height:48).offset(y:-lift)
-            }.frame(width:100,height:80).contentShape(Rectangle())
+            }.frame(width:100,height:112).contentShape(Rectangle())
                 .highPriorityGesture(DragGesture(minimumDistance:8)
                     .onChanged { value in guard !submitted else { return }; lift = min(80,max(0,-value.translation.height)) }
                     .onEnded { value in
