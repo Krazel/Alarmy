@@ -1,4 +1,33 @@
-# Estado de Alarma — 17-10-2026
+# Estado de Alarma — 18-10-2026
+
+## Elecciones visuales implementadas — candidata 1.6 (1)
+
+Encargo humano: implementar elecciones exportadas y retirar la luz gradual.
+A conservada en principal de día y ejemplos; B aplicada a las otras 14 vistas.
+Principal nocturna simplificada con el fondo aprobado, hora editable y empezar.
+Navegación, jerarquías, tarjetas y reproducción adaptadas a SwiftUI y datos reales.
+Sonidos por categoría y fragmento con onda del archivo local, pausa y anterior/siguiente.
+Configuración con borrador Cancelar/Guardar, selección fija/aleatoria de tonos locales.
+Luz gradual retirada de la UI y desactivada para planes antiguos; no cambia brillo
+ni bloqueo automático. Volumen progresivo conservado. Idiomas castellano/inglés.
+
+Código fuente de la candidata: `6893ac9`. Validación inicial 10/10 y acabado 7/7,
+Debug y Release para iPhone, simulador iPhone 17 Pro iOS 26.4.1. Sin fallos/omitidas.
+Flujos ES/EN: configuración, diario, categorías, fragmentos y estadísticas.
+Runs: 39075792046 y 39076668533. Gesto nocturno y capturas finales: 2/2 correctas,
+Debug y Release correctos en run 39076876856. Cambio de hora guardar/cancelar,
+toque y gesto corto sin finalizar, deslizamiento completo finaliza.
+No se acredita prueba nocturna física con el simulador.
+
+Evidencia de selección y adaptaciones: sleep-next/Design/review-2026-10-17/.
+Galería de capturas nativas: sleep-next/Design/implemented-2026-10-18/index.html.
+Las cifras/noches de las capturas son fixtures DEBUG; no datos personales ni
+validación fisiológica. Fondos y assets originales aprobados conservados.
+Las 32 canciones candidatas siguen fuera de la app, pendientes de selección.
+
+No nueva subida en este encargo: TestFlight interno sigue en 1.5.1 (1).
+App Store: ficha creada; anuncios: no. Biblioteca PR-019: entrega guardada y
+releída en revisión 35, conservando versión distribuida, tracking e historial.
 
 ## Música incluida y revisión visual — 17/10
 

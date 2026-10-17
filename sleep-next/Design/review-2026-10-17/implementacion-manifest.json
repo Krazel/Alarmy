@@ -1,0 +1,209 @@
+{
+  "date": "2026-10-18",
+  "platform": "SwiftUI · iPhone · iOS 16+",
+  "languages": [
+    "es",
+    "en"
+  ],
+  "choices": {
+    "1. Principal · día": "A",
+    "2. Principal · noche": "Pendiente",
+    "3. Configurar alarma": "B",
+    "4. Sonido de alarma": "B",
+    "5. Noche en curso": "B",
+    "6. Alarma sonando": "B",
+    "7. Cambiar hora durante la noche": "B",
+    "8. Diario": "B",
+    "9. Calendario": "B",
+    "10. Estadísticas": "B",
+    "11. Detalle de la noche": "B",
+    "12. Editar horarios": "B",
+    "13. Sonidos de la noche": "B",
+    "14. Escuchar un fragmento": "B",
+    "15. Comparar noches": "B",
+    "16. Ajustes": "B",
+    "17. Ejemplos del diario": "A"
+  },
+  "nightHome": "Simplificación encargada por el usuario al ordenar implementar",
+  "sunrise": "Retirada temporal de UI y ejecución, conservando volumen progresivo",
+  "references": [
+    {
+      "file": "01-principales-v2.png",
+      "sha256": "b06d199c635e4253941c4b042a162f5e2c3187a4a47511769ef40815fa1c4e0e"
+    },
+    {
+      "file": "02-alarma.png",
+      "sha256": "22d2acc50372f61d95f1f49a3192146c163e5ffcb740bc1ebf33927a2c115194"
+    },
+    {
+      "file": "03-analisis.png",
+      "sha256": "ba67ad20a3db65102be150096c22e83f1b2198427bf56a56aa36ac4084d7a995"
+    },
+    {
+      "file": "04-sonidos-ajustes.png",
+      "sha256": "b57945b088dab1e2b2168893dcdadc81e153cd53cf522a5713744c7c9d9f9437"
+    },
+    {
+      "file": "05-musica.png",
+      "sha256": "ef1dc066ae9a18ce724a18d0be027f2342be9f131911fe4ae7957dcbff47ee2b"
+    },
+    {
+      "file": "elecciones-aprobadas.txt",
+      "sha256": "5e5fa99f1e0092a283e73639e35775d27bb0e1533988f93ba720f7a499d0d849"
+    }
+  ],
+  "candidate": "1.6 (1)",
+  "validation": [
+    {
+      "run": "39075792046",
+      "source": "6682cff",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "debug": "Passed",
+      "release": "Passed"
+    },
+    {
+      "run": "39076668533",
+      "source": "efe4fa4",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "debug": "Passed",
+      "release": "Passed"
+    },
+    {
+      "run": "39076876856",
+      "source": "6893ac9",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "debug": "Passed",
+      "release": "Passed"
+    }
+  ],
+  "nativeScreenshots": {
+    "actual-examples.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "9b531a72ebaaea8361005334c64a8572db5ba78150603e3ad5a0f43e63fb8321"
+    },
+    "actual-settings-more.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "1fa5a95c4a235d6f5f1065114c5ebc5a522a39f3a88e354b10ed287227fda0a1"
+    },
+    "actual-settings.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "c5c98d57170b8418922cbf869b43c8d00946dbb9e7434defd0cef7b23b0249f5"
+    },
+    "actual-compare.png": {
+      "run": "39076668533",
+      "source": "efe4fa4",
+      "sha256": "75239788cbbc5e9e80fce72100a9d2beadcdaa2d44cb4d79c1d2fec7bf1158c3"
+    },
+    "actual-clip-more.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "101586d0cccf7a96e1fdc92b5708a582b3b1d7638e4dfa0868d720585a1c40ff"
+    },
+    "actual-clip.png": {
+      "run": "39076668533",
+      "source": "efe4fa4",
+      "sha256": "2938934fbcb2ef871284c45ba1e453dba1f7462ba39b5cb17eb5eb0b558ec023"
+    },
+    "actual-sounds.png": {
+      "run": "39076668533",
+      "source": "efe4fa4",
+      "sha256": "e1973d000cfbb50eb479dc337746cf1e4ac4fd1f6b7c4252719647ca0631ef54"
+    },
+    "actual-session-editor.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "91022fd8aeb202663eadb54ace846c4096ee3e70cfc1935fa3e1611f6c4942ec"
+    },
+    "actual-details-more.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "b8aaaf0189a66c4d560e53b2d1f77bdbd97299d7c5c8017b3b710f0bbcfcba46"
+    },
+    "actual-details.png": {
+      "run": "39076668533",
+      "source": "efe4fa4",
+      "sha256": "8be5ae43a604cfeb07dbc662f2ea1013340d9d22efbc7ac649dd89c2c679647a"
+    },
+    "actual-statistics-more.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "f086f2215a971a2fe8db61dbac199d3166ea77d6acdfa57dd0e99a714764e85f"
+    },
+    "actual-statistics.png": {
+      "run": "39076668533",
+      "source": "efe4fa4",
+      "sha256": "2300cb571c8bb9c3965a86316c6fdc38725764bb12414a29b1d0a937880f2cfc"
+    },
+    "actual-calendar.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "faa78eaddb795ccea289dff51cef707ecd3a6909b6e1cc223ab9d89d4d6b1cdd"
+    },
+    "actual-journal-more.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "9dfca4fedd6b451f28878763c84ba92df0b4205c45f940218b9f44803641bb03"
+    },
+    "actual-journal.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "d623446f0fd44e10b3cf2a402e639b1b8184f11d2660196690432997f998fc1a"
+    },
+    "actual-active-editor.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "506b7d72d124e41b35893e362c09cd1dec920141231eb09428d3de19b4bde5e5"
+    },
+    "actual-ringing.png": {
+      "run": "39076876856",
+      "source": "6893ac9",
+      "sha256": "823b0ea799ef7bce3b18433d369b63ebccca968eb0b8d84662ba56281c192788"
+    },
+    "actual-night.png": {
+      "run": "39076876856",
+      "source": "6893ac9",
+      "sha256": "b806ea82dbb1aee7b528599a4e6bbbe65273902f2b6d3d45394199cd455dac0e"
+    },
+    "actual-tones.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "6884495433b9bff2884f2efedcfc84e91772a2c8a56138814c4fe1e71939b82f"
+    },
+    "actual-alarm-editor.png": {
+      "run": "39076668533",
+      "source": "efe4fa4",
+      "sha256": "f7f7f4cc2873dc116eb8169452649cb38d849e0909da79722b1b69b88a92e40c"
+    },
+    "actual-home-night.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "42fcecf7d130592aa4bb4836dac04be074d430ca375fd8f7cac032e0ad7e0f7e"
+    },
+    "actual-home.png": {
+      "run": "39075792046",
+      "source": "6682cff",
+      "sha256": "8ea3ce2c1999971a95183f160d238d63168097dc3f7025ad3e4b5eaa3b59bcf8"
+    },
+    "actual-statistics-details.png": {
+      "run": "39076668533",
+      "source": "efe4fa4",
+      "sha256": "1be5a24e6366770f79fdccf78d2781cbe38f0524897a6feabc82ff3a84d3bc00"
+    }
+  },
+  "exceptions": [
+    "Principal día A y listado ejemplos A conservados",
+    "Música local e importaciones; proveedores externos descartados",
+    "32 candidatas no integradas sin elección",
+    "Fases y valores reales; no incorporar cifras de las láminas",
+    "Fondos originales aprobados conservados"
+  ]
+}

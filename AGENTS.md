@@ -51,3 +51,11 @@ local. Candidata 1.5.1 (1); este encargo no incluye una nueva subida a TestFligh
 El 16/10 el usuario pide «sube»: autorizada la candidata validada 1.5.1 (1)
 al mismo TestFlight interno, con la firma temporal y el entorno existentes.
 Conservar recibos privados solo en almacenamiento local excluido de Git.
+
+El 18/10 el usuario ordena implementar sus elecciones visuales exportadas y
+retirar temporalmente la luz gradual: desactivarla también en ejecución para
+alarmas guardadas. Conservar volumen progresivo. A en principal de día y
+ejemplos; B en las otras pantallas; principal nocturna simplificada.
+Candidata 1.6 (1), sin nueva autorización de TestFlight en este encargo.
+Spotify y otros servicios descartados; las 32 canciones candidatas siguen
+pendientes de elección y no se incluyen en la app.

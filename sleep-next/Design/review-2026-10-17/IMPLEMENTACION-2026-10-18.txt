@@ -1,0 +1,48 @@
+Alarma — elecciones y adaptación nativa, 18/10/2026
+
+Evidencia humana: elecciones-aprobadas.txt; después el usuario ordena
+«pues implementa. quita lo de la luz lenta de momento pq no conseguimos
+que funcuione aun». Alcance: implementar A/B y simplificar inicio nocturno.
+
+A conservadas: principal de día y listado de ejemplos del diario.
+B: configurar alarma, sonidos de alarma, noche en curso, alarma sonando,
+cambio de hora, diario, calendario, estadísticas, detalle de noche, editar
+horarios, categorías de sonidos, escuchar fragmento, comparar y ajustes.
+
+Adaptaciones a decisiones posteriores y a datos reales:
+- Inicio nocturno: fondo aprobado, hora editable, sonido y acción principal;
+  sin tarjetas duplicadas. La simplificación aplica al inicio nocturno,
+  no cambia la composición A de día.
+- Luz gradual: sin opción, sin llamadas desde tick y sin cambios de brillo
+  ni bloqueo automático. El campo antiguo se conserva para leer archivos
+  anteriores; al guardar una alarma nueva queda a cero.
+- Configuración: borrador con Cancelar/Guardar; tres modos, rueda, posponer,
+  volumen progresivo y opciones secundarias. Volumen progresivo conservado.
+- Música: servicios descartados; tonos existentes e importaciones, selección
+  fija o aleatoria. Las 32 candidatas no están aprobadas ni incluidas todavía.
+- Noche: reloj, alarma editable, onda local y gesto para parar sin puntos ni
+  círculo. Al sonar: saludo, hora, sonido local y posponer; fondo de día
+  aprobado. Cambiar hora utiliza hoja clara y afecta solo a esa noche.
+- Diario: resumen y fases, enlace a sonidos, caras, nota; sin repetir la
+  valoración dentro del resumen. Estadísticas: gráfica principal, dos
+  métricas y acceso a horarios, sonidos, hábitos y fases/continuidad.
+- Calendario: seleccionar fecha y abrir diario; leyenda y nota del día.
+- Sonidos: una tarjeta por categoría, contador, duración y proporción del
+  número de fragmentos. Tocar abre la categoría con anterior/siguiente.
+- Fragmento: onda del archivo local real; no se inventa cuando falta audio.
+  Reproducción/pausa y desplazamiento, edición de etiqueta y borrado conservados.
+- Detalle: tiempos y fases, mosaico de duraciones y análisis existente.
+- Comparación: fechas, dos barras reales y métricas alineadas.
+- Ajustes: experiencia, audio/privacidad e información; conservación, espacio
+  y borrado siguen disponibles. Análisis local experimental sin Salud.
+
+Se conservan los fondos/rostros originales y los idiomas ES/EN. Las imágenes
+B son referencias de composición: sus cifras no se incorporan como datos.
+Los colores de fases mantienen la leyenda existente en toda la app.
+
+Candidata 1.6 (1). No subida a TestFlight ni App Review en este encargo.
+Validación Xcode Debug y Release correcta. 10 pruebas iniciales, 7 de acabado
+y 2 de gesto/capturas nocturnas, sin fallos ni omitidas. Simulador iPhone 17 Pro,
+iOS 26.4.1. Manifiesto con run, fuente y SHA de cada captura. No prueba física.
+Galería: ../implemented-2026-10-18/index.html. Zona táctil del gesto amplia
+con flecha visual pequeña; toque y deslizamiento corto no terminan la noche.
