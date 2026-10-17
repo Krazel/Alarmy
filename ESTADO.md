@@ -1,4 +1,27 @@
-# Estado de Alarma — 16-10-2026
+# Estado de Alarma — 17-10-2026
+
+## Música incluida y revisión visual — 17/10
+
+El usuario cancela Spotify, Apple Music y demás servicios. Integraciones
+revertidas en tres commits conservando historial; dos CI obsoletas canceladas.
+Se conserva el catálogo DEBUG de pantallas nativas (283b7cc), validado en
+https://github.com/Krazel/Alarmy/actions/runs/38985002601 .
+
+32 canciones candidatas descargadas para escucha local, de Kevin MacLeod,
+The Cynic Project y Juhani Junkala. CC BY 4.0/CC0 documentadas por pista,
+créditos y SHA256. Sin coste de licencia con las condiciones indicadas.
+Catálogo: sleep-next/Design/music-selection-2026-10-17/index.html.
+Originales 207.5 MB excluidos de Git, fuera de recursos de la app; todavía
+no seleccionados ni integrados. Próximo paso: escuchar, escoger y preparar
+fragmentos/formato/volumen antes de la implementación nativa.
+
+Comparativa A/B de 17 pantallas: sleep-next/Design/review-2026-10-17/index.html.
+A capturas nativas sintéticas; B imágenes conceptuales, no implementación.
+Las vistas de servicios se retiran de la comparación activa. Láminas 02/05
+originales conservadas como historia y marcadas obsoletas para música.
+No nueva build ni TestFlight en este encargo: sigue 1.5.1 (1) interno.
+Biblioteca PR-019 guardada y releída por API, revisión 33: siguiente paso
+actualizado, tracking e historial conservados.
 
 ## TestFlight interno 1.5.1 (1) — entrega verificada el 16/10
 

@@ -1,0 +1,27 @@
+[
+  {
+    "output": "01-principales-v2.png",
+    "screens": "Inicio, noche, diario, estadísticas",
+    "final_consolidated_prompt": "Four complete equal-width iPhone screens. Preserve ivory, teal, rust/sage, editorial serif and lake/mountain artwork. Home prioritizes07:30 and Empezar noche; minimal night has23:18, tappable07:30, luminous wave, small upward chevron and Parar. Diary order: week mood faces, night summary with estimated sleep/time in bed and experimental stages, single summarized sounds row, mood faces then journal. Statistics prioritizes weekly bar chart and concise metrics with drilldown rows. Edit: remove circle and square from night stop control; keep only small chevron and Parar."
+  },
+  {
+    "output": "02-alarma.png",
+    "screens": "Inicio nocturno, configurar alarma, música, cambiar hora",
+    "final_consolidated_prompt": "Four complete iPhone screens with serif titles and restrained navy/ivory design. Night home with compact alarm card. Alarm editor includes Solo análisis, Hora exacta, Ventana inteligente, time wheel and collapsed snooze/gradual volume/light rows. Music separates local tones, Apple Music, Spotify and fixed/random selection, states locked iPhone uses backup tone. Active-alarm editor is a bottom sheet for tonight only. Correct subtitles exactly: Analiza tu sueño sin despertarte. Busca un momento dentro de la ventana."
+  },
+  {
+    "output": "03-analisis.png",
+    "screens": "Calendario, detalle, editar horarios, comparar",
+    "final_consolidated_prompt": "Four full ivory iPhone screens: calendar with five mood icons on recorded days and selected-day link; detail with estimated sleep, time in bed, stage timeline, experimental notice, four duration metrics, schedule and summarized sounds link; time editor with start/end/nap, preserved original and restore action; comparison with two dates, paired bars and concise metrics. Readable sage/teal/lavender, generous space, no clinical diagnoses."
+  },
+  {
+    "output": "04-sonidos-ajustes.png",
+    "screens": "Sonidos, fragmento, ajustes, ejemplos",
+    "final_consolidated_prompt": "Four full iPhone screens. Sounds overview only categories/counts/durations, never individual clips. Fragment player has waveform, play/pause, previous/next, time, editable category and delete. Settings groups experience, audio/privacy and information, one recording+analysis toggle,90-day retention and storage/deletion. Examples clearly separated from real data with scenario cards. Edit settings labels to Modo desarrollador and Ejemplos del diario."
+  },
+  {
+    "output": "05-musica.png",
+    "screens": "Alarma sonando, conectar, biblioteca, lista",
+    "final_consolidated_prompt": "Four full iPhone screens. Ringing night landscape with07:30, current song/artwork/provider, snooze5min and small upward chevron/Parar. Connect screen offers Apple Music library and Spotify Premium with local backup limitation. Library searchable songs/lists with covers; playlist has full-list random selection and individual tracks. Fictional sample songs; no offers or clinical claims."
+  }
+]

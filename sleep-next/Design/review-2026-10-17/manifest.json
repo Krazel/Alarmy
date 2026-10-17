@@ -1,0 +1,133 @@
+{
+  "created": "2026-10-17",
+  "tool": "built-in image_gen",
+  "status": "Propuestas no aprobadas; no sustituyen assets de la app",
+  "language": "es",
+  "platform": "iPhone native design proposals",
+  "references": [
+    "../runtime/07-es-home.png",
+    "../../../QA-2026-10-15-recognition/70-es-diary.png"
+  ],
+  "prompts": "prompts.json",
+  "files": [
+    {
+      "path": "01-principales-v2.png",
+      "sha256": "b06d199c635e4253941c4b042a162f5e2c3187a4a47511769ef40815fa1c4e0e"
+    },
+    {
+      "path": "01-principales.png",
+      "sha256": "82ea8914232f61aad01c61986397b10089e9c118af882487e887d327b70a0ad9"
+    },
+    {
+      "path": "02-alarma.png",
+      "sha256": "22d2acc50372f61d95f1f49a3192146c163e5ffcb740bc1ebf33927a2c115194"
+    },
+    {
+      "path": "03-analisis.png",
+      "sha256": "ba67ad20a3db65102be150096c22e83f1b2198427bf56a56aa36ac4084d7a995"
+    },
+    {
+      "path": "04-sonidos-ajustes.png",
+      "sha256": "b57945b088dab1e2b2168893dcdadc81e153cd53cf522a5713744c7c9d9f9437"
+    },
+    {
+      "path": "05-musica.png",
+      "sha256": "ef1dc066ae9a18ce724a18d0be027f2342be9f131911fe4ae7957dcbff47ee2b"
+    },
+    {
+      "path": "actual/actual-active-editor.png",
+      "sha256": "8f9a295e9cc84d03cf8df55085b4d67e810a942c9c818a36024433ae7e52e4d4"
+    },
+    {
+      "path": "actual/actual-alarm-editor.png",
+      "sha256": "0f16b6c68f30c80d813fdd42702c7f06f1bdba54829d836921cc7b8a89f8b685"
+    },
+    {
+      "path": "actual/actual-calendar.png",
+      "sha256": "1b7b6b6fa3bef594ad9a4c9bcccab04b2577b68acd2264f247c8b71a510ca77f"
+    },
+    {
+      "path": "actual/actual-clip-more.png",
+      "sha256": "9edd5fcf75fcf94125cc3799d84fbfecbf730f936286b0a1122e47ecb6165eb9"
+    },
+    {
+      "path": "actual/actual-clip.png",
+      "sha256": "350904fee99d86014587f36e273784e4520e0ba452fd587f723dbafedca4aacc"
+    },
+    {
+      "path": "actual/actual-compare.png",
+      "sha256": "5b3761dbddd6a045232230c6ed0f87bb85865d6e5db7f5d6555fa8e9f7f54692"
+    },
+    {
+      "path": "actual/actual-details-more.png",
+      "sha256": "8be3a8761c502d79ce915d4732d38c76ddeb70010fac1b91a8aea59116491f76"
+    },
+    {
+      "path": "actual/actual-details.png",
+      "sha256": "63c65dac439e860eaf2467db556c5bccafd31e6366f09b0eaa2ed0b41205830d"
+    },
+    {
+      "path": "actual/actual-examples.png",
+      "sha256": "3964b657a04360163c8e271b6a63d969b283a5f1908c50574c25549e253c12e0"
+    },
+    {
+      "path": "actual/actual-home-night.png",
+      "sha256": "5dd2c6b3d93b8ed81e658a287b170482858cce109c9c7f51ddf6d8ccbb003612"
+    },
+    {
+      "path": "actual/actual-home.png",
+      "sha256": "38e0dcab544bf5e885631c9bf4fd54156bfca4c23e5abbd023d1fbb8a5e94dc1"
+    },
+    {
+      "path": "actual/actual-journal-more.png",
+      "sha256": "2346ef896564d413de06dc43733ae9943aa439a329586f71afe3488be2531068"
+    },
+    {
+      "path": "actual/actual-journal.png",
+      "sha256": "c1f28587495f5c28712e3d179c4328c269907548850ba704a9bdfcff55081562"
+    },
+    {
+      "path": "actual/actual-night.png",
+      "sha256": "e9c28c75cc5113cbaa918b7c384db3147dd1ca4be03c6058bd23b241458c1bc5"
+    },
+    {
+      "path": "actual/actual-ringing.png",
+      "sha256": "b127cb5009e97fec93f5e23cd547aac817b182bdd4a77d35d7f292efeca7ce16"
+    },
+    {
+      "path": "actual/actual-session-editor.png",
+      "sha256": "3a51979c3080231de1d911ee1bdcb7d2b6c0cb8c26d116a501c4f84b73fb1d0d"
+    },
+    {
+      "path": "actual/actual-settings-more.png",
+      "sha256": "c9ec959a59b93bdc14853f2dd71ac9c86d2db33e5beb16ccafeccf1ed14afb69"
+    },
+    {
+      "path": "actual/actual-settings.png",
+      "sha256": "3053788a6a3522ea0ad4035e2fde79803c85cd8647c304a40f65dd3f43fdffa5"
+    },
+    {
+      "path": "actual/actual-sounds.png",
+      "sha256": "907431ce2b4742cda64b963ad40885ce851d871d0db3f2e5cc552d57117dd85c"
+    },
+    {
+      "path": "actual/actual-statistics-more.png",
+      "sha256": "8ed68252ce927071a60326c6433cbdf3315eb14389924c7c32e38b8813684f75"
+    },
+    {
+      "path": "actual/actual-statistics.png",
+      "sha256": "878561334f6bb3893e0e07562341e8b85871b336b1453d843476e841f449e605"
+    },
+    {
+      "path": "actual/actual-tones.png",
+      "sha256": "ae0923fe9b446b389eccda53e6995e06988c14766f9db326604836fe20dcde4b"
+    }
+  ],
+  "nativeCapture": {
+    "source": "283b7cc",
+    "run": "https://github.com/Krazel/Alarmy/actions/runs/38985002601",
+    "device": "iPhone 17 Pro simulator",
+    "data": "synthetic",
+    "count": 22
+  }
+}

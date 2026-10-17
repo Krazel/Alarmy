@@ -17,4 +17,5 @@ dist/
 /sleep-next/Evidence/october-2026/native-*/build/
 /sleep-next/Evidence/october-2026/native-*/device/
 artifact/
+/sleep-next/Design/music-selection-2026-10-17/audio/
 .DS_Store
