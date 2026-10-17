@@ -114,7 +114,6 @@ extension SleepStore {
         if began {
             if !audioInterrupted { resumeAfterInterruption = audio.hasCapture && archive.active?.capturePaused != true }
             audioInterrupted = true
-            cancelConnectedMusic()
             await pauseCaptureLocked(reason: "recordInterrupted"); audio.stopPlayback(); audio.restoreScreen(); ringing = false
         } else {
             audioInterrupted = false

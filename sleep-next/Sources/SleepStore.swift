@@ -25,14 +25,6 @@ final class SleepStore: ObservableObject {
         didSet { if !journalPreview { UserDefaults.standard.set(developerMode, forKey: "journalDeveloperMode") } }
     }
     let audio = NightAudio()
-    let appleMusic = AppleMusicLibrary()
-    let spotify = SpotifyLibrary()
-    @Published var playingMusic: AlarmMusic?
-    @Published var musicFallback = false
-    var spotifyAttempt: AlarmMusic?
-    var musicTask: Task<Void,Never>?
-    var musicCleanup: Task<Void,Never>?
-    var musicGeneration = UUID()
     let repository: ArchiveRepository
     // Design examples use a separate store. They never load, persist or touch audio files.
     let journalPreview: Bool
@@ -209,19 +201,16 @@ final class SleepStore: ObservableObject {
             guard let wake = archive.plan.next(after: Date()) else { return }
             let tone = archive.plan.sound(excluding: archive.lastSound)
             let previousSound = archive.lastSound
-            let previousMusic = archive.lastMusicTrack
             var night = SleepSession(id: UUID(), start: Date(), checkpoint: Date(), wake: wake, alarmID: UUID(), soundID: tone)
-            night.alarmMusic = archive.plan.music?.resolved(excluding:archive.lastMusicTrack)
-            musicFallback = false
             night.mode = archive.plan.resolvedMode; night.retainAudio = archive.preferences.record
             night.alarmStatsTracked = true; night.snoozeDates = []; night.localAnalysisVersion = LocalSleepEstimator.version
             if night.mode == .analysis { night.wake = .distantFuture }
             if night.mode == .smart { night.latestWake = wake; night.windowStart = wake.addingTimeInterval(-Double(archive.plan.window)*60) }
             let started = night
             if !testMode && night.hasAlarm { try await scheduler.schedule(id: night.alarmID, date: wake, filename: try await ToneLibrary.alarmFilename(tone, imported: archive.tones, gradual: archive.plan.gradual), words: words) }
-            guard await commit({ $0.active = started; $0.lastSound = tone; if started.hasAlarm { $0.lastMusicTrack = started.alarmMusic?.tracks.first?.id } }).value else {
+            guard await commit({ $0.active = started; $0.lastSound = tone }).value else {
                 try? scheduler.cancel(id: night.alarmID)
-                archive.active = nil; archive.lastSound = previousSound; archive.lastMusicTrack = previousMusic
+                archive.active = nil; archive.lastSound = previousSound
                 return
             }
             #if DEBUG
@@ -284,7 +273,6 @@ final class SleepStore: ObservableObject {
             do {
                 guard let url = ToneLibrary.url(night.soundID, imported: archive.tones) ?? ToneLibrary.url("aurora", imported: []) else { throw CocoaError(.fileNoSuchFile) }
                 try audio.play(url: url, id: "wake", loop: true, gradual: archive.plan.gradual)
-                beginConnectedMusic(night)
                 let observed = Date()
                 commit { if $0.active?.id == night.id && $0.active?.alarmObservedAt == nil { $0.active?.alarmObservedAt = observed } }
                 if archive.plan.motionSnooze { audio.watchMovement { [weak self] in Task { await self?.snooze() } } }
@@ -307,8 +295,7 @@ final class SleepStore: ObservableObject {
                 return
             }
             if !testMode { try? scheduler.cancel(id: old); if let backup = original.backupAlarmID { try? scheduler.cancel(id: backup) } }
-            ringing = false; await stopConnectedMusic()
-            audio.stopPlayback(); audio.restoreScreen()
+            audio.stopPlayback(); audio.restoreScreen(); ringing = false
             try await beginRecordingIfNeeded()
         } catch { self.error = error.localizedDescription }
     }
@@ -319,8 +306,7 @@ final class SleepStore: ObservableObject {
                 for id in [night.alarmID, night.backupAlarmID].compactMap({ $0 }) { do { try scheduler.cancel(id: id) } catch { self.error = error.localizedDescription } }
             }
             await pauseCapture(reason: "recordOff")
-            ringing = false; await stopConnectedMusic()
-            await audio.stopAll()
+            await audio.stopAll(); ringing = false
             // stopAll flushes the last clip before we snapshot the session.
             guard var night = archive.active else { return false }
             night.end = max(night.start, end); night.checkpoint = max(night.start, end); let finished = night

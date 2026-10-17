@@ -52,7 +52,7 @@ struct AlarmaNextApp: App {
                 }
                 .onChange(of: phase) { newValue in
                     if newValue == .active { Task { await store.resume(); store.retryPendingClipAnalysis() } }
-                    else { store.musicEnteredBackground(); Task { await store.flush() }; store.audio.restoreScreen(); if store.archive.active == nil { store.audio.stopPlayback() } }
+                    else { Task { await store.flush() }; store.audio.restoreScreen(); if store.archive.active == nil { store.audio.stopPlayback() } }
                 }
         }
     }
@@ -105,7 +105,7 @@ struct AlarmScreen: View {
                                 HStack { Image(systemName: "sunrise"); Text(store.words("wake")); Spacer(); Text(store.archive.plan.next(after: Date()) ?? Date(), style: .date).lineLimit(1).minimumScaleFactor(0.7) }.font(.caption).foregroundStyle(Color.ink.opacity(0.65))
                                 if store.archive.plan.resolvedMode == .smart { Text("\(store.archive.plan.window) min · " + store.words("windowBefore")).font(.caption) }
                                 Divider()
-                                Button { music = true } label: { HStack(spacing: 12) { Image(systemName: "waveform"); Text(store.words("sounds")); Spacer(); Text(store.musicSummary).lineLimit(1).font(.caption); Image(systemName: "chevron.right").font(.caption2) } }.font(.subheadline).foregroundStyle(Color.ink).accessibilityIdentifier("sounds")
+                                Button { music = true } label: { HStack(spacing: 12) { Image(systemName: "waveform"); Text(store.words("sounds")); Spacer(); Text("\(store.archive.plan.sounds.count) " + store.words("selected")).font(.caption); Image(systemName: "chevron.right").font(.caption2) } }.font(.subheadline).foregroundStyle(Color.ink).accessibilityIdentifier("sounds")
                                 }
                             }
                         }

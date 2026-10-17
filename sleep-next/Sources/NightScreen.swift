@@ -60,8 +60,6 @@ struct NightScreen: View {
                                 .accessibilityIdentifier("night-edit-alarm").accessibilityHint(store.words("changeAlarmTime"))
                         } else { Text(store.words("analysis")).font(.system(size:20,design:.serif)).frame(minHeight:44) }
                     }
-                    if let playing = store.playingMusic {PlayingMusicView(music:playing)}
-                    else if store.ringing && store.musicFallback {Text(store.words("usingBackupTone")).font(.caption).padding(.top,12)}
                     Spacer()
                 }.padding(.horizontal,24).padding(.top,20).frame(width:geo.size.width)
                 NightRibbon(audio:store.audio).frame(width:max(0,geo.size.width-36),height:100)

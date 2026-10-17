@@ -1,4 +1,2 @@
 "NSMicrophoneUsageDescription" = "Record and analyse night sounds on this iPhone to provide experimental sleep estimates and identify sound events. Audio stays on this device.";
 "NSAlarmKitUsageDescription" = "Schedule your wake-up alarm so it can ring even when Alarma is closed.";
-
-"NSAppleMusicUsageDescription" = "Choose songs and playlists from your music library for playback while Alarma is open. A local tone is used when locked or music is unavailable.";

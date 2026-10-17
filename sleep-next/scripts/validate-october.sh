@@ -30,14 +30,6 @@ FILTERS=(
   -only-testing:AlarmaNextTests/RepositoryTests
   -only-testing:AlarmaNextUITests/NativeFlowTests/testClipDetailPlaybackNavigationAndCorrection
 )
-if [[ "${VALIDATION_SCOPE:-october}" == "music" ]]; then
-  FILTERS=(
-    -only-testing:AlarmaNextTests/MusicTests
-    -only-testing:AlarmaNextTests/ActiveAlarmTests
-    -only-testing:AlarmaNextTests/DomainTests/testTranslationsComplete
-    -only-testing:AlarmaNextUITests/MusicFlowTests
-  )
-fi
 if [[ "${VALIDATION_SCOPE:-october}" == "catalogue" ]]; then
   FILTERS=(-only-testing:AlarmaNextUITests/DesignCatalogueTests)
 fi
