@@ -36,6 +36,7 @@ if [[ "${VALIDATION_SCOPE:-october}" == "music" ]]; then
     -only-testing:AlarmaNextTests/ActiveAlarmTests
     -only-testing:AlarmaNextTests/DomainTests/testTranslationsComplete
     -only-testing:AlarmaNextUITests/MusicFlowTests
+    -only-testing:AlarmaNextUITests/DesignCatalogueTests
   )
 fi
 if [[ "${VALIDATION_SCOPE:-october}" == "catalogue" ]]; then
