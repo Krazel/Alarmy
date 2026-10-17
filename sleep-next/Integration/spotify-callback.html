@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta http-equiv="Cache-Control" content="no-store">
+<title>Return to Alarma</title>
+<body><h1>Alarma</h1><p id="message">Returning to Alarma…</p><a id="return" hidden>Open Alarma</a>
+<script>
+// Template only: host on the exact HTTPS URI registered for this Spotify app.
+// No analytics, third-party scripts, storage, arbitrary redirects or tokens.
+const input=new URLSearchParams(location.search), state=input.getAll('state'), code=input.getAll('code'), error=input.getAll('error');
+if(state.length===1 && state[0] && ((code.length===1 && code[0] && !error.length)||(error.length===1 && !code.length))){
+ const target=new URL('alarma-spotify://callback');target.searchParams.set('state',state[0]);
+ if(code.length)target.searchParams.set('code',code[0]);else target.searchParams.set('error',error[0]);
+ history.replaceState(null,'',location.pathname);const link=document.getElementById('return');link.href=target.href;link.hidden=false;location.replace(target.href);
+}else{document.getElementById('message').textContent='The connection could not be completed. Return to Alarma and try again.';history.replaceState(null,'',location.pathname)}
+</script></body></html>

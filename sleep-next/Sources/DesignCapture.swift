@@ -13,8 +13,8 @@ struct DesignCaptureScreen: View {
     let route: String
     private var nights: [SleepSession] {store.sessions(store.selectedDay)}
     var body: some View {
-        content.accessibilityIdentifier("design-capture-ready").task {
-            store.archive.preferences.appearance = route == "home-night" ? "night" : "dawn"
+        content.tint(.rust).foregroundStyle(Color.ink).accessibilityIdentifier("design-capture-ready").task {
+            store.archive.preferences.appearance = ["home-night","night","ringing","active-editor"].contains(route) ? "night" : "dawn"
             if ["night", "ringing", "active-editor"].contains(route) {
                 let now = Date(), wake = now.addingTimeInterval(8*3600)
                 store.archive.active = SleepSession(id:UUID(),start:now,checkpoint:now,wake:wake,alarmID:UUID(),soundID:"aurora")

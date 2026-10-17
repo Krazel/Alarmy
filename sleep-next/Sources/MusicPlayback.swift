@@ -24,7 +24,9 @@ extension SleepStore {
             if let cleanup = self.musicCleanup {await cleanup.value}
             guard self.canPlayMusic(ticket,night:night) else {return}
             if choice.provider == .apple {
-                guard await self.appleMusic.prepare(track), self.canPlayMusic(ticket,night:night) else {return}
+                let prepared = await self.appleMusic.prepare(track)
+                guard self.canPlayMusic(ticket,night:night) else {return}
+                guard prepared else {self.musicFallback = true; return}
                 self.audio.stopPlayback(); self.appleMusic.play()
                 do {try await Task.sleep(nanoseconds:700_000_000)} catch {return}
                 if self.appleMusic.isPlaying {self.playingMusic = choice}
