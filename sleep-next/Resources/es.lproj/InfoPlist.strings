@@ -1,2 +1,4 @@
 "NSMicrophoneUsageDescription" = "Graba y analiza los sonidos de la noche en este iPhone para estimar el sueño de forma experimental e identificar sonidos. El audio se queda en el dispositivo.";
 "NSAlarmKitUsageDescription" = "Programa tu alarma para que pueda sonar aunque Alarma esté cerrada.";
+
+"NSAppleMusicUsageDescription" = "Elige canciones y listas de tu biblioteca para reproducirlas con Alarma abierta. Con el iPhone bloqueado o sin música disponible se usa un tono local.";

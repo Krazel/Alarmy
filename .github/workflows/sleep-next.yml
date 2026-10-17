@@ -5,7 +5,7 @@ on:
       scope:
         description: Focused verification scope
         type: choice
-        options: [october, design, analysis, categories, onda, onda_visual, onda_time, feedback, diary, diary_polish, gradual, insights, recognition_fix, catalogue]
+        options: [october, design, analysis, categories, onda, onda_visual, onda_time, feedback, diary, diary_polish, gradual, insights, recognition_fix, catalogue, music]
         default: october
 permissions:
   contents: read
@@ -36,12 +36,12 @@ jobs:
           python3 - <<'PY'
           import json,os
           r=json.load(open('native-test-summary.json'))
-          minimum={'design':5,'analysis':13,'categories':4,'onda':9,'onda_visual':2,'onda_time':6,'feedback':11,'diary':13,'diary_polish':4,'gradual':10,'insights':16,'recognition_fix':20,'catalogue':1}.get(os.environ.get('VALIDATION_SCOPE'),15)
+          minimum={'design':5,'analysis':13,'categories':4,'onda':9,'onda_visual':2,'onda_time':6,'feedback':11,'diary':13,'diary_polish':4,'gradual':10,'insights':16,'recognition_fix':20,'catalogue':1,'music':9}.get(os.environ.get('VALIDATION_SCOPE'),15)
           assert r['failedTests']==0 and r['passedTests']>=minimum, r
           print('Passed native tests:',r['passedTests'])
           PY
       - name: Export native design screenshots
-        if: always() && (inputs.scope == 'design' || inputs.scope == 'analysis' || inputs.scope == 'categories' || inputs.scope == 'onda' || inputs.scope == 'onda_visual' || inputs.scope == 'feedback' || inputs.scope == 'diary' || inputs.scope == 'diary_polish' || inputs.scope == 'insights' || inputs.scope == 'recognition_fix' || inputs.scope == 'catalogue')
+        if: always() && (inputs.scope == 'design' || inputs.scope == 'analysis' || inputs.scope == 'categories' || inputs.scope == 'onda' || inputs.scope == 'onda_visual' || inputs.scope == 'feedback' || inputs.scope == 'diary' || inputs.scope == 'diary_polish' || inputs.scope == 'insights' || inputs.scope == 'recognition_fix' || inputs.scope == 'catalogue' || inputs.scope == 'music')
         run: |
           RESULT=$(find sleep-next/Evidence/october-2026 -maxdepth 3 -type d -name Tests.xcresult -print -quit)
           if [[ -n "$RESULT" ]]; then

@@ -8,6 +8,21 @@ struct SoundScreen: View {
     var body: some View {
         NavigationStack {
             List {
+                Section(store.words("music")) {
+                    NavigationLink("Apple Music") {MusicSourceScreen(apple:store.appleMusic,spotify:store.spotify,provider:.apple)}
+                    NavigationLink("Spotify") {MusicSourceScreen(apple:store.appleMusic,spotify:store.spotify,provider:.spotify)}
+                    if store.archive.plan.music != nil {
+                        Label(store.musicSummary,systemImage:"music.note")
+                        Button(store.words("useLocalTone")) {store.plan {$0.music = nil}}
+                    }
+                }
+                Section {
+                    Picker(store.words("selectionMode"),selection:Binding(get:{store.archive.plan.toneMode ?? .shuffle},set:{value in store.plan {$0.toneMode = value; if value == .fixed {$0.sounds = Array($0.sounds.prefix(1))}}})) {
+                        Text(store.words("fixedSong")).tag(MusicChoiceMode.fixed)
+                        Text(store.words("musicShuffle")).tag(MusicChoiceMode.shuffle)
+                    }.accessibilityIdentifier("tone-selection-mode")
+                } header: {Text(store.words(store.archive.plan.music == nil ? "localTones" : "backupTone"))}
+                  footer: {Text(store.words("musicForegroundHint"))}
                 Section { ForEach(ToneLibrary.builtins, id: \.self) { id in ToneRow(id: id, title: id.capitalized, audio: store.audio) } } footer: { Text(store.words("soundHint")) }
                 if !store.archive.tones.isEmpty { Section { ForEach(store.archive.tones) { tone in ToneRow(id: tone.id, title: tone.name, audio: store.audio) } } }
                 Section { Button { importing = true } label: { Label(store.words("import"), systemImage: "square.and.arrow.down") } } footer: { Text(store.words("importHint")) }
@@ -31,7 +46,7 @@ struct ToneRow: View {
             Text(title).foregroundStyle(Color.ink)
             Spacer()
             Button {
-                store.plan { plan in if plan.sounds.contains(id) { if plan.sounds.count > 1 { plan.sounds.removeAll { $0 == id } } } else { plan.sounds.append(id) } }
+                store.plan { plan in if plan.toneMode == .fixed {plan.sounds = [id]} else if plan.sounds.contains(id) { if plan.sounds.count > 1 { plan.sounds.removeAll { $0 == id } } } else { plan.sounds.append(id) } }
             } label: { Image(systemName: store.archive.plan.sounds.contains(id) ? "checkmark.circle.fill" : "circle").font(.title3) }.buttonStyle(.borderless).accessibilityLabel(title).accessibilityValue(store.archive.plan.sounds.contains(id) ? "1" : "0")
         }.padding(.vertical, 10)
     }

@@ -3,6 +3,8 @@ import Foundation
 enum AlarmMode: String, Codable, CaseIterable { case analysis, exact, smart }
 
 struct AlarmPlan: Codable, Equatable {
+    var music: AlarmMusic?
+    var toneMode: MusicChoiceMode?
     var mode: AlarmMode?
     var windowMinutes: Int?
     var resolvedMode: AlarmMode { mode ?? .exact }
@@ -21,6 +23,7 @@ struct AlarmPlan: Codable, Equatable {
     }
     func sound(excluding previous: String?) -> String {
         let choices = sounds.isEmpty ? ["aurora"] : sounds
+        if toneMode == .fixed { return choices.first ?? "aurora" }
         let remaining = choices.filter { $0 != previous }
         return (remaining.isEmpty ? choices : remaining).randomElement() ?? "aurora"
     }
@@ -71,6 +74,7 @@ struct SleepSession: Codable, Equatable, Identifiable {
     var wake: Date
     var alarmID: UUID
     let soundID: String
+    var alarmMusic: AlarmMusic?
     var interrupted = false
     var clips: [NightClip] = []
     var capturePaused: Bool?
@@ -143,6 +147,7 @@ struct AppArchive: Codable, Equatable {
     var pages: [String: JournalPage] = [:]
     var tones: [ImportedTone] = []
     var lastSound: String?
+    var lastMusicTrack: String?
     // Optional for archives created by 1.1(1). Persist deletion intent before touching audio.
     var pendingClipDeletions: [String]?
     mutating func queueClipDeletion(_ filenames: [String]) {
