@@ -47,7 +47,18 @@ jobs:
               assert all(x['conclusion']=='success' for x in steps)
           proof=temp/'native-proof'
           summary=json.loads((proof/'native-test-summary.json').read_text())
-          assert summary['failedTests']==0 and summary['passedTests']>=25 and summary['result']=='Passed'
+          # 1.6 uses the completed UI suites plus the final gesture-only follow-up.
+          assert r['id']==39076876856 and r['head_sha']=='6893ac9e036d2ad0c63e32a9311d34f00e3d8fa9'
+          assert summary['failedTests']==0 and summary['skippedTests']==0 and summary['passedTests']==2 and summary['result']=='Passed'
+          import subprocess
+          for run, minimum in [(39075792046,10),(39076668533,7)]:
+              previous=json.loads(subprocess.check_output(['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run}']))
+              assert previous['conclusion']=='success' and previous['head_branch']=='codex/native-sleep-rebuild'
+              assert previous['path']=='.github/workflows/sleep-next.yml'
+              dest=temp/f'ui-proof-{run}'
+              subprocess.check_call(['gh','run','download',str(run),'--repo',os.environ['GITHUB_REPOSITORY'],'--name','AlarmaNext-correction-validation','--dir',str(dest)])
+              checked=json.loads((dest/'native-test-summary.json').read_text())
+              assert checked['failedTests']==0 and checked['skippedTests']==0 and checked['passedTests']>=minimum and checked['result']=='Passed'
           for name,marker in [('compile.log','** TEST BUILD SUCCEEDED **'),('test.log','** TEST EXECUTE SUCCEEDED **'),('release.log','** BUILD SUCCEEDED **')]:
               paths=list(proof.rglob(name)); assert len(paths)==1
               assert marker in paths[0].read_text(),name
@@ -104,8 +115,8 @@ jobs:
           const app=(await get('/v1/apps/'+process.env.APP_ID)).data;
           if(app.attributes.bundleId!=='com.krazel.alarmanext')throw Error('Wrong destination app');
           const builds=await get('/v1/builds?filter[app]='+app.id+'&filter[version]=1&include=preReleaseVersion&limit=200');
-          if(builds.data.some(b=>builds.included?.some(v=>v.id===b.relationships.preReleaseVersion.data.id&&v.attributes.version==='1.5.1')))throw Error('Version/build already uploaded');
-          console.log('Destination verified; Alarma 1.5.1 (1) not previously uploaded.');
+          if(builds.data.some(b=>builds.included?.some(v=>v.id===b.relationships.preReleaseVersion.data.id&&v.attributes.version==='1.6')))throw Error('Version/build already uploaded');
+          console.log('Destination verified; Alarma 1.6 (1) not previously uploaded.');
           JS
       - name: Archive and export for TestFlight
         run: |
@@ -119,7 +130,7 @@ jobs:
           info=plistlib.load(open(os.environ['RUNNER_TEMP']+'/AlarmaNext.xcarchive/Products/Applications/AlarmaNext.app/Info.plist','rb'))
           assert info['UIDeviceFamily']==[1], 'Alarma is iPhone only'
           assert 'NSHealthShareUsageDescription' not in info and 'NSHealthUpdateUsageDescription' not in info
-          assert info['CFBundleIdentifier']=='com.krazel.alarmanext' and info['CFBundleShortVersionString']=='1.5.1' and info['CFBundleVersion']=='1'
+          assert info['CFBundleIdentifier']=='com.krazel.alarmanext' and info['CFBundleShortVersionString']=='1.6' and info['CFBundleVersion']=='1'
           assert info['MinimumOSVersion']=='16.0' and info['ITSAppUsesNonExemptEncryption']==False
           p=plistlib.load(open(os.environ['RUNNER_TEMP']+'/profile.plist','rb')); e=p['Entitlements']
           assert e['application-identifier'].endswith('.com.krazel.alarmanext')
@@ -141,7 +152,7 @@ jobs:
           python3 - <<'PY'
           import os,json,glob,hashlib
           p=glob.glob(os.environ['RUNNER_TEMP']+'/export/*.ipa')[0]
-          r={'appId':os.environ['APP_ID'],'bundleId':'com.krazel.alarmanext','version':'1.5.1','build':'1','source':os.environ['GITHUB_SHA'],'run':os.environ['GITHUB_RUN_ID'],'purpose':'TestFlight','uploadAccepted':True,'sha256':hashlib.sha256(open(p,'rb').read()).hexdigest()}
+          r={'appId':os.environ['APP_ID'],'bundleId':'com.krazel.alarmanext','version':'1.6','build':'1','source':os.environ['GITHUB_SHA'],'run':os.environ['GITHUB_RUN_ID'],'purpose':'TestFlight','uploadAccepted':True,'sha256':hashlib.sha256(open(p,'rb').read()).hexdigest()}
           json.dump(r,open('testflight-evidence/upload.json','w'),indent=2)
           PY
       - uses: actions/upload-artifact@v4

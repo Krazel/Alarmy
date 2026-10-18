@@ -59,3 +59,6 @@ ejemplos; B en las otras pantallas; principal nocturna simplificada.
 Candidata 1.6 (1), sin nueva autorización de TestFlight en este encargo.
 Spotify y otros servicios descartados; las 32 canciones candidatas siguen
 pendientes de elección y no se incluyen en la app.
+
+El 18/10, tras la entrega validada, el usuario pide «subela»: autorizada 1.6 (1)
+al mismo TestFlight interno, con firma temporal y CI estándar existentes.
