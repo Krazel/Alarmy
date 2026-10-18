@@ -1,5 +1,17 @@
 # Estado de Alarma — 18-10-2026
 
+## TestFlight interno 1.6 (1) — disponible
+
+Tras autorización «subela», Apple confirma `VALID` / `IN_BETA_TESTING`, mismo
+grupo interno existente (un tester, sin enlace público). Notas ES/EN guardadas
+y releídas. Fuente `4242948`, mismo código de app validado en `6893ac9`.
+Firma/subida: https://github.com/Krazel/Alarmy/actions/runs/39081286833 .
+Siete secretos temporales eliminados y entorno comprobado vacío.
+Evidencia pública: QA-2026-10-18-TestFlight; recibos privados excluidos de Git.
+Incluye las elecciones de UI y la retirada de luz gradual descritas debajo.
+Siguiente paso: instalar y revisar en iPhone; las canciones siguen pendientes
+de selección. Sin envío a revisión externa ni publicación en App Store.
+
 ## Elecciones visuales implementadas — candidata 1.6 (1)
 
 Encargo humano: implementar elecciones exportadas y retirar la luz gradual.
@@ -451,3 +463,5 @@ ni se afirma autonomía o fiabilidad nocturna sin resultados reales.
 - Limpieza completada: ocho secretos temporales GitHub eliminados y entorno releído vacío; recibo `QA-2026-10-01/credentials-cleanup.json`. Las credenciales originales locales se conservan. El runner eliminó su keychain y archivos temporales; no se publicó IPA, perfil ni clave.
 - Instalación, noche física, batería y alarmas en iOS anterior a 26: pendientes; no bloquean el nuevo encargo de subida. Audio personal en el teléfono.
 - Biblioteca D1: PR-019 guardada y releída por API, revisión **9**, `2026-10-01T22:12:53.339Z` (02-10 en Madrid). Estado En producción; TestFlight Interno con enlace comprobado, App Store Creada en App Store Connect, anuncios No. Entrega, notas, evidencias y limpieza registradas en la misma ficha.
+
+Biblioteca PR-019: entrega 1.6 (1) guardada y releída en revisión 36; tracking e historial conservados.
